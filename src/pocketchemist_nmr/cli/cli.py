@@ -1,20 +1,26 @@
 import logging
 import typing as t
+import sys
+import re
 
 import click
 from click_option_group import optgroup, RequiredMutuallyExclusiveOptionGroup
+import nmrglue as ng
+
 
 logger = logging.getLogger('pocketchemist-nmr.cli.cli')
+
+## Core plugin functionality
 
 class HyphenGroup(click.Group):
     """A command group that handles group commands that start with hyphens"""
 
     # The name of commands and groups whose preceeding hyphen should be
     # stripped to allow proper routing.
-    hyphen_groups = ('-fn',)
+    hyphen_groups = ('-fn', '-in', '-out')
 
     def parse_args(self, ctx: click.Context, args: t.List[str]) -> t.List[str]:
-        """Parse group arguments by routing """
+        """Parse group arguments to hyphen groups"""
         # Convert '-fn' to 'fn'
         args = [arg.lstrip('-') if arg in self.hyphen_groups
                 else arg for arg in args]
@@ -22,6 +28,7 @@ class HyphenGroup(click.Group):
 
     def get_command(self, ctx: click.Context, cmd_name: str) \
             -> t.Optional[click.Command]:
+        """Retrieve commands and groups that are named with hyphens"""
         # Add the hyphen back to the command name, if needed
         if '-' + cmd_name in self.hyphen_groups:
             return super().get_command(ctx, '-' + cmd_name)
@@ -31,11 +38,31 @@ class HyphenGroup(click.Group):
 
 @click.group(cls=HyphenGroup)
 @click.pass_context
-def nmrpipe(ctx: click.Context, fn: str = None):
+def nmrpipe(ctx: click.Context):
     """A drop-in replacement for nmrPipe"""
-    # Show logging information
     pass
 
+## Spectrum input
+
+@nmrpipe.command(name='-in')
+@click.argument('in_filepath')
+def nmrpipe_in(in_filepath):
+    """An NMR spectrum to load in"""
+    logging.debug(f"nmrpipe_in: in_filepath={in_filepath}")
+
+    # Load the spectrum
+    if re.search(r'%\d+d', in_filepath):  # match 'test%03d.ft2'
+        # Load a spectrum with multiple planes
+        xiter = ng.pipe.iter3D(in_filepath, 'x', 'x')
+        for i, (dic, plane) in xiter:
+            sys.stdout.write(plane)
+    else:
+        # Load a 1D or 2D (plane) spectrum
+        dic, data = ng.pipe.read(in_filepath)
+        sys.stdout.buffer.write(data)
+
+
+## Spectrum processing functions
 
 @nmrpipe.group(name='-fn')
 def nmrpipe_fn():
@@ -52,7 +79,6 @@ def nmrpipe_fn():
 @click.option('-fs', type=int, default=1, show_default=True,
               help="Filter shape: 1 = Boxcar, 2 = Sine, 3 = Sine^2 "
                    "(low pass filter)")
-
 def nmrpipe_fn_sol():
     """Solvent suppression"""
     pass

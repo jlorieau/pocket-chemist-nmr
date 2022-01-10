@@ -63,6 +63,21 @@ optional = false
 python-versions = ">=3.5"
 
 [[package]]
+name = "nmrglue"
+version = "0.8"
+description = "A module for working with NMR data in Python"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+numpy = "*"
+scipy = "*"
+
+[package.extras]
+docs = ["sphinx", "sphinx-rtd-theme", "numpydoc"]
+
+[[package]]
 name = "numpy"
 version = "1.22.0"
 description = "NumPy is the fundamental package for array computing with Python."
@@ -167,7 +182,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<3.11"
-content-hash = "d39ab44aef3277eedd6edea534f96142c337c19c8b974c66db8140dc93c50b26"
+content-hash = "45bc473884f8db58a7719188759412595f629ffebf0eafcc7f734ed57c705567"
 
 [metadata.files]
 atomicwrites = [
@@ -193,6 +208,10 @@ colorama = [
 more-itertools = [
     {file = "more-itertools-8.12.0.tar.gz", hash = "sha256:7dc6ad46f05f545f900dd59e8dfb4e84a4827b97b3cfecb175ea0c7d247f6064"},
     {file = "more_itertools-8.12.0-py3-none-any.whl", hash = "sha256:43e6dd9942dffd72661a2c4ef383ad7da1e6a3e968a927ad7a6083ab410a688b"},
+]
+nmrglue = [
+    {file = "nmrglue-0.8-py2.py3-none-any.whl", hash = "sha256:358e9014d457af042ecdd0adf51ee1cae396b0339783319862092292cda46ff6"},
+    {file = "nmrglue-0.8.tar.gz", hash = "sha256:198375ce724ab9776953a3d3ed3eb4fa0d1b859fac97360cffa5d9143f8a5bfe"},
 ]
 numpy = [
     {file = "numpy-1.22.0-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:3d22662b4b10112c545c91a0741f2436f8ca979ab3d69d03d19322aa970f9695"},
