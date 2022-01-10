@@ -7,6 +7,8 @@ authors = ["J Lorieau"]
 [tool.poetry.dependencies]
 python = ">=3.8,<3.11"
 pocketchemist = "^0.1.0"
+click = "^8.0.3"
+click-option-group = "^0.5.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
