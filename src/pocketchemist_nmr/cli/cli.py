@@ -4,13 +4,19 @@ import sys
 import re
 
 import click
-from click_option_group import optgroup, RequiredMutuallyExclusiveOptionGroup
+from click_option_group import optgroup, MutuallyExclusiveOptionGroup
 import nmrglue as ng
+
+from ..processors import NMRProcessor
 
 
 logger = logging.getLogger('pocketchemist-nmr.cli.cli')
 
 ## Core plugin functionality
+
+# Allow both '--help' and '-help' options to match nmrPipe interface
+CONTEXT_SETTINGS = dict(help_option_names=['-help', '--help'])
+
 
 class HyphenGroup(click.Group):
     """A command group that handles group commands that start with hyphens"""
@@ -44,7 +50,7 @@ def nmrpipe(ctx: click.Context):
 
 ## Spectrum input
 
-@nmrpipe.command(name='-in')
+@nmrpipe.command(name='-in', context_settings=CONTEXT_SETTINGS)
 @click.argument('in_filepath')
 def nmrpipe_in(in_filepath):
     """An NMR spectrum to load in"""
@@ -64,13 +70,13 @@ def nmrpipe_in(in_filepath):
 
 ## Spectrum processing functions
 
-@nmrpipe.group(name='-fn')
+@nmrpipe.group(name='-fn', context_settings=CONTEXT_SETTINGS)
 def nmrpipe_fn():
     """A processing function for a spectrum"""
     pass
 
 
-@nmrpipe_fn.command(name='SOL')
+@nmrpipe_fn.command(name='SOL', context_settings=CONTEXT_SETTINGS)
 @click.option('-mode', type=click.Choice(('1', '2', '3')),
               default='1', show_default=True,
               help="Filter Mode: 1 = Low Pass, 2 = Spline, 3 = Polynomial")
@@ -84,22 +90,27 @@ def nmrpipe_fn_sol():
     pass
 
 
-@nmrpipe_fn.command(name='FT')
-@optgroup.group("Fourier Transform method",
+@nmrpipe_fn.command(name='FT', context_settings=CONTEXT_SETTINGS)
+
+@optgroup.group("Fourier Transform mode",
                 help="The type of Fourier Transformation to conduct",
-                cls=RequiredMutuallyExclusiveOptionGroup)
-@optgroup.option('-auto', is_flag=True, default=True, show_default=True,
+                cls=MutuallyExclusiveOptionGroup)
+@optgroup.option('-auto', 'mode', flag_value='auto', type=click.STRING,
+                 default=True, show_default=True,
                  help='Choose FT mode automatically')
-@optgroup.option('-real', is_flag=True,
+@optgroup.option('-real', 'mode', flag_value='real', type=click.STRING,
                  help='Transform real data only')
-@optgroup.option('-inv', is_flag=True,
+@optgroup.option('-inv', 'mode', flag_value='inv', type=click.STRING,
                  help='Perform an inverse transform')
-@optgroup.group("Fourier Transform options",
-                help="Optional processing methods for the Fourier Transform")
-@optgroup.option('-alt', is_flag=True,
-                 help="Apply sign alternation")
-@optgroup.option('-neg', is_flag=True,
-                 help="Negate the imaginary component(s)")
-def nmrpipe_fn_ft():
+
+# @optgroup.group("Fourier Transform options",
+#                 help="Optional processing methods for the Fourier Transform")
+# @optgroup.option('-alt', is_flag=True,
+#                  help="Apply sign alternation")
+# @optgroup.option('-neg', is_flag=True,
+#                  help="Negate the imaginary component(s)")
+
+@click.argument('stdin', default=sys.stdin)
+def nmrpipe_fn_ft(mode, stdin):
     """Complex Fourier Transform"""
-    pass
+    logging.debug(f"nmrpipe_fn_ft: mode={mode}")
