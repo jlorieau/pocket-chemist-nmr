@@ -9,7 +9,7 @@ from click_option_group import optgroup, MutuallyExclusiveOptionGroup
 import nmrglue as ng
 
 from pocketchemist.processors import GroupProcessor
-from ..processors import LoadSpectra
+from ..processors import LoadSpectra, FTSpectra
 
 
 logger = logging.getLogger('pocketchemist-nmr.cli.cli')
@@ -71,17 +71,39 @@ def nmrpipe(ctx: click.Context):
 ## Spectrum input
 
 @nmrpipe.command(name='-in', context_settings=CONTEXT_SETTINGS)
+@click.option('-fmt', '--format',
+              type=click.Choice(('nmrpipe',)),
+              default='nmrpipe', show_default=True,
+              help='The format of the loaded spectrum')
 @click.argument('in_filepath')
-def nmrpipe_in(in_filepath):
-    """An NMR spectrum to load in"""
+def nmrpipe_in(format, in_filepath):
+    """NMR spectra to load in"""
     logging.debug(f"nmrpipe_in: in_filepath={in_filepath}")
 
     # Setup a Group processor and a processor to load spectra
     group = GroupProcessor()
-    group += LoadSpectra(in_filepath=in_filepath)
+    group += LoadSpectra(in_filepath=in_filepath, format=format)
 
     # Write the objects to stdout
     write_stdout(group)
+
+
+@nmrpipe.command(name='-out', context_settings=CONTEXT_SETTINGS)
+@click.option('-fmt', '--format',
+              type=click.Choice(('default',)),
+              default='default', show_default=True,
+              help='The format of the loaded spectrum')
+@click.argument('in_filepath')
+def nmrpipe_out(format, out_filepath):
+    """The NMR spectra to save"""
+    logging.debug(f"nmrpipe_out: out_filepath={out_filepath}")
+
+    # Setup a Group processor and a processor to load spectra
+    group = GroupProcessor()
+    group += SaveSpectra(out_filepath=in_filepath, format=format)
+
+    # Run the processor group
+    group.process()
 
 
 ## Spectrum processing functions
@@ -135,4 +157,4 @@ def nmrpipe_fn_ft(mode):
     group = read_stdin()
 
     # Add the FT processor
-    group +=
+    group += FTSpectra(mode=mode)
