@@ -2,12 +2,14 @@ import logging
 import typing as t
 import sys
 import re
+import pickle
 
 import click
 from click_option_group import optgroup, MutuallyExclusiveOptionGroup
 import nmrglue as ng
 
-from ..processors import NMRProcessor
+from pocketchemist.processors import GroupProcessor
+from ..processors import LoadSpectra
 
 
 logger = logging.getLogger('pocketchemist-nmr.cli.cli')
@@ -16,6 +18,24 @@ logger = logging.getLogger('pocketchemist-nmr.cli.cli')
 
 # Allow both '--help' and '-help' options to match nmrPipe interface
 CONTEXT_SETTINGS = dict(help_option_names=['-help', '--help'])
+
+def write_stdout(processor):
+    """A function to encode processor(s) for output to the stdout.
+
+    This function is used for transferring processors with pipes.
+    """
+    pickle.dump(processor, sys.stdout.buffer)
+
+
+def read_stdin(cls_type=GroupProcessor):
+    """A function to load processor(s) from input of the stdin.
+
+    This function is used for transferring processors with pipes.
+    """
+    processor = pickle.load(sys.stdin.buffer)
+    if cls_type is not None:
+        assert isinstance(processor, cls_type)
+    return processor
 
 
 class HyphenGroup(click.Group):
@@ -56,16 +76,12 @@ def nmrpipe_in(in_filepath):
     """An NMR spectrum to load in"""
     logging.debug(f"nmrpipe_in: in_filepath={in_filepath}")
 
-    # Load the spectrum
-    if re.search(r'%\d+d', in_filepath):  # match 'test%03d.ft2'
-        # Load a spectrum with multiple planes
-        xiter = ng.pipe.iter3D(in_filepath, 'x', 'x')
-        for i, (dic, plane) in xiter:
-            sys.stdout.write(plane)
-    else:
-        # Load a 1D or 2D (plane) spectrum
-        dic, data = ng.pipe.read(in_filepath)
-        sys.stdout.buffer.write(data)
+    # Setup a Group processor and a processor to load spectra
+    group = GroupProcessor()
+    group += LoadSpectra(in_filepath=in_filepath)
+
+    # Write the objects to stdout
+    write_stdout(group)
 
 
 ## Spectrum processing functions
@@ -110,7 +126,13 @@ def nmrpipe_fn_sol():
 # @optgroup.option('-neg', is_flag=True,
 #                  help="Negate the imaginary component(s)")
 
-@click.argument('stdin', default=sys.stdin)
-def nmrpipe_fn_ft(mode, stdin):
+#@click.argument('stdin', default=sys.stdin)
+def nmrpipe_fn_ft(mode):
     """Complex Fourier Transform"""
     logging.debug(f"nmrpipe_fn_ft: mode={mode}")
+
+    # Unpack the stdin
+    group = read_stdin()
+
+    # Add the FT processor
+    group +=
