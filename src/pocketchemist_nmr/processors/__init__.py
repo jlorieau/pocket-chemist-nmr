@@ -1,3 +1,3 @@
-from .processor import LoadSpectra, FTSpectra
+from .processor import NMRGroupProcessor, LoadSpectra, FTSpectra
 
-__all__ = ('LoadSpectra', 'FTSpectra')
+__all__ = ('NMRGroupProcessor', 'LoadSpectra', 'FTSpectra')
