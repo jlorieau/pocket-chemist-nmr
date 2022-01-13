@@ -8,6 +8,8 @@ import re
 
 import nmrglue as ng
 
+__all__ = ('NMRSpectrum', 'NMRPipeSpectrum')
+
 
 class NMRSpectrum(abc.ABC):
     """An NMR spectrum base class."""
@@ -18,9 +20,8 @@ class NMRSpectrum(abc.ABC):
     #: The data for the spectrum, either an array or an iterator
     data: t.Union[t.Iterable, 'numpy.ndarray']
 
-    #: If True, the data attribute is an iterator that must be processed one
-    #: at a time.
-    is_data_iterator: bool
+    #: If True, the data represents multiple files that must be iterated over
+    is_multifile: bool = False
 
     #: The filepath for the file corresponding to the spectrum
     in_filepath: 'pathlib.Path'
@@ -65,6 +66,24 @@ class NMRSpectrum(abc.ABC):
                             if attr not in ('in_filepath', 'out_filepath'))
         self.reset(attrs=reset_attrs)
 
+    @abc.abstractmethod
+    def save(self,
+             out_filepath: t.Optional['pathlib.Path'] = None,
+             format: str = None,
+             overwrite: bool = True):
+        """Save the spectrum to the specified filepath
+
+        Parameters
+        ----------
+        out_filepath
+            The filepath for the file(s) to save the spectrum.
+        format
+            The format of the spectrum to write. By default, this is nmrpipe.
+        overwrite
+            If True (default), overwrite existing files.
+        """
+        pass
+
     def reset(self, attrs: t.Optional[t.Tuple[str, ...]] = None):
         """Reset the data and parameters for the spectrum.
 
@@ -89,15 +108,17 @@ class NMRPipeSpectrum(NMRSpectrum):
 
     def load(self,
              in_filepath: t.Optional['pathlib.Path'] = None,
-             force_nD: bool = False,
+             force_multifile: bool = False,
              in_plane: str = 'x', out_plane: str = 'DEFAULT'):
         """Load the NMRPipeSpectrum.
 
         Parameters
         ----------
-        force_nD
+        in_filepath
+            The filepath for the spectrum file(s) to load.
+        force_multifile
             If True, force the loading of the nmrPipe spectrum using an
-            iterator, which is used for 3Ds, 4Ds, etc.
+            iterator for multiple files, which is used for 3Ds, 4Ds, etc.
         in_plane
             The plane read as the direct dimension. e.g. 'x', 'y', 'z', 'a'
         out_plane
@@ -108,16 +129,41 @@ class NMRPipeSpectrum(NMRSpectrum):
 
         # Determine if the spectrum should be loaded as a series of planes
         # (3D, 4D, etc.) or as and 1D or 2D (plane)
-        is_nD = re.search(r'%\d+d', str(self.in_filepath)) is not None
+        is_multifile = re.search(r'%\d+d', str(self.in_filepath)) is not None
 
         # Load the spectrum
-        if is_nD or force_nD:
-            self.data = ng.pipe.iter3D(str(self.in_filepath),
-                                       in_plane, out_plane)
+        if is_multifile or force_multifile:
+            data = ng.pipe.iter3D(str(self.in_filepath), in_plane, out_plane)
+            self.data = data
+
             # TODO: Implement assignment of self.meta
-            self.is_data_iterator = True
+            self.is_multifile = True
         else:
             dic, data = ng.pipe.read(str(self.in_filepath))
             self.meta = dic
             self.data = data
-            self.is_data_iterator = False
+            self.is_multifile = False
+
+    def save(self,
+             out_filepath: t.Optional['pathlib.Path'] = None,
+             format: str = None,
+             overwrite: bool = True):
+        """Save the spectrum to the specified filepath
+
+        Parameters
+        ----------
+        out_filepath
+            The filepath for the file(s) to save the spectrum.
+        format
+            The format of the spectrum to write. By default, this is nmrpipe.
+        overwrite
+            If True (default), overwrite existing files.
+        """
+        out_filepath = (out_filepath if out_filepath is not None else
+                        self.out_filepath)
+
+        if self.is_multifile:
+            raise NotImplementedError
+        else:
+            dic = self.meta
+            ng.pipe.write(out_filepath, dic, self.data, overwrite=overwrite)

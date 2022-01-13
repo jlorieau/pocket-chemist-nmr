@@ -1,3 +1,3 @@
-from .spectra import NMRPipeSpectrum
+from .spectra import NMRSpectrum, NMRPipeSpectrum
 
-__all__ = ('NMRPipeSpectrum',)
+__all__ = ('NMRSpectrum', 'NMRPipeSpectrum',)
