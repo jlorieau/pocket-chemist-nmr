@@ -1,0 +1,24 @@
+##TITLE= Audit trail, TOPSPIN		Version 3.2
+##JCAMPDX= 5.01
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= lorieau
+$$ /opt/topspin3.2/data/chard/nmr/CD20170124_av500hd_CN-His-Ubq/101/pdata/1/auditp.txt
+##AUDIT TRAIL=  $$ (NUMBER, WHEN, WHO, WHERE, PROCESS, VERSION, WHAT)
+(   1,<2017-01-24 19:05:29.213 -0600>,<lorieau>,<av500hd>,<go>,<TOPSPIN 3.2>,
+      <created by zg
+	started at 2017-01-24 18:52:43.477 -0600,
+	POWCHK enabled, PULCHK disabled,
+       terminated by command 'stop'
+       configuration hash MD5:
+       55 C4 16 E3 93 05 43 C1 24 97 87 2A 6E 30 FD 3E
+       data hash MD5: 1280 * 57
+       4A D3 B8 4E E7 B5 D5 F8 9D A9 89 A9 69 FE 8A D2>)
+(   2,<2017-01-24 19:45:45.752 -0600>,<lorieau>,<av500hd>,<proc2d>,<TOPSPIN 3.2>,
+      <Start of raw data processing
+       xfb F2: SI = 2K BC_mod = 4 WDW = 4 SSB = 2 FT_mod = 6 PKNL = 1 STSR = 120 STSI = 650 PHC0 = -155.3272 PHC1 = 43.5 F1: SI = 256 ME_mod = 2 NCOEF = 32 WDW = 4 SSB = 2 FT_mod = 6 FCOR = 0.5 PHC0 = 0 PHC1 = 0
+       data hash MD5: 656 * 256
+       29 3A C8 56 CA 75 1F 8A 8E 5A F2 7D 67 49 F6 0F>)
+##END=
+
+$$ hash MD5
+$$ FF 7F 35 25 38 3A 9D 2E D5 F5 2B 8A D6 02 1D E5
