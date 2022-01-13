@@ -8,8 +8,8 @@ import click
 from click_option_group import optgroup, MutuallyExclusiveOptionGroup
 import nmrglue as ng
 
-from pocketchemist.processors import GroupProcessor
-from ..processors import NMRGroupProcessor, LoadSpectra, FTSpectra
+from ..processors import (NMRGroupProcessor, LoadSpectra, SaveSpectra,
+                          FTSpectra)
 
 
 logger = logging.getLogger('pocketchemist-nmr.cli.cli')
@@ -27,7 +27,7 @@ def write_stdout(processor):
     pickle.dump(processor, sys.stdout.buffer)
 
 
-def read_stdin(cls_type=GroupProcessor):
+def read_stdin(cls_type=NMRGroupProcessor):
     """A function to load processor(s) from input of the stdin.
 
     This function is used for transferring processors with pipes.
@@ -75,14 +75,14 @@ def nmrpipe(ctx: click.Context):
               type=click.Choice(('nmrpipe',)),
               default='nmrpipe', show_default=True,
               help='The format of the loaded spectrum')
-@click.argument('in_filepath')
-def nmrpipe_in(format, in_filepath):
+@click.argument('in_filepaths', nargs=-1)
+def nmrpipe_in(format, in_filepaths):
     """NMR spectra to load in"""
-    logging.debug(f"nmrpipe_in: in_filepath={in_filepath}")
+    logging.debug(f"nmrpipe_in: in_filepaths={in_filepaths}")
 
     # Setup a Group processor and a processor to load spectra
     group = NMRGroupProcessor()
-    group += LoadSpectra(in_filepath=in_filepath, format=format)
+    group += LoadSpectra(in_filepaths=in_filepaths, format=format)
 
     # Write the objects to stdout
     write_stdout(group)
@@ -93,16 +93,19 @@ def nmrpipe_in(format, in_filepath):
               type=click.Choice(('default',)),
               default='default', show_default=True,
               help='The format of the loaded spectrum')
-@click.argument('out_filepath')
-def nmrpipe_out(format, out_filepath):
+@click.option('-o', '--overwrite', is_flag=True,
+              default=True, show_default=True)
+@click.argument('out_filepaths', nargs=-1)
+def nmrpipe_out(format, overwrite, out_filepaths):
     """The NMR spectra to save"""
-    logging.debug(f"nmrpipe_out: out_filepath={out_filepath}")
+    logging.debug(f"nmrpipe_out: out_filepaths={out_filepaths}")
 
     # Unpack the stdin
     group = read_stdin()
 
     # Setup a Group processor and a processor to load spectra
-    #group += SaveSpectra(out_filepath=out_filepath, format=format)
+    group += SaveSpectra(out_filepaths=out_filepaths, format=format,
+                         overwrite=overwrite)
 
     # Run the processor group
     kwargs = group.process()
