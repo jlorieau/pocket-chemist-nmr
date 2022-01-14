@@ -6,6 +6,7 @@ import pickle
 
 import click
 from click_option_group import optgroup, MutuallyExclusiveOptionGroup
+from humanfriendly.tables import format_pretty_table
 import nmrglue as ng
 
 from ..processors import (NMRGroupProcessor, LoadSpectra, SaveSpectra,
@@ -75,8 +76,11 @@ def nmrpipe(ctx: click.Context):
               type=click.Choice(('nmrpipe',)),
               default='nmrpipe', show_default=True,
               help='The format of the loaded spectrum')
+@click.option('-hdr', '--show-header',
+              is_flag=True, default=False,
+              help="Output information on the spectrum's header")
 @click.argument('in_filepaths', nargs=-1)
-def nmrpipe_in(format, in_filepaths):
+def nmrpipe_in(format, show_header, in_filepaths):
     """NMR spectra to load in"""
     logging.debug(f"nmrpipe_in: in_filepaths={in_filepaths}")
 
@@ -85,7 +89,19 @@ def nmrpipe_in(format, in_filepaths):
     group += LoadSpectra(in_filepaths=in_filepaths, format=format)
 
     # Write the objects to stdout
-    write_stdout(group)
+    if show_header:
+        # Load the spectrum
+        rv = group.process()
+        assert 'spectra' in rv
+        spectra = rv['spectra']
+
+        for table_number, spectrum in enumerate(spectra, 1):
+            click.echo(click.style(f"Table {table_number}. ", bold=True) +
+                       f"Spectrum parameter for '{spectrum.in_filepath}'.")
+            click.echo(format_pretty_table(sorted(spectrum.meta.items()),
+                                           ('Name', 'Value')))
+    else:
+        write_stdout(group)
 
 
 @nmrpipe.command(name='-out', context_settings=CONTEXT_SETTINGS)
@@ -93,7 +109,7 @@ def nmrpipe_in(format, in_filepaths):
               type=click.Choice(('default',)),
               default='default', show_default=True,
               help='The format of the loaded spectrum')
-@click.option('-o', '--overwrite', is_flag=True,
+@click.option('-ov', '--overwrite', is_flag=True,
               default=True, show_default=True)
 @click.argument('out_filepaths', nargs=-1)
 def nmrpipe_out(format, overwrite, out_filepaths):
