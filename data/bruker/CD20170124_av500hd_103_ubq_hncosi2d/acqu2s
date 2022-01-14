@@ -1,0 +1,22 @@
+##TITLE= Parameter file, TOPSPIN		Version 3.2
+##JCAMPDX= 5.0
+##DATATYPE= Parameter Values
+##NPOINTS= 82	$$ modification sequence number
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= lorieau
+$$ 2017-01-26 04:01:48.896 -0600  lorieau@av500hd
+$$ /opt/topspin3.2/data/chard/nmr/CD20170124_av500hd_CN-His-Ubq/103/acqu2s
+$$ process /opt/topspin3.2/prog/mod/go
+##$ACQT0= 0
+##$BF1= 50.651387
+##$FnMODE= 6
+##$NUC1= <15N>
+##$NusJSP= 0
+##$NusT2= 1
+##$NusTD= 78
+##$O1= 5951.5379725
+##$SFO1= 50.6573385379725
+##$SW= 32.9997935155829
+##$SW_h= 1671.68171180207
+##$TD= 78
+##END=

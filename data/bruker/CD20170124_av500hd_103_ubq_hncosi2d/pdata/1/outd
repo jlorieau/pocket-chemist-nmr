@@ -1,0 +1,16 @@
+##TITLE= Parameter file, TOPSPIN		Version 3.2
+##JCAMPDX= 5.0
+##DATATYPE= Parameter Values
+##NPOINTS= 1	$$ modification sequence number
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= lorieau
+$$ 2017-01-24 16:34:45.089 -0600  lorieau@av500hd
+$$ /opt/topspin3.2/data/chard/nmr/CD20170124_av500hd_CN-His-Ubq/103/pdata/1/outd
+$$ process /opt/topspin3.2/prog/mod/edparproc
+##$CURPLOT= <C280>
+##$CURPRIN= <$C280>
+##$DFORMAT= <normdp>
+##$LAYOUT= <>
+##$LFORMAT= <normlp>
+##$PFORMAT= <normpl>
+##END=

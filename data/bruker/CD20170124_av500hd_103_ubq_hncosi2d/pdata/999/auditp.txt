@@ -1,0 +1,17 @@
+##TITLE= Audit trail, TOPSPIN		Version 3.2
+##JCAMPDX= 5.01
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= lorieau
+$$ /opt/topspin3.2/data/chard/nmr/CD20170124_av500hd_CN-His-Ubq/103/pdata/999/auditp.txt
+##AUDIT TRAIL=  $$ (NUMBER, WHEN, WHO, WHERE, PROCESS, VERSION, WHAT)
+(   1,<2017-01-24 19:29:47.420 -0600>,<lorieau>,<av500hd>,<go>,<TOPSPIN 3.2>,
+      <acquisition in progress>)
+(   2,<2017-01-24 19:42:46.160 -0600>,<lorieau>,<av500hd>,<proc2d>,<TOPSPIN 3.2>,
+      <Start of raw data processing
+       xfb s13 F2: SI = 2K BC_mod = 4 WDW = 4 SSB = 2 FT_mod = 6 PKNL = 1 PHC0 = 118.3375 PHC1 = 0 F1: SI = 512 ME_mod = 2 NCOEF = 32 WDW = 4 SSB = 2 FT_mod = 4 FCOR = 0.5 PHC0 = 0 PHC1 = 0
+       data hash MD5: 2K * 512
+       BC C2 33 CF 95 00 FC 19 BF A7 C4 0B 52 8E 7F 39>)
+##END=
+
+$$ hash MD5
+$$ CD 7E 7D 73 D0 1D 2D A9 48 B6 1C 55 4B 49 79 63
