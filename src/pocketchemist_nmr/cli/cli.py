@@ -127,7 +127,7 @@ def nmrpipe_out(format, overwrite, out_filepaths):
     kwargs = group.process()
 
 
-## Spectrum processing functions
+# Spectrum processing functions
 
 @nmrpipe.group(name='-fn', context_settings=CONTEXT_SETTINGS)
 def nmrpipe_fn():
@@ -144,9 +144,13 @@ def nmrpipe_fn():
 @click.option('-fs', type=int, default=1, show_default=True,
               help="Filter shape: 1 = Boxcar, 2 = Sine, 3 = Sine^2 "
                    "(low pass filter)")
-def nmrpipe_fn_sol():
+def nmrpipe_fn_sol(mode, fl, fs):
     """Solvent suppression"""
-    pass
+    # Unpack the stdin
+    group = read_stdin()
+
+    # Write the objects to stdout
+    write_stdout(group)
 
 
 @nmrpipe_fn.command(name='FT', context_settings=CONTEXT_SETTINGS)
