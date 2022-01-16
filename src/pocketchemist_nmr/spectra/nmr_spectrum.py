@@ -5,11 +5,20 @@ import abc
 import typing as t
 from pathlib import Path
 
+import scipy.fft as fft
+
 __all__ = ('NMRSpectrum',)
 
 
 class NMRSpectrum(abc.ABC):
-    """An NMR spectrum base class."""
+    """An NMR spectrum base class.
+
+    .. note::
+          The base class handles the generic processing methodology.
+          Subclasses should override methods that are specific to their
+          implementation--specifically when interating with the self.meta
+          dict, which is implementation specific.
+    """
 
     #: metadata on the spectrum
     meta: dict
@@ -129,3 +138,47 @@ class NMRSpectrum(abc.ABC):
         attrs = attrs if attrs is not None else self.reset_attrs
         for attr in attrs:
             setattr(self, attr, None)
+
+    @staticmethod
+    def ft(self=None,
+           meta: t.Optional[dict] = None,
+           data: t.Optional['numpy.ndarray'] = None,
+           fft_func: t.Callable = fft.fft,
+           **kwargs):
+        """Perform a Fourier Transform
+
+        This method is designed to be used on instances and as a class method.
+
+        Parameters
+        ----------
+        self
+            The NMRSpectrum instance, if used as an instance method
+        meta
+            Metadata on the spectrum
+        data
+            The data to Fourier Transform
+        fft_func
+            The Fourier Transform function to use
+
+        Returns
+        -------
+        kwargs
+            The kwargs dict with the 'data' entry populated with the Fourier
+            Transformed dataset.
+
+        See Also
+        --------
+        - nmrglue.process.proc_base
+        """
+        # Check and setup arguments
+        assert self is not None or (data is not None and meta is not None), (
+            "Either an NMRSpectrum instance should be specified or a 'meta' "
+            "dict and 'data' dataset should be specified")
+        meta = meta if meta is not None else self.meta
+        data = data if data is not None else self.data
+
+        # Perform the FFT
+        data = fft_func(data)
+
+
+
