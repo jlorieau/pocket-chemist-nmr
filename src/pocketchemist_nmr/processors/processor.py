@@ -109,12 +109,17 @@ class FTSpectra(NMRProcessor):
         mode = mode if mode is not None else self.mode
 
         for spectrum in spectra:
+            data = spectrum.data
+            scale = 1.0 / float(data.shape[-1])
+
             if mode == 'auto':
                 # Perform the fft
-                fft.fft(spectrum.data)
+                data = (fft.fft(fft.ifftshift(data, -1),
+                                axis=-1).astype(data.dtype) * scale)
             else:
                 raise NotImplementedError(f"Class '{self.__class__.__name__}' "
                                           f"does not support mode '{mode}'")
+            spectrum.data = data
 
         # Setup the arguments that are passed to future processors
         kwargs['spectra'] = spectra
