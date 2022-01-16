@@ -1,0 +1,35 @@
+"""
+Test the nmr plugin CLI functionality
+"""
+import pytest
+from click.testing import CliRunner
+from pocketchemist.cli import pocketchemist
+
+
+def test_cli_nmrpipe(runner=CliRunner()):
+    """Test the loading of the nmrpipe plugin"""
+    result = runner.invoke(pocketchemist, ['nmrpipe', '--help'])
+    assert result.exit_code == 0  # Command successfully executed
+
+
+def test_cli_nmrpipe_in(runner=CliRunner()):
+    """Test the nmrpipe plugin '-in' option."""
+    result = runner.invoke(pocketchemist, ['nmrpipe', '-in'])
+    assert result.exit_code == 0  # Command successfull executed
+
+
+@pytest.mark.parametrize('opt', ('SOL', 'FT'))
+def test_cli_nmrpipe_fn(opt, runner=CliRunner()):
+    """Test the nmrpipe plugin '-fn' option."""
+    # 1. With '-help'
+    result = runner.invoke(pocketchemist, ['nmrpipe', '-fn', opt, '-help'])
+    assert result.exit_code == 0  # Command successfully executed
+
+    # 2. With '--help'
+    result = runner.invoke(pocketchemist, ['nmrpipe', '-fn', opt, '--help'])
+    assert result.exit_code == 0  # Command successfully executed
+
+    # 3. Without '-help' or '--help'. This command expects input from stdin
+    #    so it will fail
+    result = runner.invoke(pocketchemist, ['nmrpipe', '-fn', opt])
+    assert result.exit_code == 1  # Command not executed successfully
