@@ -15,7 +15,7 @@ def test_cli_nmrpipe(runner=CliRunner()):
 def test_cli_nmrpipe_in(runner=CliRunner()):
     """Test the nmrpipe plugin '-in' option."""
     result = runner.invoke(pocketchemist, ['nmrpipe', '-in'])
-    assert result.exit_code == 0  # Command successfull executed
+    assert result.exit_code == 0  # Command successfully executed
 
 
 @pytest.mark.parametrize('opt', ('SOL', 'FT'))
