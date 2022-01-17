@@ -1,13 +1,12 @@
 import logging
 import typing as t
 import sys
-import re
 import pickle
 
 import click
 from click_option_group import optgroup, MutuallyExclusiveOptionGroup
 from humanfriendly.tables import format_pretty_table
-import nmrglue as ng
+
 
 from ..processors import (NMRGroupProcessor, LoadSpectra, SaveSpectra,
                           FTSpectra)
@@ -15,10 +14,12 @@ from ..processors import (NMRGroupProcessor, LoadSpectra, SaveSpectra,
 
 logger = logging.getLogger('pocketchemist-nmr.cli.cli')
 
-## Core plugin functionality
+
+# Core plugin functionality
 
 # Allow both '--help' and '-help' options to match nmrPipe interface
 CONTEXT_SETTINGS = dict(help_option_names=['-help', '--help'])
+
 
 def write_stdout(processor):
     """A function to encode processor(s) for output to the stdout.
@@ -69,7 +70,8 @@ def nmrpipe(ctx: click.Context):
     """A drop-in replacement for nmrPipe"""
     pass
 
-## Spectrum input
+
+# Spectrum input
 
 @nmrpipe.command(name='-in', context_settings=CONTEXT_SETTINGS)
 @click.option('-fmt', '--format',
