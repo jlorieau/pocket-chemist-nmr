@@ -2,17 +2,32 @@
 NMRSpectrum in NMRPipe format
 """
 import re
+import typing as t
+
+import scipy.fft as fft
+import nmrglue as ng
 
 from .nmr_spectrum import NMRSpectrum
-
-import nmrglue as ng
-import typing as t
 
 __all__ = ('NMRPipeSpectrum',)
 
 
 class NMRPipeSpectrum(NMRSpectrum):
-    """An NMRpipe spectrum"""
+    """An NMRpipe spectrum
+
+    Attributes
+    ----------
+    meta
+        The dict containing header values for the NMRPipe spectrum. It includes:
+
+        From: http://rmni.iqfr.csic.es/HTML-manuals/nmrpipe-manual/fdatap.html
+
+        - 'FDDIMCOUNT': Number of dimensions in the complete spectrum
+        - 'FDDIMORDER': The ordering of dimensions for the data attribute.
+          The ordering starts at 1 and increases for each other dimension.
+          Dimensions 1, 2, 3 and 4 represent the x-, y-, z- and a-axes,
+          respectively.
+    """
 
     @property
     def ndims(self):
@@ -64,19 +79,17 @@ class NMRPipeSpectrum(NMRSpectrum):
         # (3D, 4D, etc.) or as and 1D or 2D (plane)
         is_multifile = re.search(r'%\d+d', str(self.in_filepath)) is not None
 
-        # Load the spectrum
+        # Load the spectrum and assign attributes
         if is_multifile or force_multifile:
             # Load the iterator
             data = ng.pipe.iter3D(str(self.in_filepath), in_plane, out_plane)
 
-            # Get the first dict to populate self.meta
+            # Get the first dict, to populate self.meta, and reset the iterator
             dic, _ = data.next()
             data.reinitialize()
 
             self.meta = dic
             self.data = data
-
-            # TODO: Implement assignment of self.meta
             self.is_multifile = True
         else:
             dic, data = ng.pipe.read(str(self.in_filepath))
@@ -107,3 +120,8 @@ class NMRPipeSpectrum(NMRSpectrum):
         else:
             dic = self.meta
             ng.pipe.write(out_filepath, dic, self.data, overwrite=overwrite)
+
+    def ft(self=None,
+           fft_func: t.Callable = fft.fft,
+           **kwargs):
+        pass

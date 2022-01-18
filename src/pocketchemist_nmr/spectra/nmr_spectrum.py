@@ -141,8 +141,6 @@ class NMRSpectrum(abc.ABC):
 
     @staticmethod
     def ft(self=None,
-           meta: t.Optional[dict] = None,
-           data: t.Optional['numpy.ndarray'] = None,
            fft_func: t.Callable = fft.fft,
            **kwargs):
         """Perform a Fourier Transform
@@ -153,10 +151,6 @@ class NMRSpectrum(abc.ABC):
         ----------
         self
             The NMRSpectrum instance, if used as an instance method
-        meta
-            Metadata on the spectrum
-        data
-            The data to Fourier Transform
         fft_func
             The Fourier Transform function to use
 
@@ -171,14 +165,10 @@ class NMRSpectrum(abc.ABC):
         - nmrglue.process.proc_base
         """
         # Check and setup arguments
-        assert self is not None or (data is not None and meta is not None), (
+        assert self is not None, (
             "Either an NMRSpectrum instance should be specified or a 'meta' "
             "dict and 'data' dataset should be specified")
-        meta = meta if meta is not None else self.meta
-        data = data if data is not None else self.data
 
         # Perform the FFT
-        data = fft_func(data)
-
-
+        self.data = fft_func(self.data)
 
