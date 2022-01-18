@@ -42,7 +42,7 @@ class LoadSpectra(NMRProcessor):
         """
         # Setup the arguments
         in_filepaths = (in_filepaths if in_filepaths is not None else
-                       self.in_filepaths)
+                        self.in_filepaths)
 
         spectra = []
         for in_filepath in in_filepaths:
