@@ -32,11 +32,15 @@ class NMRPipeSpectrum(NMRSpectrum):
     """
 
     def __next__(self):
-        meta, data = next(self.iterator)
-        spectrum = copy.copy(self)
-        spectrum.meta = meta
-        spectrum.data = data
-        return spectrum
+        try:
+            meta, data = next(self.iterator)
+        except StopIteration as exc:
+            self.iterator_done = True
+            raise exc
+
+        self.meta = meta
+        self.data = data
+        return self
 
     @property
     def ndims(self):
@@ -90,16 +94,11 @@ class NMRPipeSpectrum(NMRSpectrum):
 
         # Load the spectrum and assign attributes
         if is_iterator or force_iterator:
-            # Load the iterator
+            # Load the iterator. The iterator must be run once to populate
+            # self.meta and self.data (see __next__)
             iterator = ng.pipe.iter3D(str(self.in_filepath),
                                       in_plane, out_plane)
 
-            # Get the first dict, to populate self.meta, and reset the iterator
-            dic, data = iterator.next()
-            iterator.reinitialize()
-
-            self.meta = dic
-            self.data = data
             self.iterator = iterator
         else:
             dic, data = ng.pipe.read(str(self.in_filepath))
