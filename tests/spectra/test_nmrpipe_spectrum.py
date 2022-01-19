@@ -2,7 +2,6 @@
 Test the spectra/nmrpipe_spectrum.py submodule
 """
 from pathlib import Path
-from itertools import repeat
 
 import pytest
 import numpy as np
