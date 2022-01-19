@@ -5,6 +5,7 @@ import typing as t
 from itertools import zip_longest
 
 from pocketchemist.utils.types import FilePaths
+from pocketchemist.utils.list import wraplist
 
 from .processor import NMRProcessor
 from ..spectra import NMRSpectrum, NMRPipeSpectrum
@@ -23,17 +24,19 @@ class LoadSpectra(NMRProcessor):
 
         Parameters
         ----------
+        spectra
+            The spectra to process
         in_filepaths
             The paths for NMR spectra files to load
         """
         # Setup the arguments
-        spectra = spectra if spectra is not None else []
+        spectra = wraplist(spectra)
 
         # Load the spectra, if they haven't been loaded yet
         if len(spectra) == 0:
             # Load the filepaths for the spectra
-            in_filepaths = (in_filepaths if in_filepaths is not None else
-                            self.in_filepaths)
+            in_filepaths = wraplist(in_filepaths,
+                                    default=wraplist(self.in_filepaths))
 
             for in_filepath in in_filepaths:
                 if self.format.lower() == 'nmrpipe':
