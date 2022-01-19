@@ -27,6 +27,12 @@ def test_nmrpipe_spectrum_ndims_nd(in_filepath, ndims):
     """Test the NMRPipeSpectrum ndims property (nD)"""
     # Load the spectrum and check the number of dimensions
     spectrum = NMRPipeSpectrum(in_filepath)
+
+    # If it's spectrum with an iterator, it has to be iterator once to
+    # populate self.meta and self.dict
+    if spectrum.iterator is not None:
+        next(spectrum)
+
     assert spectrum.ndims == ndims
 
     # See if the number of dimensions is correctly set in the header
@@ -40,6 +46,11 @@ def test_nmrpipe_spectrum_order_2d(in_filepath, expected_order):
     """Test the NMRPipeSpectrum order property (2D)"""
     # Load the spectrum and check the number of dimensions
     spectrum = NMRPipeSpectrum(in_filepath)
+
+    # If it's spectrum with an iterator, it has to be iterator once to
+    # populate self.meta and self.dict
+    if spectrum.iterator is not None:
+        next(spectrum)
 
     # Check the default order
     assert spectrum.order == expected_order
@@ -78,6 +89,11 @@ def test_nmrpipe_spectrum_load_2d(in_filepath):
 def test_nmrpipe_spectrum_load_3d(in_filepath):
     """Test the loading of a NMRPipeSpectrum (3D)"""
     spectrum = NMRPipeSpectrum(in_filepath)
+
+    # If it's spectrum with an iterator, it has to be iterator once to
+    # populate self.meta and self.dict
+    if spectrum.iterator is not None:
+        next(spectrum)
 
     # Check that the spectrum was properly setup
     assert isinstance(spectrum.meta, dict)
