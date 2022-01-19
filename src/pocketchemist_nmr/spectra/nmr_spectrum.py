@@ -30,6 +30,10 @@ class NMRSpectrum(abc.ABC):
     #: multiple files
     iterator = None
 
+    #: If True, then all of the subspectra for the iterator have been
+    #: accessed (i.e. a StopIteration was raised)
+    iterator_done: t.Optional[bool] = None
+
     #: The filepath for the file corresponding to the spectrum
     in_filepath: 'pathlib.Path'
 
