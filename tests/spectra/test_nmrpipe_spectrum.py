@@ -32,16 +32,6 @@ def test_nmrpipe_spectrum_ndims_nd(in_filepath, ndims):
     # See if the number of dimensions is correctly set in the header
     assert int(spectrum.meta['FDDIMCOUNT']) == ndims
 
-    # For 1D and 2D datasets, the number of dimensions can be read from
-    # self.data. (This can't be done for 3D, 4D and so on because the data
-    # represents an iterator
-    del spectrum.meta['FDDIMCOUNT']
-    if ndims < 3:
-        assert spectrum.ndims == ndims
-    else:
-        with pytest.raises(AttributeError):
-            spectrum.ndims
-
 
 @pytest.mark.parametrize("in_filepath,expected_order",
                          [(spec, (1, 2)) for spec in spectrum2d_exs] +
@@ -91,8 +81,8 @@ def test_nmrpipe_spectrum_load_3d(in_filepath):
 
     # Check that the spectrum was properly setup
     assert isinstance(spectrum.meta, dict)
-    assert isinstance(spectrum.data, ng.fileio.pipe.iter3D)
-    assert spectrum.is_iterator
+    assert isinstance(spectrum.data, np.ndarray)
+    assert isinstance(spectrum.iterator, ng.fileio.pipe.iter3D)
 
     # Check the header
     assert 'FDDIMCOUNT' in spectrum.meta
@@ -103,7 +93,6 @@ def test_nmrpipe_spectrum_load_3d(in_filepath):
     assert type(spectrum2d) == type(spectrum)
     assert isinstance(spectrum2d.meta, dict)
     assert isinstance(spectrum2d.data, np.ndarray)
-    assert not spectrum2d.is_iterator
 
     # Check the header
     assert 'FDDIMCOUNT' in spectrum2d.meta

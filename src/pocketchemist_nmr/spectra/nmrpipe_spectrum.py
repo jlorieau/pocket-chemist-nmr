@@ -1,6 +1,7 @@
 """
 NMRSpectrum in NMRPipe format
 """
+import copy
 import re
 import typing as t
 
@@ -18,7 +19,8 @@ class NMRPipeSpectrum(NMRSpectrum):
     Attributes
     ----------
     meta
-        The dict containing header values for the NMRPipe spectrum. It includes:
+        The dict containing header values for the NMRPipe spectrum. It
+        includes:
 
         From: http://rmni.iqfr.csic.es/HTML-manuals/nmrpipe-manual/fdatap.html
 
@@ -28,6 +30,13 @@ class NMRPipeSpectrum(NMRSpectrum):
           Dimensions 1, 2, 3 and 4 represent the x-, y-, z- and a-axes,
           respectively.
     """
+
+    def __next__(self):
+        meta, data = next(self.iterator)
+        spectrum = copy.copy(self)
+        spectrum.meta = meta
+        spectrum.data = data
+        return spectrum
 
     @property
     def ndims(self):
@@ -56,7 +65,7 @@ class NMRPipeSpectrum(NMRSpectrum):
 
     def load(self,
              in_filepath: t.Optional['pathlib.Path'] = None,
-             force_multifile: bool = False,
+             force_iterator: bool = False,
              in_plane: str = 'x', out_plane: str = 'DEFAULT'):
         """Load the NMRPipeSpectrum.
 
@@ -64,7 +73,7 @@ class NMRPipeSpectrum(NMRSpectrum):
         ----------
         in_filepath
             The filepath for the spectrum file(s) to load.
-        force_multifile
+        force_iterator
             If True, force the loading of the nmrPipe spectrum using an
             iterator for multiple files, which is used for 3Ds, 4Ds, etc.
         in_plane
@@ -77,25 +86,25 @@ class NMRPipeSpectrum(NMRSpectrum):
 
         # Determine if the spectrum should be loaded as a series of planes
         # (3D, 4D, etc.) or as and 1D or 2D (plane)
-        is_multifile = re.search(r'%\d+d', str(self.in_filepath)) is not None
+        is_iterator = re.search(r'%\d+d', str(self.in_filepath)) is not None
 
         # Load the spectrum and assign attributes
-        if is_multifile or force_multifile:
+        if is_iterator or force_iterator:
             # Load the iterator
-            data = ng.pipe.iter3D(str(self.in_filepath), in_plane, out_plane)
+            iterator = ng.pipe.iter3D(str(self.in_filepath),
+                                      in_plane, out_plane)
 
             # Get the first dict, to populate self.meta, and reset the iterator
-            dic, _ = data.next()
-            data.reinitialize()
+            dic, data = iterator.next()
+            iterator.reinitialize()
 
             self.meta = dic
             self.data = data
-            self.is_multifile = True
+            self.iterator = iterator
         else:
             dic, data = ng.pipe.read(str(self.in_filepath))
             self.meta = dic
             self.data = data
-            self.is_multifile = False
 
     def save(self,
              out_filepath: t.Optional['pathlib.Path'] = None,
@@ -115,13 +124,19 @@ class NMRPipeSpectrum(NMRSpectrum):
         out_filepath = (out_filepath if out_filepath is not None else
                         self.out_filepath)
 
-        if self.is_multifile:
+        if self.iterator is not None:
             raise NotImplementedError
         else:
             dic = self.meta
             ng.pipe.write(out_filepath, dic, self.data, overwrite=overwrite)
 
     def ft(self=None,
+           mode: t.Optional[str] = 'auto',
            fft_func: t.Callable = fft.fft,
            **kwargs):
-        pass
+        if mode == 'auto':
+            def _fft_func(data):
+                def fft(data):
+                    (fft.fft(fft.ifftshift(data, -1),
+                             axis=-1).astype(data.dtype) * scale)
+                fft_func = lambda data: (fft.fft(fft.ifftshift(data, -1)))

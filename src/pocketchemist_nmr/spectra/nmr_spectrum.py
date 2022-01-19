@@ -26,8 +26,9 @@ class NMRSpectrum(abc.ABC):
     #: The data for the spectrum, either an array or an iterator
     data: t.Union[t.Iterable, 'numpy.ndarray']
 
-    #: If True, the data represents multiple files that must be iterated over
-    is_multifile: bool = False
+    #: If specified, this is the iterator do generate sub-spectra from
+    #: multiple files
+    iterator = None
 
     #: The filepath for the file corresponding to the spectrum
     in_filepath: 'pathlib.Path'
@@ -46,6 +47,17 @@ class NMRSpectrum(abc.ABC):
 
         # Load the spectrum
         self.load()
+
+    def __iter__(self):
+        """Return an iterator of the spectrum, if the spectrum is in iterator
+        mode.
+        """
+        return self if self.is_iterator else None
+
+    def __next__(self):
+        """Advance the iterator of the spectrum, if the spectrum is in
+        iterator mode. """
+        raise NotImplementedError
 
     @property
     @abc.abstractmethod
@@ -141,6 +153,8 @@ class NMRSpectrum(abc.ABC):
 
     @staticmethod
     def ft(self=None,
+           meta: t.Optional[dict] = None,
+           data: t.Optional['numpy.ndarray'] = None,
            fft_func: t.Callable = fft.fft,
            **kwargs):
         """Perform a Fourier Transform
@@ -151,6 +165,10 @@ class NMRSpectrum(abc.ABC):
         ----------
         self
             The NMRSpectrum instance, if used as an instance method
+        meta
+            Metadata on the spectrum
+        data
+            The data to Fourier Transform
         fft_func
             The Fourier Transform function to use
 
@@ -165,10 +183,14 @@ class NMRSpectrum(abc.ABC):
         - nmrglue.process.proc_base
         """
         # Check and setup arguments
-        assert self is not None, (
+        assert self is not None or (data is not None and meta is not None), (
             "Either an NMRSpectrum instance should be specified or a 'meta' "
             "dict and 'data' dataset should be specified")
+        meta = meta if meta is not None else self.meta
+        data = data if data is not None else self.data
 
         # Perform the FFT
-        self.data = fft_func(self.data)
+        data = fft_func(data)
+
+
 
