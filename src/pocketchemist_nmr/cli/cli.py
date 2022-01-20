@@ -7,10 +7,8 @@ import click
 from click_option_group import optgroup, MutuallyExclusiveOptionGroup
 from humanfriendly.tables import format_pretty_table
 
-
-from ..processors import (NMRGroupProcessor, LoadSpectra, SaveSpectra,
-                          FTSpectra)
-
+from ..processors import fileio
+from ..processors import processor
 
 logger = logging.getLogger('pocketchemist-nmr.cli.cli')
 
@@ -29,7 +27,7 @@ def write_stdout(processor):
     pickle.dump(processor, sys.stdout.buffer)
 
 
-def read_stdin(cls_type=NMRGroupProcessor):
+def read_stdin(cls_type=processor.NMRGroupProcessor):
     """A function to load processor(s) from input of the stdin.
 
     This function is used for transferring processors with pipes.
@@ -87,8 +85,8 @@ def nmrpipe_in(format, show_header, in_filepaths):
     logging.debug(f"nmrpipe_in: in_filepaths={in_filepaths}")
 
     # Setup a Group processor and a processor to load spectra
-    group = NMRGroupProcessor()
-    group += LoadSpectra(in_filepaths=in_filepaths, format=format)
+    group = processor.NMRGroupProcessor()
+    group += fileio.LoadSpectra(in_filepaths=in_filepaths, format=format)
 
     # Write the objects to stdout
     if show_header:
@@ -122,8 +120,8 @@ def nmrpipe_out(format, overwrite, out_filepaths):
     group = read_stdin()
 
     # Setup a Group processor and a processor to load spectra
-    group += SaveSpectra(out_filepaths=out_filepaths, format=format,
-                         overwrite=overwrite)
+    group += fileio.SaveSpectra(out_filepaths=out_filepaths, format=format,
+                                overwrite=overwrite)
 
     # Run the processor group
     kwargs = group.process()
@@ -184,7 +182,7 @@ def nmrpipe_fn_ft(mode):
     group = read_stdin()
 
     # Add the FT processor
-    group += FTSpectra(mode=mode)
+    group += processor.FTSpectra(mode=mode)
 
     # Write the objects to stdout
     write_stdout(group)

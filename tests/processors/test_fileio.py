@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from pocketchemist_nmr.processors import LoadSpectra, SaveSpectra
+from pocketchemist_nmr.processors.fileio import LoadSpectra, SaveSpectra
 from pocketchemist_nmr.spectra import NMRPipeSpectrum
 
 spectrum2d_nmrpipe = (Path('data') / 'bruker' /
