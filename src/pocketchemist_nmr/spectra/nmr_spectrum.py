@@ -155,11 +155,11 @@ class NMRSpectrum(abc.ABC):
         for attr in attrs:
             setattr(self, attr, None)
 
-    @staticmethod
-    def ft(self=None,
+    def ft(self,
+           funcs: t.Dict[str, t.Callable],
+           ft_opts: t.Dict,
            meta: t.Optional[dict] = None,
            data: t.Optional['numpy.ndarray'] = None,
-           fft_func: t.Callable = fft.fft,
            **kwargs):
         """Perform a Fourier Transform
 
@@ -167,14 +167,20 @@ class NMRSpectrum(abc.ABC):
 
         Parameters
         ----------
-        self
-            The NMRSpectrum instance, if used as an instance method
+        funcs
+            The functions used for Fourier Transformation. It should include:
+
+            - 'fft_func': The Fourier transform function
+            - 'ifft_func': The inverse Fourier function
+            - 'fftshift_func': The FFT frequency shift function to use, which
+              moves the zero-frequency component to the center
+            - 'ifftshift_func': The the function that reversed fft_shift
+        ft_opts
+            A dict containing options for processing the Fourier transform
         meta
             Metadata on the spectrum
         data
             The data to Fourier Transform
-        fft_func
-            The Fourier Transform function to use
 
         Returns
         -------
@@ -186,15 +192,12 @@ class NMRSpectrum(abc.ABC):
         --------
         - nmrglue.process.proc_base
         """
-        # Check and setup arguments
-        assert self is not None or (data is not None and meta is not None), (
-            "Either an NMRSpectrum instance should be specified or a 'meta' "
-            "dict and 'data' dataset should be specified")
-        meta = meta if meta is not None else self.meta
+        # Setup the arguments
         data = data if data is not None else self.data
+        fft_func = funcs['fft_func']
+        fftshift_func = funcs['fftshift_func']
 
-        # Perform the FFT
-        data = fft_func(data)
-
-
-
+        # Perform the FFT then a frequency shift
+        self.data = fftshift_func(fft_func(data).astype(data.dtype))
+        kwargs['data'] = data
+        return kwargs
