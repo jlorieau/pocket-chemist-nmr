@@ -22,7 +22,7 @@ spectrum3d_exs = (Path('data') / 'bruker' /
 @pytest.mark.parametrize("in_filepath,ndims",
                          [(spec, 2) for spec in spectrum2d_exs] +
                          [(spec, 3) for spec in spectrum3d_exs])
-def test_nmrpipe_spectrum_ndims_nd(in_filepath, ndims):
+def test_nmrpipe_spectrum_ndims(in_filepath, ndims):
     """Test the NMRPipeSpectrum ndims property (nD)"""
     # Load the spectrum and check the number of dimensions
     spectrum = NMRPipeSpectrum(in_filepath)
@@ -41,8 +41,8 @@ def test_nmrpipe_spectrum_ndims_nd(in_filepath, ndims):
 @pytest.mark.parametrize("in_filepath,expected_order",
                          [(spec, (1, 2)) for spec in spectrum2d_exs] +
                          [(spec, (2, 1, 3)) for spec in spectrum3d_exs])
-def test_nmrpipe_spectrum_order_2d(in_filepath, expected_order):
-    """Test the NMRPipeSpectrum order property (2D)"""
+def test_nmrpipe_spectrum_order(in_filepath, expected_order):
+    """Test the NMRPipeSpectrum order property"""
     # Load the spectrum and check the number of dimensions
     spectrum = NMRPipeSpectrum(in_filepath)
 
@@ -64,6 +64,65 @@ def test_nmrpipe_spectrum_order_2d(in_filepath, expected_order):
                   [float(i) for i in range(len(expected_order) + 1, 4 + 1)])
     assert spectrum.meta['FDDIMORDER'] == fddimorder
 
+
+@pytest.mark.parametrize("in_filepath", spectrum2d_exs + spectrum3d_exs)
+def test_nmrpipe_spectrum_sw(in_filepath):
+    """Test the NMRPipeSpectrum sw property"""
+    # Load the spectrum and check the number of dimensions
+    spectrum = NMRPipeSpectrum(in_filepath)
+
+    # If it's spectrum with an iterator, it has to be iterator once to
+    # populate self.meta and self.dict
+    if spectrum.iterator is not None:
+        next(spectrum)
+
+    # Check that the spectral widths are reasonable
+    ndims = spectrum.ndims
+    sws = spectrum.sw
+    assert len(sws) == ndims
+    assert all(0. < sw < 100000. for sw in sws)
+    for dim, sw in zip(spectrum.order, sws):
+        assert spectrum.meta[f"FDF{dim}SW"] == sw
+
+    # Try changing the spectral widths
+    rev_sws = tuple(reversed(sws))
+    assert rev_sws != sws
+
+    spectrum.sw = rev_sws
+    for dim, sw in zip(spectrum.order, rev_sws):
+        assert spectrum.meta[f"FDF{dim}SW"] == sw
+
+
+@pytest.mark.parametrize("in_filepath", spectrum2d_exs + spectrum3d_exs)
+def test_nmrpipe_spectrum_domain_type(in_filepath):
+    """Test the NMRPipeSpectrum is_freq and is_time functions"""
+    # Load the spectrum and check the number of dimensions
+    spectrum = NMRPipeSpectrum(in_filepath)
+
+    # If it's spectrum with an iterator, it has to be iterator once to
+    # populate self.meta and self.dict
+    if spectrum.iterator is not None:
+        next(spectrum)
+
+    # Check that the spectral widths are reasonable
+    for dim in range(0, 5):
+        if 0 < dim <= spectrum.ndims:
+
+            if in_filepath.suffix == '.fid':
+                # FIDs are in the time domain
+                assert not spectrum.is_freq(dim)
+                assert spectrum.is_time(dim)
+            else:
+                # Processed spectra are in the frequency domain
+                assert spectrum.is_freq(dim)
+                assert not spectrum.is_time(dim)
+        else:
+            # invalid dimension number
+            with pytest.raises(AssertionError):
+                spectrum.is_freq(dim)
+
+            with pytest.raises(AssertionError):
+                spectrum.is_time(dim)
 
 # I/O methods
 

@@ -5,7 +5,6 @@ import re
 import typing as t
 
 import numpy as np
-import scipy.fft as fft
 import nmrglue as ng
 
 from .nmr_spectrum import NMRSpectrum
@@ -29,6 +28,9 @@ class NMRPipeSpectrum(NMRSpectrum):
           The ordering starts at 1 and increases for each other dimension.
           Dimensions 1, 2, 3 and 4 represent the x-, y-, z- and a-axes,
           respectively.
+        - 'FDFxSW': The spectral width (in Hz) for dimension 'x'
+        - 'FDFxFTFLAG': Whether the dimension 'x' is in the frequency domain
+          (1.0) or the time domain (0.0)
     """
 
     def __next__(self):
@@ -41,6 +43,8 @@ class NMRPipeSpectrum(NMRSpectrum):
         self.meta = meta
         self.data = data
         return self
+
+    # Basic accessor/mutator methods
 
     @property
     def ndims(self):
@@ -66,6 +70,61 @@ class NMRPipeSpectrum(NMRSpectrum):
 
         for i, order in enumerate(new_order):
             self.meta['FDDIMORDER'][i] = float(order)
+
+    @property
+    def sw(self):
+        """Spectral widths (in Hz) of all available dimensions, as ordered by
+        self.order"""
+        ordered_dims = self.order[:self.ndims]
+        return tuple(self.meta[f"FDF{dim}SW"] for dim in ordered_dims)
+
+    @sw.setter
+    def sw(self, value):
+        # Make sure the given 'value' iterable matches the number of dimensions
+        ndims = self.ndims
+        ordered_dims = self.order[:ndims]
+        assert len(value) == ndims, (
+            f"The number of spectral widths '{value}' should match the number "
+            f"of dimensions ({ndims}).")
+
+        # Set the new spectral widths
+        for dim, v in zip(ordered_dims, value):
+            self.meta[f"FDF{dim}SW"] = v
+
+    def is_freq(self, dim: int = None) -> t.Union[bool, None]:
+        """Whether the dimension, between 1-4, is in the frequency domain.
+
+        Parameters
+        ----------
+        dim
+            The dimension to evaluate whether it's in the frequency domain.
+            By default, this returns the current dimension.
+        """
+        # Get the current domain, if a domain was not specified, and check
+        # Whether the domain makes sense
+        dim = dim if dim is not None else self.order[0]
+        ndims = self.ndims
+        assert 0 < dim <= ndims, (
+            f"The specified dimension '{dim}' must be between 1-{ndims}.")
+        value = self.meta.get(f'FDF{dim}FTFLAG', None)
+        if isinstance(value, float):
+            return value == 1.0
+        else:
+            return None
+
+    def is_time(self, dim: int = None) -> bool:
+        """Whether the dimension, between 1-4, is in the time domain.
+
+        Parameters
+        ----------
+        dim
+            The dimension to evaluate whether it's in the frequency domain.
+            By default, this returns the current dimension.
+        """
+        value = self.is_freq(dim=dim)
+        return not value if isinstance(value, bool) else None
+
+    # I/O methods
 
     def load(self,
              in_filepath: t.Optional['pathlib.Path'] = None,
@@ -136,13 +195,29 @@ class NMRPipeSpectrum(NMRSpectrum):
             ng.pipe.write(filename=str(out_filepath), dic=dic, data=self.data,
                           overwrite=overwrite)
 
-    def ft(self=None,
-           mode: t.Optional[str] = 'auto',
-           fft_func: t.Callable = fft.fft,
+    # Processing methods
+
+    def ft(self,
+           funcs: t.Dict[str, t.Callable],
+           ft_opts: t.Dict,
+           meta: t.Optional[dict] = None,
+           data: t.Optional['numpy.ndarray'] = None,
            **kwargs):
-        if mode == 'auto':
-            def _fft_func(data):
-                def fft(data):
-                    (fft.fft(fft.ifftshift(data, -1),
-                             axis=-1).astype(data.dtype) * scale)
-                fft_func = lambda data: (fft.fft(fft.ifftshift(data, -1)))
+        """See :meth:`.NMRSpectrum.ft`
+
+        Parameters
+        ----------
+        ft_opts
+            - 'auto': bool
+               Attempt to determine the type of Fourier transformation needed
+            - 'real': bool
+               Transform only the real data
+            - 'alt': bool
+               Alternate the sign of points before transformation.
+
+        """
+        # Setup the ft_opts
+        auto = ft_opts.get('auto', True)
+
+        # Perform the Fourier transformation
+        return super().ft(funcs=funcs, ft_opts=ft_opts, meta=meta, data=data)
