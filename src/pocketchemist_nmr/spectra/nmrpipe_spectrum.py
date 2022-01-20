@@ -1,10 +1,10 @@
 """
 NMRSpectrum in NMRPipe format
 """
-import copy
 import re
 import typing as t
 
+import numpy as np
 import scipy.fft as fft
 import nmrglue as ng
 
@@ -120,14 +120,21 @@ class NMRPipeSpectrum(NMRSpectrum):
         overwrite
             If True (default), overwrite existing files.
         """
+        # Setup arguments
         out_filepath = (out_filepath if out_filepath is not None else
                         self.out_filepath)
+        dic = self.meta
 
-        if self.iterator is not None:
-            raise NotImplementedError
+        # Save the spectrum
+        if isinstance(self.iterator, ng.pipe.iter3D):
+            # The data must be convert to float32 for the following write
+            # function
+            data = self.data.view(np.float32)
+            self.iterator.write(filemask=str(out_filepath), plane=data,
+                                dic=dic)
         else:
-            dic = self.meta
-            ng.pipe.write(out_filepath, dic, self.data, overwrite=overwrite)
+            ng.pipe.write(filename=str(out_filepath), dic=dic, data=self.data,
+                          overwrite=overwrite)
 
     def ft(self=None,
            mode: t.Optional[str] = 'auto',
