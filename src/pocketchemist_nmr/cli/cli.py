@@ -7,9 +7,6 @@ import click
 from click_option_group import optgroup, MutuallyExclusiveOptionGroup
 from humanfriendly.tables import format_pretty_table
 
-from ..processors import fileio
-from ..processors import processor
-
 logger = logging.getLogger('pocketchemist-nmr.cli.cli')
 
 
@@ -27,14 +24,12 @@ def write_stdout(processor):
     pickle.dump(processor, sys.stdout.buffer)
 
 
-def read_stdin(cls_type=processor.NMRGroupProcessor):
+def read_stdin():
     """A function to load processor(s) from input of the stdin.
 
     This function is used for transferring processors with pipes.
     """
     processor = pickle.load(sys.stdin.buffer)
-    if cls_type is not None:
-        assert isinstance(processor, cls_type)
     return processor
 
 
@@ -82,11 +77,14 @@ def nmrpipe(ctx: click.Context):
 @click.argument('in_filepaths', nargs=-1)
 def nmrpipe_in(format, show_header, in_filepaths):
     """NMR spectra to load in"""
+    from ..processors.processor import NMRGroupProcessor
+    from ..processors.fileio import LoadSpectra
+
     logging.debug(f"nmrpipe_in: in_filepaths={in_filepaths}")
 
     # Setup a Group processor and a processor to load spectra
-    group = processor.NMRGroupProcessor()
-    group += fileio.LoadSpectra(in_filepaths=in_filepaths, format=format)
+    group = NMRGroupProcessor()
+    group += LoadSpectra(in_filepaths=in_filepaths, format=format)
 
     # Write the objects to stdout
     if show_header:
@@ -114,13 +112,15 @@ def nmrpipe_in(format, show_header, in_filepaths):
 @click.argument('out_filepaths', nargs=-1)
 def nmrpipe_out(format, overwrite, out_filepaths):
     """The NMR spectra to save"""
+    from ..processors.fileio import SaveSpectra
+
     logging.debug(f"nmrpipe_out: out_filepaths={out_filepaths}")
 
     # Unpack the stdin
     group = read_stdin()
 
     # Setup a Group processor and a processor to load spectra
-    group += fileio.SaveSpectra(out_filepaths=out_filepaths, format=format,
+    group += SaveSpectra(out_filepaths=out_filepaths, format=format,
                                 overwrite=overwrite)
 
     # Run the processor group
@@ -176,13 +176,14 @@ def nmrpipe_fn_sol(mode, fl, fs):
 #@click.argument('stdin', default=sys.stdin)
 def nmrpipe_fn_ft(mode):
     """Complex Fourier Transform"""
+    from ..processors.processor import FTSpectra
     logging.debug(f"nmrpipe_fn_ft: mode={mode}")
 
     # Unpack the stdin
     group = read_stdin()
 
     # Add the FT processor
-    group += processor.FTSpectra(mode=mode)
+    group += FTSpectra(mode=mode)
 
     # Write the objects to stdout
     write_stdout(group)
