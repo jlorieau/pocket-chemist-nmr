@@ -7,7 +7,8 @@ import pytest
 import numpy as np
 import nmrglue as ng
 
-from pocketchemist_nmr.spectra import NMRPipeSpectrum
+from pocketchemist_nmr.spectra.nmrpipe_spectrum import (NMRPipeSpectrum,
+                                                        Plane2DPhase)
 
 spectrum2d_exs = (Path('data') / 'bruker' /
                   'CD20170124_av500hd_101_ubq_hsqcsi2d' /
@@ -94,9 +95,32 @@ def test_nmrpipe_spectrum_sw(in_filepath):
 
 
 @pytest.mark.parametrize("in_filepath", spectrum2d_exs + spectrum3d_exs)
+def test_nmrpipe_spectrum_plane2dphase(in_filepath):
+    """Test the NMRPipeSpectrum plane2dphase method"""
+    # Load the spectrum
+    spectrum = NMRPipeSpectrum(in_filepath)
+
+    # If it's spectrum with an iterator, it has to be iterator once to
+    # populate self.meta and self.dict
+    if spectrum.iterator is not None:
+        next(spectrum)
+
+    # Check the method's value
+    assert spectrum.plane2dphase is Plane2DPhase.STATES
+    assert spectrum.meta['FD2DPHASE'] == 2.0
+
+    # Try modifying the value
+    spectrum.plane2dphase = Plane2DPhase.TPPI
+    assert spectrum.plane2dphase is Plane2DPhase.TPPI
+    assert spectrum.meta['FD2DPHASE'] == 1.0
+
+
+# I/O methods
+
+@pytest.mark.parametrize("in_filepath", spectrum2d_exs + spectrum3d_exs)
 def test_nmrpipe_spectrum_domain_type(in_filepath):
     """Test the NMRPipeSpectrum is_freq and is_time functions"""
-    # Load the spectrum and check the number of dimensions
+    # Load the spectrum
     spectrum = NMRPipeSpectrum(in_filepath)
 
     # If it's spectrum with an iterator, it has to be iterator once to

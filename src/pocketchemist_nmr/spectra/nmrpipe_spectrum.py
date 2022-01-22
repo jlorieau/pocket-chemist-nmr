@@ -3,15 +3,27 @@ NMRSpectrum in NMRPipe format
 """
 import re
 import typing as t
+from enum import Enum
 
 import numpy as np
 import nmrglue as ng
 
 from .nmr_spectrum import NMRSpectrum
 
-__all__ = ('NMRPipeSpectrum',)
+__all__ = ('NMRPipeSpectrum', 'Plane2DPhase')
 
 
+# Enumeration types
+class Plane2DPhase(Enum):
+    """Values for the 2D plane phase--i.e. the 'FD2DPHASE' value """
+    MAGNITUDE = 0.0  # Magnitude mode data
+    TPPI = 1.0  # TPPI (Time Proportional Phase Incrementation)
+    STATES = 2.0  # States or States-TPPI
+    IMAGE = 3.0  # Image data
+    NONE = None  # Data is not a 2D plane
+
+
+# Concrete subclass
 class NMRPipeSpectrum(NMRSpectrum):
     """An NMRpipe spectrum
 
@@ -31,6 +43,8 @@ class NMRPipeSpectrum(NMRSpectrum):
         - 'FDFxSW': The spectral width (in Hz) for dimension 'x'
         - 'FDFxFTFLAG': Whether the dimension 'x' is in the frequency domain
           (1.0) or the time domain (0.0)
+        - 'FD2DPHASE': Describes the type of 2D file plane, if the data is 2-,
+          3-, 4-dimensional.
     """
 
     def __next__(self):
@@ -123,6 +137,21 @@ class NMRPipeSpectrum(NMRSpectrum):
         """
         value = self.is_freq(dim=dim)
         return not value if isinstance(value, bool) else None
+
+    @property
+    def plane2dphase(self):
+        """The phase of 2D planes for 2-, 3-, 4-dimensional self.data values."""
+        ndims = self.ndims
+        fd2dphase = self.meta.get('FD2DPHASE', None)
+        if ndims > 1 and fd2dphase is not None:
+            return Plane2DPhase(fd2dphase)
+        else:
+            return Plane2DPhase.NONE
+
+    @plane2dphase.setter
+    def plane2dphase(self, value: Plane2DPhase):
+        if value is not Plane2DPhase.NONE:
+            self.meta['FD2DPHASE'] = value.value
 
     # I/O methods
 
