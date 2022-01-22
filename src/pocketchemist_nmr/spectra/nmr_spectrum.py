@@ -5,8 +5,6 @@ import abc
 import typing as t
 from pathlib import Path
 
-import scipy.fft as fft
-
 __all__ = ('NMRSpectrum',)
 
 
@@ -156,7 +154,7 @@ class NMRSpectrum(abc.ABC):
             setattr(self, attr, None)
 
     def ft(self,
-           funcs: t.Dict[str, t.Callable],
+           ft_func: t.Callable,
            ft_opts: t.Dict,
            meta: t.Optional[dict] = None,
            data: t.Optional['numpy.ndarray'] = None,
@@ -167,14 +165,8 @@ class NMRSpectrum(abc.ABC):
 
         Parameters
         ----------
-        funcs
-            The functions used for Fourier Transformation. It should include:
-
-            - 'fft_func': The Fourier transform function
-            - 'ifft_func': The inverse Fourier function
-            - 'fftshift_func': The FFT frequency shift function to use, which
-              moves the zero-frequency component to the center
-            - 'ifftshift_func': The the function that reversed fft_shift
+        ft_func
+            The Fourier Transform wrapper functions to use.
         ft_opts
             A dict containing options for processing the Fourier transform
         meta
@@ -194,10 +186,8 @@ class NMRSpectrum(abc.ABC):
         """
         # Setup the arguments
         data = data if data is not None else self.data
-        fft_func = funcs['fft_func']
-        fftshift_func = funcs['fftshift_func']
 
         # Perform the FFT then a frequency shift
-        self.data = fftshift_func(fft_func(data).astype(data.dtype))
+        self.data = ft_func(data=data)
         kwargs['data'] = data
         return kwargs

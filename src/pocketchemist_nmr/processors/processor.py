@@ -1,8 +1,13 @@
 """
 Processors for NMR spectra
 """
-import scipy.fft as fft
+import typing as t
+
 from pocketchemist.processors import Processor, GroupProcessor
+from pocketchemist.processors.fft import FFTProcessor
+from pocketchemist.utils.list import wraplist
+
+from ..spectra import NMRSpectrum
 
 __all__ = ('NMRProcessor', 'NMRGroupProcessor', 'FTSpectra')
 
@@ -24,7 +29,7 @@ class NMRGroupProcessor(GroupProcessor):
         return kwargs
 
 
-class FTSpectra(NMRProcessor):
+class FTSpectra(FFTProcessor, NMRProcessor):
     """Fourier Transform spectra (one or more)"""
 
     #: Fourier Transform mode
@@ -33,21 +38,18 @@ class FTSpectra(NMRProcessor):
     #: - 'real': Real Fourier Transform
     required_params = ('mode',)
 
-    def process(self, spectra, mode=None, **kwargs):
-        mode = mode if mode is not None else self.mode
+    def process(self,
+                spectra: t.Iterable[NMRSpectrum],
+                mode: str = None,
+                **kwargs):
 
+        # Setup the fft/ifft functions
+        ft_func = self.get_module_callable(category='fft')
+        ft_opts = {'auto': self.mode == 'auto'}
+
+        # Perform the Fourier transformation
         for spectrum in spectra:
-            data = spectrum.data
-            scale = 1.0 / float(data.shape[-1])
-
-            if mode == 'auto':
-                # Perform the fft
-                data = (fft.fft(fft.ifftshift(data, -1),
-                                axis=-1).astype(data.dtype) * scale)
-            else:
-                raise NotImplementedError(f"Class '{self.__class__.__name__}' "
-                                          f"does not support mode '{mode}'")
-            spectrum.data = data
+            spectrum.ft(ft_func=ft_func, ft_opts=ft_opts)
 
         # Setup the arguments that are passed to future processors
         kwargs['spectra'] = spectra

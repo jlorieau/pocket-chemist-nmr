@@ -198,7 +198,7 @@ class NMRPipeSpectrum(NMRSpectrum):
     # Processing methods
 
     def ft(self,
-           funcs: t.Dict[str, t.Callable],
+           ft_func: t.Callable,
            ft_opts: t.Dict,
            meta: t.Optional[dict] = None,
            data: t.Optional['numpy.ndarray'] = None,
@@ -216,8 +216,13 @@ class NMRPipeSpectrum(NMRSpectrum):
                Alternate the sign of points before transformation.
 
         """
-        # Setup the ft_opts
+        # Setup the arguments
         auto = ft_opts.get('auto', True)
 
+        # Setup the ft_func
+        ft_func.fft_type = 'ifft'
+        ft_func.center = 'fftshift'
+
         # Perform the Fourier transformation
-        return super().ft(funcs=funcs, ft_opts=ft_opts, meta=meta, data=data)
+        return super().ft(ft_func=ft_func, ft_opts=ft_opts, meta=meta,
+                          data=data)
