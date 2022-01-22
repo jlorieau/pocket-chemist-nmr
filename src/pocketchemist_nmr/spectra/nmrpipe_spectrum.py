@@ -10,7 +10,7 @@ import nmrglue as ng
 
 from .nmr_spectrum import NMRSpectrum
 
-__all__ = ('NMRPipeSpectrum', 'Plane2DPhase')
+__all__ = ('NMRPipeSpectrum', 'Plane2DPhase', 'SignAdjustment')
 
 
 # Enumeration types
@@ -21,6 +21,16 @@ class Plane2DPhase(Enum):
     STATES = 2.0  # States or States-TPPI
     IMAGE = 3.0  # Image data
     NONE = None  # Data is not a 2D plane
+
+
+class SignAdjustment(Enum):
+    """Values for the sign adjustment needed for FFT"""
+    NONE = 0.0  # No sign adjustment needed
+    REAL = 1.0  # Sign alternation of the real component
+    COMPLEX = 2.0  # Sign alternation of both real and imaginary components
+    NEGATE_IMAG = 16.0  # Negate the imaginary component
+    REAL_NEGATE_IMAG = 17.0  # Same as REAL + NEGATE_IMAG
+    COMPLEX_NEGATE_IMAG = 18.0  # Same as COMPLEX + NEGATE_IMAG
 
 
 # Concrete subclass
@@ -62,6 +72,7 @@ class NMRPipeSpectrum(NMRSpectrum):
 
     @property
     def ndims(self):
+        """The number of dimensions in the spectrum"""
         if 'FDDIMCOUNT' in self.meta:
             return int(self.meta['FDDIMCOUNT'])
         else:
@@ -69,6 +80,7 @@ class NMRPipeSpectrum(NMRSpectrum):
 
     @property
     def order(self) -> t.Tuple[int, ...]:
+        """The ordering of dimensions in the data"""
         if 'FDDIMORDER' in self.meta:
             return tuple(map(int, self.meta['FDDIMORDER'][:self.ndims]))
         else:
@@ -106,13 +118,13 @@ class NMRPipeSpectrum(NMRSpectrum):
             self.meta[f"FDF{dim}SW"] = v
 
     def is_freq(self, dim: int = None) -> t.Union[bool, None]:
-        """Whether the dimension, between 1-4, is in the frequency domain.
+        """Whether the dimension is in the frequency domain.
 
         Parameters
         ----------
         dim
-            The dimension to evaluate whether it's in the frequency domain.
-            By default, this returns the current dimension.
+            The dimension (1-4) to evaluate whether it's in the frequency
+            domain. By default, this returns the current dimension.
         """
         # Get the current domain, if a domain was not specified, and check
         # Whether the domain makes sense
@@ -127,16 +139,32 @@ class NMRPipeSpectrum(NMRSpectrum):
             return None
 
     def is_time(self, dim: int = None) -> bool:
-        """Whether the dimension, between 1-4, is in the time domain.
+        """Whether the dimension is in the time domain.
 
         Parameters
         ----------
         dim
-            The dimension to evaluate whether it's in the frequency domain.
-            By default, this returns the current dimension.
+            The dimension (1-4) to evaluate whether it's in the frequency
+             domain. By default, this returns the current dimension.
         """
         value = self.is_freq(dim=dim)
         return not value if isinstance(value, bool) else None
+
+    def sign_adjustment(self, dim: int = None) -> SignAdjustment:
+        """Whether the dimension requires sign alternation.
+
+        Parameters
+        ----------
+        dim
+            The dimension (1-4) to evaluate whether it's in the frequency
+             domain. By default, this returns the current dimension.
+        """
+        dim = dim if dim is not None else self.order[0]
+        ndims = self.ndims
+        assert 0 < dim <= ndims, (
+            f"The specified dimension '{dim}' must be between 1-{ndims}.")
+        return SignAdjustment(self.meta.get(f'FDF{dim}AQSIGN',
+                                            SignAdjustment.NONE))
 
     @property
     def plane2dphase(self):

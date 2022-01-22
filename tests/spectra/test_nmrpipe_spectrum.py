@@ -8,7 +8,8 @@ import numpy as np
 import nmrglue as ng
 
 from pocketchemist_nmr.spectra.nmrpipe_spectrum import (NMRPipeSpectrum,
-                                                        Plane2DPhase)
+                                                        Plane2DPhase,
+                                                        SignAdjustment)
 
 spectrum2d_exs = (Path('data') / 'bruker' /
                   'CD20170124_av500hd_101_ubq_hsqcsi2d' /
@@ -92,6 +93,21 @@ def test_nmrpipe_spectrum_sw(in_filepath):
     spectrum.sw = rev_sws
     for dim, sw in zip(spectrum.order, rev_sws):
         assert spectrum.meta[f"FDF{dim}SW"] == sw
+
+
+@pytest.mark.parametrize("in_filepath", spectrum2d_exs + spectrum3d_exs)
+def test_nmrpipe_spectrum_sign_adjustment(in_filepath):
+    """Test the NMRPipeSpectrum sign_adjustment method"""
+    # Load the spectrum
+    spectrum = NMRPipeSpectrum(in_filepath)
+
+    # If it's spectrum with an iterator, it has to be iterator once to
+    # populate self.meta and self.dict
+    if spectrum.iterator is not None:
+        next(spectrum)
+
+    assert spectrum.sign_adjustment() is SignAdjustment.NONE
+    assert spectrum.sign_adjustment(1) is SignAdjustment.NONE
 
 
 @pytest.mark.parametrize("in_filepath", spectrum2d_exs + spectrum3d_exs)
