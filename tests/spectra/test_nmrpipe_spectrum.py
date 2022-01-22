@@ -7,6 +7,7 @@ import pytest
 import numpy as np
 import nmrglue as ng
 
+from pocketchemist_nmr.spectra.nmr_spectrum import DomainType
 from pocketchemist_nmr.spectra.nmrpipe_spectrum import (NMRPipeSpectrum,
                                                         Plane2DPhase,
                                                         SignAdjustment)
@@ -65,6 +66,45 @@ def test_nmrpipe_spectrum_order(in_filepath, expected_order):
     fddimorder = ([float(i) for i in spectrum.order] +
                   [float(i) for i in range(len(expected_order) + 1, 4 + 1)])
     assert spectrum.meta['FDDIMORDER'] == fddimorder
+
+
+@pytest.mark.parametrize("in_filepath", spectrum2d_exs + spectrum3d_exs)
+def test_nmrpipe_spectrum_domain_type(in_filepath):
+    """Test the NMRPipeSpectrum domain_type function"""
+    # Load the spectrum
+    spectrum = NMRPipeSpectrum(in_filepath)
+
+    # If it's spectrum with an iterator, it has to be iterator once to
+    # populate self.meta and self.dict
+    if spectrum.iterator is not None:
+        next(spectrum)
+
+    # Check that the spectral widths are reasonable
+    for dim in range(0, 5):
+        if 0 < dim <= spectrum.ndims:
+
+            if in_filepath.suffix == '.fid':
+                # FIDs are in the time domain
+                assert spectrum.domain_type(dim) is DomainType.TIME
+
+                # Try changing the value
+                assert (spectrum.domain_type(dim, DomainType.FREQ)
+                        is DomainType.FREQ)
+
+            else:
+                # Processed spectra are in the frequency domain
+                assert spectrum.domain_type(dim) is DomainType.FREQ
+
+                # Try changing the value
+                assert (spectrum.domain_type(dim, DomainType.TIME)
+                        is DomainType.TIME)
+        else:
+            # invalid dimension number
+            with pytest.raises(AssertionError):
+                spectrum.domain_type(dim)
+
+            with pytest.raises(AssertionError):
+                spectrum.domain_type(dim)
 
 
 @pytest.mark.parametrize("in_filepath", spectrum2d_exs + spectrum3d_exs)
@@ -130,39 +170,6 @@ def test_nmrpipe_spectrum_plane2dphase(in_filepath):
     assert spectrum.plane2dphase is Plane2DPhase.TPPI
     assert spectrum.meta['FD2DPHASE'] == 1.0
 
-
-# I/O methods
-
-@pytest.mark.parametrize("in_filepath", spectrum2d_exs + spectrum3d_exs)
-def test_nmrpipe_spectrum_domain_type(in_filepath):
-    """Test the NMRPipeSpectrum is_freq and is_time functions"""
-    # Load the spectrum
-    spectrum = NMRPipeSpectrum(in_filepath)
-
-    # If it's spectrum with an iterator, it has to be iterator once to
-    # populate self.meta and self.dict
-    if spectrum.iterator is not None:
-        next(spectrum)
-
-    # Check that the spectral widths are reasonable
-    for dim in range(0, 5):
-        if 0 < dim <= spectrum.ndims:
-
-            if in_filepath.suffix == '.fid':
-                # FIDs are in the time domain
-                assert not spectrum.is_freq(dim)
-                assert spectrum.is_time(dim)
-            else:
-                # Processed spectra are in the frequency domain
-                assert spectrum.is_freq(dim)
-                assert not spectrum.is_time(dim)
-        else:
-            # invalid dimension number
-            with pytest.raises(AssertionError):
-                spectrum.is_freq(dim)
-
-            with pytest.raises(AssertionError):
-                spectrum.is_time(dim)
 
 # I/O methods
 

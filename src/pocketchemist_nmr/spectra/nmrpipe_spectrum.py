@@ -8,7 +8,7 @@ from enum import Enum
 import numpy as np
 import nmrglue as ng
 
-from .nmr_spectrum import NMRSpectrum
+from .nmr_spectrum import NMRSpectrum, DomainType
 
 __all__ = ('NMRPipeSpectrum', 'Plane2DPhase', 'SignAdjustment')
 
@@ -97,6 +97,30 @@ class NMRPipeSpectrum(NMRSpectrum):
         for i, order in enumerate(new_order):
             self.meta['FDDIMORDER'][i] = float(order)
 
+    def domain_type(self,
+                    dim: int = None,
+                    value: t.Optional[DomainType] = None) -> DomainType:
+        dim = dim if dim is not None else self.order[0]
+        ndims = self.ndims
+        assert 0 < dim <= ndims, (
+            f"The specified dimension '{dim}' must be between 1-{ndims}.")
+        label = f'FDF{dim}FTFLAG'
+
+        # Setup mappings between DomainTypes and the meta dict values
+        mappings = {DomainType.FREQ: 1.0,
+                    DomainType.TIME: 0.0}
+
+        # Set the value, if specified
+        if value is not None:
+            self.meta[label] = mappings[value]
+
+        # Retrieve and format the domain type
+        if label in self.meta:
+            value = self.meta[label]
+            return tuple(k for k, v in mappings.items() if v == value)[0]
+        else:
+            return DomainType.UNKNOWN
+
     @property
     def sw(self):
         """Spectral widths (in Hz) of all available dimensions, as ordered by
@@ -117,40 +141,10 @@ class NMRPipeSpectrum(NMRSpectrum):
         for dim, v in zip(ordered_dims, value):
             self.meta[f"FDF{dim}SW"] = v
 
-    def is_freq(self, dim: int = None) -> t.Union[bool, None]:
-        """Whether the dimension is in the frequency domain.
-
-        Parameters
-        ----------
-        dim
-            The dimension (1-4) to evaluate whether it's in the frequency
-            domain. By default, this returns the current dimension.
-        """
-        # Get the current domain, if a domain was not specified, and check
-        # Whether the domain makes sense
-        dim = dim if dim is not None else self.order[0]
-        ndims = self.ndims
-        assert 0 < dim <= ndims, (
-            f"The specified dimension '{dim}' must be between 1-{ndims}.")
-        value = self.meta.get(f'FDF{dim}FTFLAG', None)
-        if isinstance(value, float):
-            return value == 1.0
-        else:
-            return None
-
-    def is_time(self, dim: int = None) -> bool:
-        """Whether the dimension is in the time domain.
-
-        Parameters
-        ----------
-        dim
-            The dimension (1-4) to evaluate whether it's in the frequency
-             domain. By default, this returns the current dimension.
-        """
-        value = self.is_freq(dim=dim)
-        return not value if isinstance(value, bool) else None
-
-    def sign_adjustment(self, dim: int = None) -> SignAdjustment:
+    def sign_adjustment(self,
+                        dim: int = None,
+                        value: t.Optional[SignAdjustment] = None) \
+            -> SignAdjustment:
         """Whether the dimension requires sign alternation.
 
         Parameters
@@ -158,13 +152,24 @@ class NMRPipeSpectrum(NMRSpectrum):
         dim
             The dimension (1-4) to evaluate whether it's in the frequency
              domain. By default, this returns the current dimension.
+        value
+            If specified, set the sign adjustment to this value
+
+        Returns
+        -------
+        sign_adjustment
+            The current value of the sign adjustment setting.
         """
         dim = dim if dim is not None else self.order[0]
         ndims = self.ndims
         assert 0 < dim <= ndims, (
             f"The specified dimension '{dim}' must be between 1-{ndims}.")
-        return SignAdjustment(self.meta.get(f'FDF{dim}AQSIGN',
-                                            SignAdjustment.NONE))
+        label = f"FDF{dim}AQSIGN"
+
+        if value is not None:
+            self.meta[label] = value.value
+
+        return SignAdjustment(self.meta.get(label, SignAdjustment.NONE))
 
     @property
     def plane2dphase(self):
@@ -256,30 +261,57 @@ class NMRPipeSpectrum(NMRSpectrum):
 
     def ft(self,
            ft_func: t.Callable,
-           ft_opts: t.Dict,
-           meta: t.Optional[dict] = None,
+           auto: bool = False,
+           real: bool = False,
+           inv: bool = False,
+           alt: bool = False,
+           neg: bool = False,
+           bruk: bool = False,
            data: t.Optional['numpy.ndarray'] = None,
            **kwargs):
-        """See :meth:`.NMRSpectrum.ft`
-
-        Parameters
-        ----------
-        ft_opts
-            - 'auto': bool
-               Attempt to determine the type of Fourier transformation needed
-            - 'real': bool
-               Transform only the real data
-            - 'alt': bool
-               Alternate the sign of points before transformation.
-
-        """
         # Setup the arguments
-        auto = ft_opts.get('auto', True)
+        if auto:
+            if self.is_freq():
+                # The current dimension is in the freq domain
+                inv = True  # perform inverse FT
+                real = False  # do not perform a real FT
+                alt = False  # do not perform sign alternation
+                neg = False  # do not perform negation of imaginaries
+            else:
+                # The current dimension is in the time domain
+                inv = False  # do not perform inverse FT
 
-        # Setup the ft_func
-        ft_func.fft_type = 'ifft'
-        ft_func.center = 'fftshift'
+                # Real, TPPI and Sequential data is real transform
+                # TODO: Evaluation of this flag differs from NMRPipe/nmrglue
+                real = self.plane2dphase in (Plane2DPhase.MAGNITUDE,
+                                             Plane2DPhase.TPPI)
 
-        # Perform the Fourier transformation
-        return super().ft(ft_func=ft_func, ft_opts=ft_opts, meta=meta,
-                          data=data)
+                # Alternate sign, based on sign_adjustment
+                # TODO: The commented out section differs from NMRPipe/nmrglue
+                alt = self.sign_adjustment() in (
+                    SignAdjustment.REAL,
+                    SignAdjustment.COMPLEX,
+                    # SignAdjustment.NEGATE_IMAG,
+                    # SignAdjustment.REAL_NEGATE_IMAG,
+                    # SignAdjustment.COMPLEX_NEGATE_IMAG
+                    )
+
+                neg = self.sign_adjustment() in (
+                    SignAdjustment.NEGATE_IMAG,
+                    SignAdjustment.REAL_NEGATE_IMAG,
+                    SignAdjustment.COMPLEX_NEGATE_IMAG)
+
+        # Update the self.meta dict as needed
+        self.sign_adjustment(value=SignAdjustment.NONE)  # sign adj. applied
+
+        # Switch the domain type, based on the type of Fourier Transform
+        new_domain_type = DomainType.TIME if inv else DomainType.FREQ
+        self.domain_type(value=new_domain_type)
+
+        # Switch the inv flag. This is because NMRPipe, by default, uses ifft
+        # to describe fft (i.e. positive frequencies are on the left, negative
+        # frequencies are on the right)
+        inv = not inv
+
+        return super().ft(ft_func=ft_func, auto=False, real=real, inv=inv,
+                          alt=alt, neg=neg, bruk=bruk, data=data)
