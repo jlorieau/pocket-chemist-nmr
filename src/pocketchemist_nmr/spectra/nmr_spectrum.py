@@ -3,11 +3,23 @@ NMR Spectra in different formats
 """
 import abc
 import typing as t
+from enum import Enum
 from pathlib import Path
 
-__all__ = ('NMRSpectrum',)
+from pocketchemist.processors.fft import FFTType
+
+__all__ = ('NMRSpectrum', 'DomainType')
 
 
+# Enumeration types
+class DomainType(Enum):
+    """The data domain type for a dimension"""
+    UNKNOWN = 0  # unknown domain type
+    TIME = 1  # time domain data (in sec)
+    FREQ = 2  # frequency domain data (in Hz)
+
+
+# Abstract base class implementation
 class NMRSpectrum(abc.ABC):
     """An NMR spectrum base class.
 
@@ -61,6 +73,8 @@ class NMRSpectrum(abc.ABC):
         iterator mode. """
         raise NotImplementedError
 
+    # Basic accessor/mutator methods
+
     @property
     @abc.abstractmethod
     def ndims(self) -> int:
@@ -71,6 +85,9 @@ class NMRSpectrum(abc.ABC):
     @abc.abstractmethod
     def order(self) -> t.Tuple[int, ...]:
         """The order of the dimensions for the data.
+
+        Valid dimensions start with 1 and end with the number of dimensions
+        (self.ndims).
 
         Returns
         -------
@@ -90,6 +107,9 @@ class NMRSpectrum(abc.ABC):
     def order(self, new_order: t.Tuple[int, ...]):
         """Change the order of the dimensions for the data.
 
+        Valid dimensions start with 1 and end with the number of dimensions
+        (self.ndims).
+
         Parameters
         ----------
         new_order
@@ -97,6 +117,28 @@ class NMRSpectrum(abc.ABC):
             for transpose operations.
         """
         raise NotImplementedError
+
+    def domain_type(self,
+                    dim: int = None,
+                    value: t.Optional[DomainType] = None) -> DomainType:
+        """The data domain type for the given dimension
+
+        Parameters
+        ----------
+        dim
+            The dimension (1-4) to evaluate the domain type. By default,
+            the current dimension is used.
+        value
+            If specified, set the domain type to this value
+
+        Returns
+        -------
+        domain_type
+            The current value of the domain type setting.
+        """
+        raise NotImplementedError
+
+    # I/O methods
 
     @abc.abstractmethod
     def load(self, in_filepath: t.Optional['pathlib.Path'] = None):
@@ -155,8 +197,12 @@ class NMRSpectrum(abc.ABC):
 
     def ft(self,
            ft_func: t.Callable,
-           ft_opts: t.Dict,
-           meta: t.Optional[dict] = None,
+           auto: bool = False,
+           real: bool = False,
+           inv: bool = False,
+           alt: bool = False,
+           neg: bool = False,
+           bruk: bool = False,
            data: t.Optional['numpy.ndarray'] = None,
            **kwargs):
         """Perform a Fourier Transform
@@ -167,8 +213,19 @@ class NMRSpectrum(abc.ABC):
         ----------
         ft_func
             The Fourier Transform wrapper functions to use.
-        ft_opts
-            A dict containing options for processing the Fourier transform
+        auto
+            Try to determine the FT flags automatically
+        real
+            Apply a real Fourier transform (.FFTType.RFFT)
+        inv
+            Apply an inverse Fourier transform (.FFTType.IFFT)
+        alt
+            Alternate the sign of points before Fourier transform
+        neg
+            Negate imaginary component of complex numbers before Fourier
+            transform
+        bruk
+            Process Redfield sequential data, which is alt and real.
         meta
             Metadata on the spectrum
         data
@@ -187,7 +244,37 @@ class NMRSpectrum(abc.ABC):
         # Setup the arguments
         data = data if data is not None else self.data
 
+        # Setup the flags
+        if auto:
+            # The auto flag should be set to False when this method is called
+            # by children methods. Children methods are responsible for
+            # determining how to apply and 'auto' processing
+            raise NotImplementedError
+
+        if bruk:
+            # Adjust flags for Redfield sequential data
+            real = True
+            alt = True
+        if real:
+            # Remove the imaginary component for real transformation
+            data.imag = 0.0
+        if inv:
+            # Set the FFT function type to inverse Fourier transformation
+            ft_func.fft_type = FFTType.IFFT
+        if alt and not inv:
+            # Alternate the sign of points
+            data[..., 1::2] = data[..., 1::2] * -1.
+        if neg:
+            # Negate (multiple by -1) the imaginary component
+            data.imag *= -1.0
+
         # Perform the FFT then a frequency shift
         self.data = ft_func(data=data)
+
+        # Post process the data
+        if inv and alt:
+            data[..., 1::2] = data[..., 1::2] * -1
+
+        # Prepare the return value
         kwargs['data'] = data
         return kwargs
