@@ -11,6 +11,7 @@ click = "^8.0.3"
 click-option-group = "^0.5.3"
 nmrglue = "^0.8"
 humanfriendly = "^10.0"
+loguru = "^0.5.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

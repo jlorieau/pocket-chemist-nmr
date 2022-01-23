@@ -3,8 +3,8 @@ Processors for NMR spectra
 """
 import typing as t
 from multiprocessing import Pool
-import logging
 
+from loguru import logger
 from pocketchemist.processors import Processor, GroupProcessor
 from pocketchemist.processors.fft import FFTProcessor
 
@@ -12,7 +12,11 @@ from ..spectra import NMRSpectrum
 
 __all__ = ('NMRProcessor', 'NMRGroupProcessor', 'FTSpectra')
 
-logger = logging.getLogger('pocketchemist_nmr.processors.processor')
+
+def set_logger(logger_):
+    """Setup a shared logger for multiprocessing"""
+    global logger
+    logger = logger_
 
 
 class NMRProcessor(Processor):
@@ -39,13 +43,18 @@ class NMRGroupProcessor(GroupProcessor):
     def process_pool(self, **kwargs):
         """Process subprocessed with a pool"""
         spectra = []
-        with Pool() as pool:
+
+        # Setup a pool and pass a shared logger
+        with Pool(initializer=set_logger, initargs=(logger, )) as pool:
+            logger.debug(f"Setting up pool: {pool}")
+            results = []
             for i in range(1):
                 result = pool.apply_async(NMRGroupProcessor.process_sequence,
                                           (self,), kwds=kwargs)
+                results.append(result)
 
-
-
+            # Wait for the results to finish
+            [result.get() for result in results]
 
 
 

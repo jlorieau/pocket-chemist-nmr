@@ -1,13 +1,11 @@
-import logging
 import typing as t
 import sys
 import pickle
 
 import click
 from click_option_group import optgroup, MutuallyExclusiveOptionGroup
+from loguru import logger
 from humanfriendly.tables import format_pretty_table
-
-logger = logging.getLogger('pocketchemist-nmr.cli.cli')
 
 
 # Core plugin functionality
@@ -80,7 +78,7 @@ def nmrpipe_in(format, show_header, in_filepaths):
     from ..processors.processor import NMRGroupProcessor
     from ..processors.fileio import LoadSpectra
 
-    logger.debug(f"nmrpipe_in: in_filepaths={in_filepaths}")
+    logger.debug(f"in_filepaths={in_filepaths}")
 
     # Setup a Group processor and a processor to load spectra
     group = NMRGroupProcessor()
@@ -114,7 +112,7 @@ def nmrpipe_out(format, overwrite, out_filepaths):
     """The NMR spectra to save"""
     from ..processors.fileio import SaveSpectra
 
-    logger.debug(f"nmrpipe_out: out_filepaths={out_filepaths}")
+    logger.debug(f"out_filepaths={out_filepaths}")
 
     # Unpack the stdin
     group = read_stdin()
@@ -177,7 +175,7 @@ def nmrpipe_fn_sol(mode, fl, fs):
 def nmrpipe_fn_ft(mode):
     """Complex Fourier Transform"""
     from ..processors.processor import FTSpectra
-    logger.debug(f"nmrpipe_fn_ft: mode={mode}")
+    logger.debug(f"mode={mode}")
 
     # Unpack the stdin
     group = read_stdin()

@@ -2,15 +2,13 @@
 Processors for saving and loading spectra
 """
 import typing as t
-import logging
 
+from loguru import logger
 from pocketchemist.utils.types import FilePaths
 from pocketchemist.utils.list import wraplist
 
 from .processor import NMRProcessor
 from ..spectra import NMRSpectrum, NMRPipeSpectrum
-
-logger = logging.getLogger('pocketchemist_nmr.processors.fileio')
 
 
 class LoadSpectra(NMRProcessor):
