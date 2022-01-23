@@ -2,13 +2,15 @@
 Processors for saving and loading spectra
 """
 import typing as t
-from itertools import zip_longest
+import logging
 
 from pocketchemist.utils.types import FilePaths
 from pocketchemist.utils.list import wraplist
 
 from .processor import NMRProcessor
 from ..spectra import NMRSpectrum, NMRPipeSpectrum
+
+logger = logging.getLogger('pocketchemist_nmr.processors.fileio')
 
 
 class LoadSpectra(NMRProcessor):
@@ -88,15 +90,15 @@ class SaveSpectra(NMRProcessor):
             If True (default), overwrite existing files
         """
         # Setup arguments
-        if out_filepaths is not None:
-            pass
-        elif 'out_filepaths' in self.params:
-            out_filepaths = self.params['out_filepaths']
-        else:
-            out_filepaths = []
+        out_filepaths = wraplist(out_filepaths,
+                                 default=wraplist(self.out_filepaths))
 
         # Save the spectra
-        for spectrum, out_filepath in zip_longest(spectra, out_filepaths,
-                                                  fillvalue=None):
+        for spectrum, out_filepath in zip(spectra, out_filepaths):
+            logger.debug(f"Saving spectrum '{spectrum}' to '{out_filepath}'")
             spectrum.save(out_filepath=out_filepath, format=format,
                           overwrite=overwrite)
+
+        # Place the resulting spectra in kwargs and return
+        kwargs['spectra'] = spectra
+        return kwargs
