@@ -8,8 +8,8 @@ nmrPipe () {
 #| nmrPipe -fn FT -auto 
 # -ov -out out.ft2
 
-nmrPipe -in test.fid \
+nmrPipe -in fid/test%03d.fid \
 | nmrPipe -fn FT -auto \
-| nmrPipe -out -ov out.ft2
+| nmrPipe -out -ov out/out%03d.ft2
 
 
