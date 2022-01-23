@@ -2,14 +2,17 @@
 Processors for NMR spectra
 """
 import typing as t
+from multiprocessing import Pool
+import logging
 
 from pocketchemist.processors import Processor, GroupProcessor
 from pocketchemist.processors.fft import FFTProcessor
-from pocketchemist.utils.list import wraplist
 
 from ..spectra import NMRSpectrum
 
 __all__ = ('NMRProcessor', 'NMRGroupProcessor', 'FTSpectra')
+
+logger = logging.getLogger('pocketchemist_nmr.processors.processor')
 
 
 class NMRProcessor(Processor):
@@ -20,13 +23,30 @@ class NMRGroupProcessor(GroupProcessor):
     """A group processor for NMR spectra"""
 
     def process(self, **kwargs):
-        return self.process_sequence(**kwargs)
+        # Setup a spectra list
+        return self.process_pool()
+        #return self.process_sequence(**kwargs)
 
     def process_sequence(self, **kwargs):
-        """Process on sequences of subprocessors """
+        """Process subprocessors in sequence"""
+        spectra = []
         for processor in self.processors:
             kwargs = processor.process(**kwargs)
+            logger.debug(f"Running {processor.__class__.__name__} "
+                         f"with: {kwargs}")
         return kwargs
+
+    def process_pool(self, **kwargs):
+        """Process subprocessed with a pool"""
+        spectra = []
+        with Pool() as pool:
+            for i in range(1):
+                result = pool.apply_async(NMRGroupProcessor.process_sequence,
+                                          (self,), kwds=kwargs)
+
+
+
+
 
 
 class FTSpectra(FFTProcessor, NMRProcessor):
