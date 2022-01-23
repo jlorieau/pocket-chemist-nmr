@@ -80,7 +80,7 @@ def nmrpipe_in(format, show_header, in_filepaths):
     from ..processors.processor import NMRGroupProcessor
     from ..processors.fileio import LoadSpectra
 
-    logging.debug(f"nmrpipe_in: in_filepaths={in_filepaths}")
+    logger.debug(f"nmrpipe_in: in_filepaths={in_filepaths}")
 
     # Setup a Group processor and a processor to load spectra
     group = NMRGroupProcessor()
@@ -114,7 +114,7 @@ def nmrpipe_out(format, overwrite, out_filepaths):
     """The NMR spectra to save"""
     from ..processors.fileio import SaveSpectra
 
-    logging.debug(f"nmrpipe_out: out_filepaths={out_filepaths}")
+    logger.debug(f"nmrpipe_out: out_filepaths={out_filepaths}")
 
     # Unpack the stdin
     group = read_stdin()
@@ -177,7 +177,7 @@ def nmrpipe_fn_sol(mode, fl, fs):
 def nmrpipe_fn_ft(mode):
     """Complex Fourier Transform"""
     from ..processors.processor import FTSpectra
-    logging.debug(f"nmrpipe_fn_ft: mode={mode}")
+    logger.debug(f"nmrpipe_fn_ft: mode={mode}")
 
     # Unpack the stdin
     group = read_stdin()
