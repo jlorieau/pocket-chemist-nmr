@@ -1,7 +1,8 @@
 #!/bin/bash
 
 nmrPipe () {
-    pc --debug nmrpipe "$@"
+    #pc --debug nmrpipe "$@"
+    pc nmrpipe "$@"
     }
 
 #nmrPipe -in test.fid \
