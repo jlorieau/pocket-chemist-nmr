@@ -5,12 +5,10 @@ from pathlib import Path
 
 import pytest
 import numpy as np
-import nmrglue as ng
 
 from pocketchemist_nmr.spectra.nmr_spectrum import DomainType
-from pocketchemist_nmr.spectra.nmrpipe_spectrum import (NMRPipeSpectrum,
-                                                        Plane2DPhase,
-                                                        SignAdjustment)
+from pocketchemist_nmr.spectra.nmrpipe import (NMRPipeSpectrum, Plane2DPhase,
+                                               SignAdjustment)
 
 spectrum2d_exs = (Path('data') / 'bruker' /
                   'CD20170124_av500hd_101_ubq_hsqcsi2d' /
@@ -203,7 +201,7 @@ def test_nmrpipe_spectrum_load_3d(in_filepath):
     # Check that the spectrum was properly setup
     assert isinstance(spectrum.meta, dict)
     assert isinstance(spectrum.data, np.ndarray)
-    assert isinstance(spectrum.iterator, ng.fileio.pipe.iter3D)
+    assert spectrum.iterator is not None
 
     # Check the header
     assert 'FDDIMCOUNT' in spectrum.meta

@@ -6,9 +6,10 @@ import typing as t
 from enum import Enum
 
 import numpy as np
-import nmrglue as ng
 
-from .nmr_spectrum import NMRSpectrum, DomainType
+from . import pipe_fileio
+#import nmrglue.fileio.pipe as pipe_fileio
+from ..nmr_spectrum import NMRSpectrum, DomainType
 
 __all__ = ('NMRPipeSpectrum', 'Plane2DPhase', 'SignAdjustment')
 
@@ -217,12 +218,12 @@ class NMRPipeSpectrum(NMRSpectrum):
         if is_iterator or force_iterator:
             # Load the iterator. The iterator must be run once to populate
             # self.meta and self.data (see __next__)
-            iterator = ng.pipe.iter3D(str(self.in_filepath),
-                                      in_plane, out_plane)
+            iterator = pipe_fileio.iter3D(str(self.in_filepath),
+                                          in_plane, out_plane)
 
             self.iterator = iterator
         else:
-            dic, data = ng.pipe.read(str(self.in_filepath))
+            dic, data = pipe_fileio.read(str(self.in_filepath))
             self.meta = dic
             self.data = data
 
@@ -247,15 +248,15 @@ class NMRPipeSpectrum(NMRSpectrum):
         dic = self.meta
 
         # Save the spectrum
-        if isinstance(self.iterator, ng.pipe.iter3D):
+        if isinstance(self.iterator, pipe_fileio.iter3D):
             # The data must be convert to float32 for the following write
             # function
             data = self.data.view(np.float32)
             self.iterator.write(filemask=str(out_filepath), plane=data,
                                 dic=dic)
         else:
-            ng.pipe.write(filename=str(out_filepath), dic=dic, data=self.data,
-                          overwrite=overwrite)
+            pipe_fileio.write(filename=str(out_filepath), dic=dic,
+                              data=self.data, overwrite=overwrite)
 
     # Processing methods
 
