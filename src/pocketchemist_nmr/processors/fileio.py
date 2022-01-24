@@ -3,7 +3,6 @@ Processors for saving and loading spectra
 """
 import typing as t
 
-from loguru import logger
 from pocketchemist.utils.types import FilePaths
 from pocketchemist.utils.list import wraplist
 
@@ -93,7 +92,6 @@ class SaveSpectra(NMRProcessor):
 
         # Save the spectra
         for spectrum, out_filepath in zip(spectra, out_filepaths):
-            logger.debug(f"Saving spectrum '{spectrum}' to '{out_filepath}'")
             spectrum.save(out_filepath=out_filepath, format=format,
                           overwrite=overwrite)
 
