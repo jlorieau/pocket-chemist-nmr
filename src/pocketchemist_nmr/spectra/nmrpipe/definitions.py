@@ -2,7 +2,6 @@
 Functions to parse NMRPipe headers
 """
 import typing as t
-from pathlib import Path
 
 # Cached versions of the definitions dicts
 

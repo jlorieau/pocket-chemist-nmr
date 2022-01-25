@@ -4,6 +4,7 @@ Tests for the NMRPipe metadata functions
 from pathlib import Path
 
 import pytest
+from pocketchemist_nmr.spectra.meta import NMRMetaDict
 from pocketchemist_nmr.spectra.nmrpipe.meta import load_nmrpipe_meta
 
 
@@ -207,6 +208,9 @@ def test_load_nmrpipe_meta(in_filepath, meta_answerkey):
     with open(in_filepath, 'rb') as f:
         # Load the meta dict
         meta = load_nmrpipe_meta(f)
+
+        # Make sure it's the correct type
+        assert isinstance(meta, NMRMetaDict)
 
         # Check the values from the answer key
         for key, value in meta_answerkey.items():

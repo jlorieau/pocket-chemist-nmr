@@ -2,14 +2,40 @@
 Functions and utilities to unpack NMRPipe headers
 """
 import struct
+import typing as t
 
 from .definitions import get_nmrpipe_definitions
+from ..meta import NMRMetaDict
 
+#: The size of the NMRPipe header in bytes
 header_size = 2048  # bytes
 
 
-def load_nmrpipe_meta(filelike, start=0, end=header_size):
-    """Retrieve metadata in NMRPipe format."""
+class NMRPipeMetaDict(NMRMetaDict):
+    """A metadata dict containing entries in NMRPipe format"""
+    pass
+
+
+def load_nmrpipe_meta(filelike: t.BinaryIO, start: int = 0,
+                      end: t.Optional[int] = header_size) -> NMRPipeMetaDict:
+    """Retrieve metadata in NMRPipe format.
+
+    Parameters
+    ----------
+    filelike
+        A file object for reading in binary mode
+    start
+        The start byte to start reading the NMRPipe header data.
+    end
+        The end by to end reading the NMRPipe header data. If this is None,
+        the the filelike's position will be placed to its original place.
+
+    Returns
+    -------
+    nmrpipe_meta
+        Return a dict (:obj:`.NMRPipeMetaDict`) with metadata entries from
+        an NMRPipe spectrum.
+    """
     assert 'b' in filelike.mode, "File must be read in binary mode"
 
     # Get the header definitions
@@ -57,4 +83,5 @@ def load_nmrpipe_meta(filelike, start=0, end=header_size):
         except (UnicodeDecodeError, struct.error):
             pass
 
-    return pipedict
+    # Convert to and return a NMRPipeMetaDict
+    return NMRPipeMetaDict(pipedict)
