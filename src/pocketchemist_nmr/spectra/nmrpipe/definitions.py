@@ -1,12 +1,42 @@
 """
 Functions to parse NMRPipe headers
 """
-from collections import namedtuple
+import typing as t
+from pathlib import Path
+
+# Cached versions of the definitions dicts
+
+#: The location of fields in the binary header. The field names are the keys,
+#: and the locations (as multiples of 4 bytes) as values.
+field_locations = None
+
+#: The descriptions of fields. The field names are the keys, and the
+#: description strings are the values
+field_descriptions = None
+
+#: The identity and size of text fields. The field names are the keys, and
+#: the field size (in bytes) are the values.
+text_fields = None
 
 
-def get_nmrpipe_locations():
-    """Return a dict of offsets: parameter names."""
+def get_nmrpipe_definitions() -> t.Tuple[dict, dict, dict]:
+    """Return a dict of offsets: parameter names.
 
+    This function caches the definition dicts. To reload them, delete the
+    file at filename.
+
+    Returns
+    -------
+    field_locations, field_descriptions, text_fields
+        The definitions dicts.
+    """
+    # See if the definitions dicts have already been processed
+    global field_locations, field_descriptions, text_fields
+    if all(i is not None for i in (field_locations, field_descriptions,
+                                   text_fields)):
+        return field_locations, field_descriptions, text_fields
+
+    # They haven't been processed. Process them and save the definitions file
     import re
 
     # Copied from NMRPipe/nmruser/fdatap.h
@@ -291,15 +321,28 @@ def get_nmrpipe_locations():
 """
     # Create dict for translations in 4-byte locations
     offsets_it = re.finditer(r"#define\s+(?P<name>[\w\d]+)\s+"
-                             r"(?P<offset>\d+)", offsets_str)
+                             r"(?P<offset>\d+)"
+                             r"(\s*/\*(?P<desc>[^*]+)\*/)?",
+                             offsets_str)
 
-    # Prepare the locations dict
-    field_locations = {m.groupdict()['name']: int(m.groupdict()['offset'])
-                       for m in offsets_it}
+    # Prepare the field locations dict
+    field_locations, field_descriptions = {}, {}
+    for match in offsets_it:
+        d = match.groupdict()  # get the match's capture group dict
+        name, offset, desc = map(d.get, ('name', 'offset', 'desc'))
 
+        # Set the entries in the dicts
+        field_locations[name] = int(offset)
+
+        if desc is not None and desc.strip():
+            # Add only non-empty entries
+            field_descriptions[name] = desc.strip()
+
+    # Prepare to text fields dict
     text_fields_it = re.finditer(r"#define\s+(?P<name>[\w\d]+)\s+"
                                  r"(?P<size>\d+)", text_fields_str)
     text_fields = {m.groupdict()['name']: int(m.groupdict()['size'])
                    for m in text_fields_it}
+    rv = (field_locations, field_descriptions, text_fields)
 
-    return field_locations, text_fields
+    return rv

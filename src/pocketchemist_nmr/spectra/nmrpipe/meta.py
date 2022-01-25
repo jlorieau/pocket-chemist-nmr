@@ -3,7 +3,7 @@ Functions and utilities to unpack NMRPipe headers
 """
 import struct
 
-from .definitions import get_nmrpipe_locations
+from .definitions import get_nmrpipe_definitions
 
 header_size = 2048  # bytes
 
@@ -13,7 +13,7 @@ def load_nmrpipe_meta(filelike, start=0, end=header_size):
     assert 'b' in filelike.mode, "File must be read in binary mode"
 
     # Get the header definitions
-    field_locations, text_fields = get_nmrpipe_locations()
+    field_locations, field_descriptions, text_fields = get_nmrpipe_definitions()
     fields_by_location = {v: k for k, v in field_locations.items()}
 
     # Get the current offset for the buffer and start the buffer, if specified
