@@ -13,7 +13,6 @@ header_size = 2048  # bytes
 
 class NMRPipeMetaDict(NMRMetaDict):
     """A metadata dict containing entries in NMRPipe format"""
-    pass
 
 
 def load_nmrpipe_meta(filelike: t.BinaryIO, start: int = 0,

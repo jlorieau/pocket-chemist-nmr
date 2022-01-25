@@ -3,6 +3,8 @@ Functions to parse NMRPipe headers
 """
 import typing as t
 
+from ..meta import NMRMetaDescriptionDict
+
 # Cached versions of the definitions dicts
 
 #: The location of fields in the binary header. The field names are the keys,
@@ -16,6 +18,10 @@ field_descriptions = None
 #: The identity and size of text fields. The field names are the keys, and
 #: the field size (in bytes) are the values.
 text_fields = None
+
+
+class NMRPipeMetaDescriptionDict(NMRMetaDescriptionDict):
+    """A metadata description dict for NMRPipe spectra"""
 
 
 def get_nmrpipe_definitions() -> t.Tuple[dict, dict, dict]:
@@ -325,7 +331,7 @@ def get_nmrpipe_definitions() -> t.Tuple[dict, dict, dict]:
                              offsets_str)
 
     # Prepare the field locations dict
-    field_locations, field_descriptions = {}, {}
+    field_locations, field_descriptions = {}, NMRMetaDescriptionDict()
     for match in offsets_it:
         d = match.groupdict()  # get the match's capture group dict
         name, offset, desc = map(d.get, ('name', 'offset', 'desc'))
@@ -342,6 +348,4 @@ def get_nmrpipe_definitions() -> t.Tuple[dict, dict, dict]:
                                  r"(?P<size>\d+)", text_fields_str)
     text_fields = {m.groupdict()['name']: int(m.groupdict()['size'])
                    for m in text_fields_it}
-    rv = (field_locations, field_descriptions, text_fields)
-
-    return rv
+    return field_locations, field_descriptions, text_fields
