@@ -5,6 +5,8 @@ import typing as t
 
 from ..meta import NMRMetaDescriptionDict
 
+__all__ = ('get_nmrpipe_definitions',)
+
 # Cached versions of the definitions dicts
 
 #: The location of fields in the binary header. The field names are the keys,

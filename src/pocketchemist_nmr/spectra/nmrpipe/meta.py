@@ -7,6 +7,8 @@ import typing as t
 from .definitions import get_nmrpipe_definitions
 from ..meta import NMRMetaDict
 
+__all__ = ('load_nmrpipe_meta', 'NMRPipeMetaDict', 'header_size')
+
 #: The size of the NMRPipe header in bytes
 header_size = 2048  # bytes
 
