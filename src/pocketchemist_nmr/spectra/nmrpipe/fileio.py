@@ -3,6 +3,7 @@ Utilities to load NMRPipe data
 """
 import typing as t
 from functools import reduce
+from itertools import zip_longest
 from math import isclose
 from pathlib import Path
 
@@ -28,8 +29,12 @@ def parse_nmrpipe_meta(meta: t.Optional[NMRPipeMetaDict]) -> dict:
     ndims = int(meta['FDDIMCOUNT'])
     result['ndims'] = ndims
 
-    # Retrieve the number of points (R+I) for the last dimension
+    # Retrieve the number of points (complex or real) for the last dimension
+    # (i.e. the current dimension)
     result['fdsize'] = int(meta['FDSIZE'])
+
+    # Retrieve the number of 1Ds in the file (real + imag)
+    result['fdspecnum'] = int(meta['FDSPECNUM'])
 
     # Data ordering
     # Retrieve the order of the dimensions (1, 2, 3, 4) vs (F1, F2, F3, F4)
@@ -41,7 +46,8 @@ def parse_nmrpipe_meta(meta: t.Optional[NMRPipeMetaDict]) -> dict:
     result['order'] = tuple(int(meta[f'FDDIMORDER{i}'])
                             for i in range(1, result['ndims'] + 1))
 
-    # Retrieve the data type for each dimension
+    # Retrieve the data type for each dimension. e.g. real, complex
+    # These are ordered the same as the data (result['order'])
     data_type = []
     for dim in result['order']:
         quadflag = meta[f'FDF{dim}QUADFLAG']
@@ -53,23 +59,33 @@ def parse_nmrpipe_meta(meta: t.Optional[NMRPipeMetaDict]) -> dict:
             raise NotImplementedError
     result['data_type'] = tuple(data_type)
 
-    # Calculate the number of complex or real or imag points in this file
-    # These are ordered the same as the data
-    if result['order'][0] == 1:
-        result['pts'] = (result['fdsize']
-                         if isclose(meta['FDSPECNUM'], 0.0) else
-                         result['fdsize'], int(meta['FDSPECNUM']))
-    else:
-        result['pts'] = (result['fdsize']
-                         if isclose(meta['FDSPECNUM'], 0.0) else
-                         int(meta['FDSPECNUM']), result['fdsize'])
+    # Data ordered points
+    # Calculate the number of complex or real or imag points in this file, as
+    # ordered in the data -- i.e. same order as result['order']
+    pts = []  # Complex OR Real points
+    data_pts = []  # Real + Imag points
+    for order, data_type, label in zip_longest(result['order'],
+                                               result['data_type'],
+                                               ('fdsize', 'fdspecnum'),
+                                               fillvalue=None):
+        value = result[label]
 
-    # Retrieve the total number of points for each dimension (real + imag)
-    # for this file
-    result['data_pts'] = tuple(pts * 2
-                               if data_type == DataType.COMPLEX else pts
-                               for pts, data_type in zip(result['pts'],
-                                                         result['data_type']))
+        if label == 'fdsize':
+            # FDDIZE conttains the number of points (Complex or Real)
+            pts.append(value)
+            data_pts.append(value * 2 if data_type == DataType.COMPLEX else
+                            value)
+        elif label == 'fdspecnum':
+            # FDSPECNUM contains the number of data points (Real + Imag)
+            pts.append(int(value / 2) if data_type == DataType.COMPLEX else
+                       value)
+            data_pts.append(value)
+        else:
+            raise NotImplementedError
+
+    # Add the point entries to the result dict
+    result['pts'] = tuple(pts)
+    result['data_pts'] = tuple(data_pts)
 
     return result
 

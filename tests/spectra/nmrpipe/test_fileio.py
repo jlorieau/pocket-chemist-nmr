@@ -16,12 +16,12 @@ def expected():
     return (
         # 2D spectra
         {'filepath': Path('data') / 'bruker' /
-                     'CD20170124_av500hd_101_ubq_hsqcsi2d' / 'test.fid',
+                     'CD20170124_av500hd_101_ubq_hsqcsi2d' / 'spec.fid',
          'ndims': 2,  # Number of dimensions in spectrum
          'order': (2, 1),  # Data ordering of data. e.g. F1, F2
          'data_type': (DataType.COMPLEX, DataType.COMPLEX),  # Type of data
-         'data_pts': (368 * 2, 640 * 2),  # Num of real + imag pts
-         'pts': (368, 640),  # Num of complex or real pts, depending on domain
+         'data_pts': (640 * 2, 184 * 2),  # Num of real + imag pts, data ordered
+         'pts': (640, 184),  # Num of complex or real pts, data ordered
          'shape': (640 * 2, 368 * 1),
          'data_heights': (((0, 0), 0. + 0.j),
                           ((0, -1), 0. + 0.j),
@@ -44,10 +44,10 @@ def expected():
         {'filepath': Path('data') / 'bruker' /
                      'CD20170124_av500hd_101_ubq_hsqcsi2d' /
                      'hsqcetfpf3gpsi2_complex.ft2',
-         'ndims': 2, 'order': (1, 2),
+         'ndims': 2, 'order': (2, 1),
          'data_type': (DataType.COMPLEX, DataType.COMPLEX),
-         'data_pts': (368 * 2, 1024 * 2),
-         'pts': (368, 1024),
+         'data_pts': (1024 * 2, 368 * 2),
+         'pts': (1024, 368),
          'shape': (1024 * 2, 368 * 1),
          'data_heights': (((0, 0), 551430.50000 -472929.90000j),
                           ((0, -1), 204368.80000 -486499.50000j),
