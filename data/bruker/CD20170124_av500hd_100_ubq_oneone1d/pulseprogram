@@ -1,0 +1,110 @@
+# 1 "/opt/topspin3.2/exp/stan/nmr/lists/pp/user/oneone-echo_N-dcpl.jll"
+;p11
+;avance-version (12/01/11)
+;water suppression using 1-1 pulse sequence
+;
+;$CLASS=HighRes
+;$DIM=1D
+;$TYPE=
+;$SUBTYPE=
+;$COMMENT=
+
+
+# 1 "/opt/topspin3.2/exp/stan/nmr/lists/pp/Avance.incl" 1
+;Avance3.incl
+;   for AV III
+;
+;avance-version (13/06/17)
+;
+;$CLASS=HighRes Incl
+;$COMMENT=
+# 169 "/opt/topspin3.2/exp/stan/nmr/lists/pp/Avance.incl"
+;$Id: Avance3.incl,v 1.9.8.3 2013/08/30 09:44:49 ber Exp $
+# 12 "/opt/topspin3.2/exp/stan/nmr/lists/pp/user/oneone-echo_N-dcpl.jll" 2
+
+# 1 "/opt/topspin3.2/exp/stan/nmr/lists/pp/Grad.incl" 1
+;Grad2.incl  -  include file for Gradient Spectroscopy
+;   for TCU3
+;
+;avance-version (07/01/17)
+;
+;$CLASS=HighRes Incl
+;$COMMENT=
+
+# 27 "/opt/topspin3.2/exp/stan/nmr/lists/pp/Grad.incl"
+define list<gradient> EA=<EA>
+
+
+# 31 "/opt/topspin3.2/exp/stan/nmr/lists/pp/Grad.incl"
+;$Id: Grad2.incl,v 1.13.8.1 2012/01/31 17:56:17 ber Exp $
+# 13 "/opt/topspin3.2/exp/stan/nmr/lists/pp/user/oneone-echo_N-dcpl.jll" 2
+
+
+# 1 "mc_line 16 file /opt/topspin3.2/exp/stan/nmr/lists/pp/user/oneone-echo_N-dcpl.jll exp. def. part of mc cmd. before ze"
+define delay MCWRK
+define delay MCREST
+"MCREST = 30m - 30m"
+"MCWRK = 0.333333*30m"
+
+    dccorr
+# 16 "/opt/topspin3.2/exp/stan/nmr/lists/pp/user/oneone-echo_N-dcpl.jll"
+# 16 "/opt/topspin3.2/exp/stan/nmr/lists/pp/user/oneone-echo_N-dcpl.jll"
+1 ze
+# 1 "mc_line 16 file /opt/topspin3.2/exp/stan/nmr/lists/pp/user/oneone-echo_N-dcpl.jll exp. def. of mc cmd. after ze"
+# 17 "/opt/topspin3.2/exp/stan/nmr/lists/pp/user/oneone-echo_N-dcpl.jll"
+# 1 "mc_line 17 file /opt/topspin3.2/exp/stan/nmr/lists/pp/user/oneone-echo_N-dcpl.jll exp. start label for mc cmd."
+2 MCWRK  * 2 do:f2
+LBLF0, MCWRK 
+  MCREST
+# 18 "/opt/topspin3.2/exp/stan/nmr/lists/pp/user/oneone-echo_N-dcpl.jll"
+  d1 setnmr3^0 setnmr0^34^32^33 ctrlgrad 7
+  10u pl31:f2
+  10u setnmr3|0 setnmr0|34|32|33 ctrlgrad 0
+  10u
+  p1 ph1
+  d19
+  p0 ph2
+ 
+  10u
+  p20:gp20
+  d4 
+  10u
+  10u
+  p1 ph3
+  d19
+  d19
+  p1 ph4
+  10u
+  p20:gp20
+  d4
+  10u cpd3:f2
+  10u setnmr3^0 setnmr0^34^32^33 ctrlgrad 7
+  go=2 ph31
+# 1 "mc_line 41 file /opt/topspin3.2/exp/stan/nmr/lists/pp/user/oneone-echo_N-dcpl.jll exp. mc cmd. in line"
+  MCWRK do:f2 wr #0
+  MCWRK zd
+  lo to LBLF0 times td0
+
+  MCWRK
+# 42 "/opt/topspin3.2/exp/stan/nmr/lists/pp/user/oneone-echo_N-dcpl.jll"
+exit
+
+
+ph1=0 2 2 0 ;1 3 3 1
+ph2=2 0 0 2 ;3 1 1 3
+ph3=0 0 0 0 1 1 1 1
+ph4=2 2 2 2 3 3 3 3
+ph31=0 2 2 0 2 0 0 2 ;1 3 3 1
+# 52 "/opt/topspin3.2/exp/stan/nmr/lists/pp/user/oneone-echo_N-dcpl.jll"
+;pl1 : f1 channel - power level for pulse (default)
+;p0 : f1 channel -  90 degree high power pulse
+;                   use for fine adjustment
+;p1 : f1 channel -  90 degree high power pulse
+;d1 : relaxation delay; 1-5 * T1
+;d19: delay for binomial water suppression
+;     d19 = (1/(2*d)), d = distance of next null (in Hz)
+;ns: 1 * n, total number of scans: NS * TD0
+
+
+# 63 "/opt/topspin3.2/exp/stan/nmr/lists/pp/user/oneone-echo_N-dcpl.jll"
+;$Id: p11,v 1.9.8.1 2012/01/31 17:56:34 ber Exp $

@@ -127,6 +127,13 @@ dmypy.json
 *~
 test*.fid
 test*.ft*
+1r
+1i
+2rr
+2ri
+2ir
+2ii
 *.fid
+*.ft
 *.ft2
 *.ft3
