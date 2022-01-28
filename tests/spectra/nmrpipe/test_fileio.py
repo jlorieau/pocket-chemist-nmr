@@ -14,9 +14,44 @@ from pocketchemist_nmr.spectra.constants import DataType
 def expected():
     """Return an iteratable of dicts with expected values"""
     return (
+        # 1D spectra
+        {'filepath': Path('data') / 'bruker' /
+         'CD20170124_av500hd_100_ubq_oneone1d' / 'spec.fid',
+         'ndims': 1,  # Number of dimensions in spectrum
+         'order': (2,),  # Order of data
+         'data_type': (DataType.COMPLEX,),  # Type of data
+         'data_pts': (799 * 2,),
+         'pts': (799,),
+         'shape': (799 * 1,),
+         'data_heights': (((0,), 0. + 0.j),
+                          ((-1,), -359985.70000 - 16418.97000j))},
+
+        {'filepath': Path('data') / 'bruker' /
+         'CD20170124_av500hd_100_ubq_oneone1d' / 'oneone-echo_N-dcpl.jll.ft',
+         'ndims': 1,
+         'order': (2,),
+         'data_type': (DataType.REAL,),
+         'data_pts': (8192 * 1,),
+         'pts': (8192,),
+         'shape': (8192 * 1,),
+         'data_heights': (((0,), 491585.80000),
+                          ((-1,), 594718.70000))},
+
+        {'filepath': Path('data') / 'bruker' /
+         'CD20170124_av500hd_100_ubq_oneone1d' /
+         'oneone-echo_N-dcpl.jll_complex.ft',
+         'ndims': 1,
+         'order': (2,),
+         'data_type': (DataType.COMPLEX,),
+         'data_pts': (8192 * 2,),
+         'pts': (8192,),
+         'shape': (8192 * 1,),
+         'data_heights': (((0,), 491585.80000 - 1010224.00000j),
+                          ((-1,), 594718.70000 - 968423.10000j)),},
+
         # 2D spectra
         {'filepath': Path('data') / 'bruker' /
-                     'CD20170124_av500hd_101_ubq_hsqcsi2d' / 'spec.fid',
+         'CD20170124_av500hd_101_ubq_hsqcsi2d' / 'spec.fid',
          'ndims': 2,  # Number of dimensions in spectrum
          # Data ordering of data. (direct, indirect) e.g. F1, F2
          'order': (2, 1),
@@ -31,8 +66,7 @@ def expected():
                           ((-1, -1), -761.71680 - 996.09120j))},
 
         {'filepath': Path('data') / 'bruker' /
-                     'CD20170124_av500hd_101_ubq_hsqcsi2d' /
-                     'hsqcetfpf3gpsi2.ft2',
+         'CD20170124_av500hd_101_ubq_hsqcsi2d' / 'hsqcetfpf3gpsi2.ft2',
          'ndims': 2, 'order': (1, 2),
          'data_type': (DataType.REAL, DataType.REAL),
          'data_pts': (368 * 1, 1024 * 1),
@@ -44,8 +78,7 @@ def expected():
                           ((-1, -1), -216286.20000))},
 
         {'filepath': Path('data') / 'bruker' /
-                     'CD20170124_av500hd_101_ubq_hsqcsi2d' /
-                     'hsqcetfpf3gpsi2_complex.ft2',
+         'CD20170124_av500hd_101_ubq_hsqcsi2d' / 'hsqcetfpf3gpsi2_complex.ft2',
          'ndims': 2, 'order': (2, 1),
          'data_type': (DataType.COMPLEX, DataType.COMPLEX),
          'data_pts': (1024 * 2, 368 * 2),

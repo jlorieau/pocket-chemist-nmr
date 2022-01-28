@@ -51,6 +51,7 @@ def parse_nmrpipe_meta(meta: t.Optional[NMRPipeMetaDict]) -> dict:
     data_type = []
     for dim in result['order']:
         quadflag = meta[f'FDF{dim}QUADFLAG']
+
         if isclose(quadflag, 0.0):  # Complex/quadrature data
             data_type.append(DataType.COMPLEX)
         elif isclose(quadflag, 1.0):  # Real/singular data
@@ -68,8 +69,14 @@ def parse_nmrpipe_meta(meta: t.Optional[NMRPipeMetaDict]) -> dict:
                                                result['data_type'],
                                                ('fdsize', 'fdspecnum'),
                                                fillvalue=None):
+        # If the dimension hasn't been assigned, quit processing
+        if order is None:
+            break
+
+        # Get the value for the variable
         value = result[label]
 
+        # Assign the number of points (pts) and number of data points (data_pts)
         if label == 'fdsize':
             # FDDIZE conttains the number of points (Complex or Real)
             pts.append(value)
@@ -155,22 +162,29 @@ def load_nmrpipe_tensor(filename: t.Union[str, Path],
     # Create the tensor
     tensor = FloatTensor(storage, device=device)
 
-    # Strip the header from the tensor, reshape tensor and return
-    # The shape ordering has to be reverse from the number of points (pts).
-    # The order of dimensions in parsed['order'] is indirect -> direct, whereas
-    # the frst dimension for the tensor is the direct data
-    # (contiguous fid/spectrum)
+    # Strip the header from the tensor, reshape tensor and return tensor
+    # The shape ordering has to be reversed from the number of points (pts).
+    # NMRPipe data: inner->outer1->outer2
+    # Tensor data: outer2->outer1->inner
     if data_type[0] == DataType.COMPLEX:
         # Recast real/imag numbers. Data ordered as:
         # R(1) R(2) ... R(N) I(1) I(2) ... I(N)
         # Split into 2 sets, real and imag
-        # split = tensor[header_elems:].reshape(int(data_points[0] / 2), 2,
-        #                                       *data_points[1:])
-        split = tensor[header_elems:].reshape(data_points[1], 2, int(data_points[0] / 2))
-        print(pts, data_points, split.size())
-        print(tensor[header_elems:])
-        print(split[:,0,:])
-        print(split[:,1,:])
-        return complex(real=split[:, 0, :], imag=split[:, 1, :])
+        split = tensor[header_elems:].reshape(*data_points[1:][::-1],
+                                              2, int(data_points[0] / 2))
+
+        # Find and pull out the real and imag components
+        real, imag = None, None
+        for dim, dim_size in enumerate(split.size()):
+            if dim_size == 2:
+                # Dimensions not yet assigned
+                assert real is None and imag is None
+
+                # Assign real / imag components
+                real = split.select(dim, 0)
+                imag = split.select(dim, 1)
+        assert real is not None and imag is not None
+
+        return complex(real=real, imag=imag)
     else:
         return tensor[header_elems:].reshape(*pts[::-1])
