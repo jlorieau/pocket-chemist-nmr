@@ -3,35 +3,15 @@ NMRSpectrum in NMRPipe format
 """
 import re
 import typing as t
-from enum import Enum
 
 import numpy as np
 
 from . import pipe_fileio
-#import nmrglue.fileio.pipe as pipe_fileio
-from ..nmr_spectrum import NMRSpectrum, DomainType
+from .constants import Plane2DPhase, SignAdjustment
+from ..nmr_spectrum import NMRSpectrum
+from ..constants import DomainType
 
-__all__ = ('NMRPipeSpectrum', 'Plane2DPhase', 'SignAdjustment')
-
-
-# Enumeration types
-class Plane2DPhase(Enum):
-    """Values for the 2D plane phase--i.e. the 'FD2DPHASE' value """
-    MAGNITUDE = 0.0  # Magnitude mode data
-    TPPI = 1.0  # TPPI (Time Proportional Phase Incrementation)
-    STATES = 2.0  # States or States-TPPI
-    IMAGE = 3.0  # Image data
-    NONE = None  # Data is not a 2D plane
-
-
-class SignAdjustment(Enum):
-    """Values for the sign adjustment needed for FFT"""
-    NONE = 0.0  # No sign adjustment needed
-    REAL = 1.0  # Sign alternation of the real component
-    COMPLEX = 2.0  # Sign alternation of both real and imaginary components
-    NEGATE_IMAG = 16.0  # Negate the imaginary component
-    REAL_NEGATE_IMAG = 17.0  # Same as REAL + NEGATE_IMAG
-    COMPLEX_NEGATE_IMAG = 18.0  # Same as COMPLEX + NEGATE_IMAG
+__all__ = ('NMRPipeSpectrum',)
 
 
 # Concrete subclass
