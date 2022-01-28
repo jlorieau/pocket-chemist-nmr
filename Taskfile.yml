@@ -1,0 +1,7 @@
+version: '3'
+
+tasks:
+  build_test_datasets:
+    desc: Build datasets needed for tests
+    cmds:
+      - make -C data/bruker/CD20170124_av500hd_101_ubq_hsqcsi2d/

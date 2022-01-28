@@ -127,5 +127,6 @@ dmypy.json
 *~
 test*.fid
 test*.ft*
+*.fid
 *.ft2
 *.ft3
