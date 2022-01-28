@@ -3,20 +3,13 @@ NMR Spectra in different formats
 """
 import abc
 import typing as t
-from enum import Enum
 from pathlib import Path
 
 from pocketchemist.processors.fft import FFTType
 
-__all__ = ('NMRSpectrum', 'DomainType')
+from .constants import DomainType
 
-
-# Enumeration types
-class DomainType(Enum):
-    """The data domain type for a dimension"""
-    UNKNOWN = 0  # unknown domain type
-    TIME = 1  # time domain data (in sec)
-    FREQ = 2  # frequency domain data (in Hz)
+__all__ = ('NMRSpectrum',)
 
 
 # Abstract base class implementation
