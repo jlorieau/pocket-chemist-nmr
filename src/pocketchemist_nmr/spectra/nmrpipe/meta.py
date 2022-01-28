@@ -5,12 +5,10 @@ import struct
 import typing as t
 
 from .definitions import get_nmrpipe_definitions
+from .constants import header_size_bytes
 from ..meta import NMRMetaDict
 
-__all__ = ('load_nmrpipe_meta', 'NMRPipeMetaDict', 'header_size')
-
-#: The size of the NMRPipe header in bytes
-header_size = 2048  # bytes
+__all__ = ('load_nmrpipe_meta', 'NMRPipeMetaDict')
 
 
 class NMRPipeMetaDict(NMRMetaDict):
@@ -18,7 +16,8 @@ class NMRPipeMetaDict(NMRMetaDict):
 
 
 def load_nmrpipe_meta(filelike: t.BinaryIO, start: int = 0,
-                      end: t.Optional[int] = header_size) -> NMRPipeMetaDict:
+                      end: t.Optional[int] = header_size_bytes) \
+        -> NMRPipeMetaDict:
     """Retrieve metadata in NMRPipe format.
 
     Parameters
@@ -49,7 +48,7 @@ def load_nmrpipe_meta(filelike: t.BinaryIO, start: int = 0,
         filelike.seek(start)
 
     # Retrieve the buffer in binary format
-    buff = filelike.read(end if end is not None else header_size)
+    buff = filelike.read(end if end is not None else header_size_bytes)
 
     # Reset the buffer, if specified, or place it back to where it started
     if isinstance(end, int):
