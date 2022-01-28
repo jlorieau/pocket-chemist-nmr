@@ -18,15 +18,17 @@ def expected():
         {'filepath': Path('data') / 'bruker' /
                      'CD20170124_av500hd_101_ubq_hsqcsi2d' / 'spec.fid',
          'ndims': 2,  # Number of dimensions in spectrum
-         'order': (2, 1),  # Data ordering of data. e.g. F1, F2
+         # Data ordering of data. (direct, indirect) e.g. F1, F2
+         'order': (2, 1),
          'data_type': (DataType.COMPLEX, DataType.COMPLEX),  # Type of data
          'data_pts': (640 * 2, 184 * 2),  # Num of real + imag pts, data ordered
          'pts': (640, 184),  # Num of complex or real pts, data ordered
-         'shape': (640 * 2, 368 * 1),
+         # Shape of returned tensor (indirect, direct), reverse of pts
+         'shape': (184 * 2, 640 * 1),
          'data_heights': (((0, 0), 0. + 0.j),
-                          ((0, -1), 0. + 0.j),
+                          ((0, -1), 5619.12600 - 4132.80200j),
                           ((1, 0), 0. + 0.j),
-                          ((-1, -1), 0. + 0.j))},
+                          ((-1, -1), -761.71680 - 996.09120j))},
 
         {'filepath': Path('data') / 'bruker' /
                      'CD20170124_av500hd_101_ubq_hsqcsi2d' /
@@ -34,8 +36,8 @@ def expected():
          'ndims': 2, 'order': (1, 2),
          'data_type': (DataType.REAL, DataType.REAL),
          'data_pts': (368 * 1, 1024 * 1),
-         'pts': (368, 1024),
-         'shape': (1024, 368),
+         'pts': (368 * 1, 1024 * 1),
+         'shape': (1024 * 1, 368 * 1),
          'data_heights': (((0, 0), 551430.50000),
                           ((0, -1), 204368.90000),
                           ((1, 0), 493020.70000),
@@ -47,12 +49,12 @@ def expected():
          'ndims': 2, 'order': (2, 1),
          'data_type': (DataType.COMPLEX, DataType.COMPLEX),
          'data_pts': (1024 * 2, 368 * 2),
-         'pts': (1024, 368),
-         'shape': (1024 * 2, 368 * 1),
-         'data_heights': (((0, 0), 551430.50000 -472929.90000j),
-                          ((0, -1), 204368.80000 -486499.50000j),
-                          ((1, 0), -76349.69000 +416353.10000j),
-                          ((-1, -1), -216286.20000))},
+         'pts': (1024 * 1, 368 * 1),
+         'shape': (368 * 2, 1024 * 1),
+         'data_heights': (((0, 0), 551430.50000 - 76349.69000j),
+                          ((0, -1), 73015.44000 + 445419.70000j),
+                          ((1, 0), -472929.90000 + 416353.10000j),
+                          ((-1, -1), -136615.50000 - 991015.50000j))},
     )
 
 
