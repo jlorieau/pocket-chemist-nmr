@@ -19,7 +19,7 @@ nmrPipe -in spec.fid \
 #| nmrPipe -fn PS -p0 0. -p1 0. -di \
 | nmrPipe -fn TP \
 | nmrPipe -fn POLY -auto \
-| nmrPipe -fn TP \
+#| nmrPipe -fn TP \
  -ov -out ${PULPROG}_complex.ft2
 
 
