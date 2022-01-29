@@ -5,7 +5,7 @@ import abc
 import typing as t
 from pathlib import Path
 
-from pocketchemist.processors.fft import FFTType
+from pocketchemist.processors import FFTType
 
 from .constants import DomainType
 
@@ -27,7 +27,7 @@ class NMRSpectrum(abc.ABC):
     meta: dict
 
     #: The data for the spectrum, either an array or an iterator
-    data: t.Union[t.Iterable, 'numpy.ndarray']
+    data: 'torch.Tensor'
 
     #: If specified, this is the iterator do generate sub-spectra from
     #: multiple files
