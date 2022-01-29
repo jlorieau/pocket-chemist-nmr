@@ -6,7 +6,6 @@ import typing as t
 
 import numpy as np
 
-from . import pipe_fileio
 from .constants import Plane2DPhase, SignAdjustment
 from ..nmr_spectrum import NMRSpectrum
 from ..constants import DomainType
