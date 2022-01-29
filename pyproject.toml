@@ -6,7 +6,7 @@ authors = ["J Lorieau"]
 
 [tool.poetry.dependencies]
 python = ">=3.8,<3.11"
-pocketchemist = "^0.1.0"
+pocketchemist = "^0.1.1"
 click = "^8.0.3"
 click-option-group = "^0.5.3"
 humanfriendly = "^10.0"
@@ -14,8 +14,11 @@ loguru = "^0.5.3"
 torch = "^1.10.2"
 
 [tool.poetry.dev-dependencies]
-pytest = "^5.2"
+pytest = "^6.2"
 pytest-repeat = "^0.9.1"
+virtualenv = "^20.13.0"
+pytest-benchmark = "^3.4.1"
+pytest-profiling = "^1.7.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -24,3 +27,6 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry.plugins."pocketchemist"]
 cli = "pocketchemist_nmr.cli:nmrpipe"
 config = "pocketchemist_nmr.config:config"
+
+[tool.pytest.ini_options]
+addopts = "--benchmark-disable"
