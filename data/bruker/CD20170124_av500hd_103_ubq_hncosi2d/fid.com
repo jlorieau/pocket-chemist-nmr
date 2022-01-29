@@ -11,6 +11,6 @@ bruk2pipe -verb -in ./ser \
   -xLAB              HN  -yLAB             15N  -zLAB             13C  \
   -ndim               3  -aq2D         Complex                         \
 | nmrPipe -fn MULT -c 9.76562e-01 \
-| pipe2xyz -x -out ./fid/test%03d.fid -ov
+| pipe2xyz -x -out ./fid/spec%03d.fid -ov
 
 sleep 5
