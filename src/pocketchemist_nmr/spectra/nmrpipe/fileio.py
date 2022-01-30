@@ -7,8 +7,7 @@ from itertools import zip_longest
 from math import isclose
 from pathlib import Path
 
-from torch import (Tensor, FloatStorage, FloatTensor, cuda, as_strided,
-                   view_as_complex, complex)
+from torch import Tensor, FloatStorage, FloatTensor, cuda, complex
 
 from .meta import NMRPipeMetaDict, load_nmrpipe_meta
 from .constants import header_size_bytes, data_size_bytes
@@ -36,6 +35,11 @@ def parse_nmrpipe_meta(meta: t.Optional[NMRPipeMetaDict]) -> dict:
     # Retrieve the number of 1Ds in the file (real + imag)
     result['fdspecnum'] = int(meta['FDSPECNUM'])
 
+    # Retrieve the number of planes (3D, 4D) in the file (real + imag)
+    result['fdf3size'] = int(meta['FDF3SIZE'])
+    result['fdf4size'] = int(meta['FDF4SIZE'])
+    result['fdfilecount'] = int(meta['FDFILECOUNT'])
+
     # Data ordering
     # Retrieve the order of the dimensions (1, 2, 3, 4) vs (F1, F2, F3, F4)
     # The data will be stored as inner-outer1-outer2-...
@@ -44,7 +48,7 @@ def parse_nmrpipe_meta(meta: t.Optional[NMRPipeMetaDict]) -> dict:
     # ..
     # innerN - outer2
     result['order'] = tuple(int(meta[f'FDDIMORDER{i}'])
-                            for i in range(1, result['ndims'] + 1))
+                            for i in range(1, ndims + 1))
 
     # Retrieve the data type for each dimension. e.g. real, complex
     # These are ordered the same as the data (result['order'])
@@ -65,12 +69,11 @@ def parse_nmrpipe_meta(meta: t.Optional[NMRPipeMetaDict]) -> dict:
     # ordered in the data -- i.e. same order as result['order']
     pts = []  # Complex OR Real points
     data_pts = []  # Real + Imag points
-    for order, data_type, label in zip_longest(result['order'],
-                                               result['data_type'],
-                                               ('fdsize', 'fdspecnum'),
-                                               fillvalue=None):
+    for dim, data_type, label in zip_longest(
+            result['order'], result['data_type'],
+            ('fdsize', 'fdspecnum', f'fdf{dim}size'), fillvalue=None):
         # If the dimension hasn't been assigned, quit processing
-        if order is None:
+        if dim is None:
             break
 
         # Get the value for the variable
@@ -82,8 +85,11 @@ def parse_nmrpipe_meta(meta: t.Optional[NMRPipeMetaDict]) -> dict:
             pts.append(value)
             data_pts.append(value * 2 if data_type == DataType.COMPLEX else
                             value)
-        elif label == 'fdspecnum':
-            # FDSPECNUM contains the number of data points (Real + Imag)
+        elif label == 'fdspecnum' or label == f'fdf{dim}size':
+            # FDSPECNUM contains the number of data points in dimension 2
+            # (Real + Imag)
+            # FDF3SIZE/FDF4SIZE contains the number of data points in
+            # dimensions 3 and 4 (Real + Imag)
             pts.append(int(value / 2) if data_type == DataType.COMPLEX else
                        value)
             data_pts.append(value)
@@ -135,11 +141,32 @@ def load_nmrpipe_tensor(filename: t.Union[str, Path],
     # Get the parsed values from the metadata dict
     parsed = parse_nmrpipe_meta(meta)
     ndims = parsed['ndims']  # Number of dimensions
-    pts = parsed['pts']  # Number of points (Complex or Real) in data
+    points = parsed['pts']  # Number of points (Complex or Real) in data
     data_type = parsed['data_type']  # The type of data for each dimension
     data_points = parsed['data_pts']  # Number of data points in each dim
     data_size_bytes = parsed['data_size_bytes']  # size of elements in bytes
     header_size_bytes = parsed['header_size_bytes'] # size of header in bytes
+
+    # Get data relevant for 3Ds and 4Ds
+    file_count = parsed['fdfilecount']  # Num of files spectrum is split over
+    f3size = parsed['fdf3size']  # Num of points in F3
+    f4size = parsed['fdf4size']  # Num of points in F3
+
+    # For spectra split over multiple files, reduce the dimensionality of
+    # points/data_points for over multiple files
+    if file_count > 1:
+        # Reduce the number of points if the last dimension corresponds to
+        # the number of files in which the spectrum is split
+        if data_points[-1] == file_count or data_points[-1] == file_count:
+            points = points[:-1]  # Remove last point
+            data_points = data_points[:-1]  # Remove last point
+
+        # For spectra in which 2 dimensions (i.e. 4Ds) are split over multiple
+        # files, then a product of dimensions is needed
+        elif (len(data_points) > 2 and
+              data_points[-1] * data_points[-2] == file_count):
+            points = points[:-2]  # Remove last 2 points
+            data_points = data_points[:-2]  # Remove last 2 points
 
     # Prepare values needed to create a tensor storage
     # We calculate the size of elements in multiples of the data size (float)
@@ -187,4 +214,4 @@ def load_nmrpipe_tensor(filename: t.Union[str, Path],
 
         return complex(real=real, imag=imag)
     else:
-        return tensor[header_elems:].reshape(*pts[::-1])
+        return tensor[header_elems:].reshape(*points[::-1])
