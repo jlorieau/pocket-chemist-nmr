@@ -7,14 +7,17 @@ from itertools import zip_longest
 from math import isclose
 from pathlib import Path
 
-from torch import Tensor, FloatStorage, FloatTensor, cuda, complex
+from torch import Tensor, FloatStorage, FloatTensor, cuda, complex, stack
 
 from .meta import NMRPipeMetaDict, load_nmrpipe_meta
 from .constants import header_size_bytes, data_size_bytes
 from ..constants import DataType
 
-__all__ = ('parse_nmrpipe_meta', 'load_nmrpipe_tensor',)
+__all__ = ('parse_nmrpipe_meta', 'load_nmrpipe_tensor',
+           'load_nmrpipe_multifile_tensor')
 
+
+# Single file I/O
 
 def parse_nmrpipe_meta(meta: t.Optional[NMRPipeMetaDict]) -> dict:
     """Retrieve meta data from an NMRPipe meta dict."""
@@ -218,3 +221,66 @@ def load_nmrpipe_tensor(filename: t.Union[str, Path],
         return complex(real=real, imag=imag)
     else:
         return tensor[header_elems:].reshape(*points[::-1])
+
+
+def load_nmrpipe_multifile_tensor(filemask: str,
+                                  meta: t.Optional[dict] = None,
+                                  shared: bool = True,
+                                  device: t.Optional[str] = None,
+                                  force_gpu: bool = False):
+    """Load NMRPipe data from a spectrum over multiple files.
+
+    .. note:: The 'order' metadata attribute gives the order of dimensions
+              in the dataset from inner->outer1->outer2->etc. However, the
+              returned torch tensor has data ordered in reverse with
+              tensor[outer2][outer1][inner]
+
+    Parameters
+    ----------
+    filemask
+        The filemask for the NMRPipe spectrum. e.g. fid/test%03d.fid for
+        fid/test001.fid, fid/test002.fid, etc.
+    order
+        The order to load the data. If 'default', the data is loaded in the
+        same order as the data saved on disk
+    meta
+        The NMRPipe metadata dict
+    shared
+        Create the tensor storage to be shared between threads/processing
+    device
+        The name of the device to allocate the memory on.
+    force_gpu
+        Force allocating the tensor on the GPU
+
+    Returns
+    -------
+    tensor
+        The tensor for the spectrum's data
+    """
+    # Convert filemasks into a listing of filenames for existing files
+    filepaths = []
+    if str(filemask).count("%") == 1:  # ex: test001.fid
+        for i in range(1, 10000):
+            filepath = Path(str(filemask) % i)
+            if not filepath.exists():
+                break
+            filepaths.append(filepath)
+    elif  str(filemask).count("%") == 2:   # ex: test001_001.fid
+        for i in range(1, 10000):
+            missing_j = True
+            for j in range(1, 10000):
+                filepath = Path(str(filemask) % i, j)
+                if not filepath.exists():
+                    break
+                else:
+                    missing_j = False
+                filepaths.append(filepath)
+            if missing_j:
+                break
+    else:
+        raise NotImplementedError
+
+    # Concatenate tensors
+    return stack(tuple(load_nmrpipe_tensor(filepath, meta=meta,shared=shared,
+                                         device=device, force_gpu=force_gpu)
+                       for filepath in filepaths))
