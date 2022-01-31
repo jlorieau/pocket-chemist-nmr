@@ -148,5 +148,4 @@ def test_load_nmrpipe_tensor(expected, benchmark):
 
     # Check the data values for some key points (locations) in the data
     for loc, data_height in expected['data_heights']:
-        print('loc:', loc, "expected:", data_height)
         assert isclose(tensor[loc], data_height, rel_tol=0.001)
