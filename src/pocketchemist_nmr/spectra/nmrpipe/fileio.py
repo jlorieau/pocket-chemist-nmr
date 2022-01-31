@@ -189,7 +189,8 @@ def load_nmrpipe_tensor(filename: t.Union[str, Path],
                                          size=total_elems)
 
     # Create the tensor
-    tensor = FloatTensor(storage, device=device)
+    tensor = (FloatTensor(storage) if device is None else
+              FloatStorage(storage, device=device))
 
     # Strip the header from the tensor, reshape tensor and return tensor
     # The shape ordering has to be reversed from the number of points (pts).
