@@ -3,18 +3,18 @@ directory.
 
 | Dataset          | Parameter  | Value               |
 |------------------|------------|---------------------|
-| fid/spec001.fid  | ORD        | 2, 1, 3, 4          |
+| fid/spec001.fid  | ORD        | 2, 1, 3            |
 |                  | NPTS       | 559x2, 39x2, 51x2   |
 |                  | FDSIZE     | 559                 |
 |                  | FDSPECNUM  | 78                  |
 |                  | FDF3SIZE   | 102                 |
 |                  | FDF4SIZE   | 1                   |
 |                  | FILECOUNT  | 102                 |
-| hncogp3d.ft3     | ORD        | 2, 3, 1, 4          |
+| hncogp3d.ft3     | ORD        | 2, 3, 1             |
 |                  | NPTS       | 805x1, 512x1, 256x1 |
-|                  | FDSIZE     | 805                 |
-|                  | FDSPECNUM  | 512                 |
-|                  | FDF3SIZE   | 256                 |
+|                  | FDSIZE     | 805                 | (F2)
+|                  | FDSPECNUM  | 512                 | (F3)
+|                  | FDF3SIZE   | 256                 | (F1)
 |                  | FDF4SIZE   | 1                   |
 |                  | FILECOUNT  | 1                   |
 
