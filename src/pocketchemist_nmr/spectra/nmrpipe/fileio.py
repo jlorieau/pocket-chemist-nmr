@@ -112,7 +112,7 @@ def load_nmrpipe_tensor(filename: t.Union[str, Path],
                         meta: t.Optional[NMRPipeMetaDict] = None,
                         shared: bool = True,
                         device: t.Optional[str] = None,
-                        force_gpu=False) -> Tensor:
+                        force_gpu=False) -> (dict, Tensor):
     """Load NMRPipe data from a single spectrum file (1D or 2D).
 
     .. note:: The 'order' metadata attribute gives the order of dimensions
@@ -135,8 +135,8 @@ def load_nmrpipe_tensor(filename: t.Union[str, Path],
 
     Returns
     -------
-    tensor
-        The tensor for the spectrum's data
+    meta, tensor
+        The metadata dict and tensor for the spectrum's data
     """
     # Load the meta dict, if needed
     if meta is None:
@@ -218,16 +218,17 @@ def load_nmrpipe_tensor(filename: t.Union[str, Path],
                 imag = split.select(dim, 1)
         assert real is not None and imag is not None
 
-        return complex(real=real, imag=imag)
+        return meta, complex(real=real, imag=imag)
     else:
-        return tensor[header_elems:].reshape(*points[::-1])
+        return meta, tensor[header_elems:].reshape(*points[::-1])
 
 
 def load_nmrpipe_multifile_tensor(filemask: str,
                                   meta: t.Optional[dict] = None,
                                   shared: bool = True,
                                   device: t.Optional[str] = None,
-                                  force_gpu: bool = False):
+                                  force_gpu: bool = False) \
+        -> (t.List[dict], Tensor):
     """Load NMRPipe data from a spectrum over multiple files.
 
     .. note:: The 'order' metadata attribute gives the order of dimensions
@@ -254,8 +255,8 @@ def load_nmrpipe_multifile_tensor(filemask: str,
 
     Returns
     -------
-    tensor
-        The tensor for the spectrum's data
+    metas, tensor
+        The metadata dicts and tensor for the spectrum's data
     """
     # Convert filemasks into a listing of filenames for existing files
     filepaths = []
@@ -265,7 +266,7 @@ def load_nmrpipe_multifile_tensor(filemask: str,
             if not filepath.exists():
                 break
             filepaths.append(filepath)
-    elif  str(filemask).count("%") == 2:   # ex: test001_001.fid
+    elif str(filemask).count("%") == 2:   # ex: test001_001.fid
         for i in range(1, 10000):
             missing_j = True
             for j in range(1, 10000):
@@ -281,6 +282,9 @@ def load_nmrpipe_multifile_tensor(filemask: str,
         raise NotImplementedError
 
     # Concatenate tensors
-    return stack(tuple(load_nmrpipe_tensor(filepath, meta=meta,shared=shared,
+    datasets = tuple(load_nmrpipe_tensor(filepath, meta=meta,shared=shared,
                                          device=device, force_gpu=force_gpu)
-                       for filepath in filepaths))
+                     for filepath in filepaths)
+    meta_dicts = [meta for meta, _ in datasets]
+    tensor = stack(tuple(data for _, data in datasets))
+    return meta_dicts, tensor
