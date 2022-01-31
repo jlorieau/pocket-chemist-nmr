@@ -101,6 +101,20 @@ def expected():
                           ((0, -1), -6837.88700 + 5389.64600j),
                           ((1, 0), 0. + 0.j),
                           ((-1, -1), -676.75750 + 13228.51000j,))},
+
+        {'filepath': Path('data') / 'bruker' /
+         'CD20170124_av500hd_103_ubq_hncosi2d' / 'hncogp3d.ft3',
+         'ndims': 3, 'order': (2, 3, 1),
+         'data_type': (DataType.REAL, DataType.REAL, DataType.REAL,),
+         'data_pts': (805 * 1, 512 * 1, 256 * 1),
+         'pts': (805, 512, 256),
+         'shape': (256, 512, 805),
+         'data_heights': (((0, 0, 0), -263255.90000),
+                          ((0, -1, 0), -160037.1250),
+                          ((0, 1, 0), -344788.20000),
+                          ((0, 0, 1), -261000.1250),
+                          ((0, 0, -1), 563424.8125),
+                          ((-1, -1, -1), 392196.70000))},
     )
 
 
@@ -134,5 +148,5 @@ def test_load_nmrpipe_tensor(expected, benchmark):
 
     # Check the data values for some key points (locations) in the data
     for loc, data_height in expected['data_heights']:
-        print('loc:', loc, "expected:", data_height, "actual:", tensor[loc])
+        print('loc:', loc, "expected:", data_height)
         assert isclose(tensor[loc], data_height, rel_tol=0.001)

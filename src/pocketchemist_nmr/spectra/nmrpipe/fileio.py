@@ -71,10 +71,12 @@ def parse_nmrpipe_meta(meta: t.Optional[NMRPipeMetaDict]) -> dict:
     data_pts = []  # Real + Imag points
     for dim, data_type, label in zip_longest(
             result['order'], result['data_type'],
-            ('fdsize', 'fdspecnum', f'fdf{dim}size'), fillvalue=None):
+            ('fdsize', 'fdspecnum', 'fdf3size', 'fdf4size'), fillvalue=None):
         # If the dimension hasn't been assigned, quit processing
         if dim is None:
             break
+        if label in ('fdf1size', 'fdf2size'):
+            continue
 
         # Get the value for the variable
         value = result[label]
@@ -85,7 +87,7 @@ def parse_nmrpipe_meta(meta: t.Optional[NMRPipeMetaDict]) -> dict:
             pts.append(value)
             data_pts.append(value * 2 if data_type == DataType.COMPLEX else
                             value)
-        elif label == 'fdspecnum' or label == f'fdf{dim}size':
+        elif label in ('fdspecnum', 'fdf3size', 'fdf4size'):
             # FDSPECNUM contains the number of data points in dimension 2
             # (Real + Imag)
             # FDF3SIZE/FDF4SIZE contains the number of data points in
