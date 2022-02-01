@@ -3,10 +3,12 @@ NMRSpectrum in NMRPipe format
 """
 import re
 import typing as t
+from math import isclose
 
 import numpy as np
 
 from .constants import Plane2DPhase, SignAdjustment
+from .fileio import load_nmrpipe_tensor, load_nmrpipe_multifile_tensor
 from ..nmr_spectrum import NMRSpectrum
 from ..constants import DomainType
 
@@ -36,18 +38,6 @@ class NMRPipeSpectrum(NMRSpectrum):
         - 'FD2DPHASE': Describes the type of 2D file plane, if the data is 2-,
           3-, 4-dimensional.
     """
-
-    def __next__(self):
-        try:
-            meta, data = next(self.iterator)
-        except StopIteration as exc:
-            self.iterator_done = True
-            raise exc
-
-        self.meta = meta
-        self.data = data
-        return self
-
     # Basic accessor/mutator methods
 
     @property
@@ -60,96 +50,56 @@ class NMRPipeSpectrum(NMRSpectrum):
 
     @property
     def order(self) -> t.Tuple[int, ...]:
-        """The ordering of dimensions in the data"""
-        if 'FDDIMORDER' in self.meta:
-            return tuple(map(int, self.meta['FDDIMORDER'][:self.ndims]))
-        else:
-            return tuple(range(1, self.ndims + 1))
+        """The ordering of the data dimensions to the F1/F2/F3/F4 channels
+        in the header.
 
-    @order.setter
-    def order(self, new_order: t.Tuple[int, ...]):
-        assert 'FDDIMORDER' in self.meta
-        assert len(new_order) == self.ndims, (
-                "The new ordering must match the number of dimensions.")
-        assert all(0 < i < 6 for i in new_order), (
-                "The dimension numbers must be between 1-6.")
+        The order is a value between 1 and 4.
+        """
+        fddimorder = [int(self.meta[f"FDDIMORDER{dim}"]) for dim in range(1, 5)]
+        return tuple(fddimorder[:self.ndims])
 
-        for i, order in enumerate(new_order):
-            self.meta['FDDIMORDER'][i] = float(order)
-
-    def domain_type(self,
-                    dim: int = None,
-                    value: t.Optional[DomainType] = None) -> DomainType:
-        dim = dim if dim is not None else self.order[0]
-        ndims = self.ndims
-        assert 0 < dim <= ndims, (
-            f"The specified dimension '{dim}' must be between 1-{ndims}.")
-        label = f'FDF{dim}FTFLAG'
-
+    @property
+    def domain_type(self) -> t.Tuple[DomainType, ...]:
         # Setup mappings between DomainTypes and the meta dict values
-        mappings = {DomainType.FREQ: 1.0,
-                    DomainType.TIME: 0.0}
+        domain_types = []
+        for dim in self.order:
+            value = self.meta[f"FDF{dim}FTFLAG"]
 
-        # Set the value, if specified
-        if value is not None:
-            self.meta[label] = mappings[value]
+            if isclose(value, 0.0):
+                domain_types.append(DomainType.TIME)
+            elif isclose(value, 1.0):
+                domain_types.append(DomainType.FREQ)
+            else:
+                domain_types.append(DomainType.UNKNOWN)
 
-        # Retrieve and format the domain type
-        if label in self.meta:
-            value = self.meta[label]
-            return tuple(k for k, v in mappings.items() if v == value)[0]
-        else:
-            return DomainType.UNKNOWN
+        return tuple(domain_types)
 
     @property
     def sw(self):
         """Spectral widths (in Hz) of all available dimensions, as ordered by
         self.order"""
-        ordered_dims = self.order[:self.ndims]
-        return tuple(self.meta[f"FDF{dim}SW"] for dim in ordered_dims)
+        return tuple(self.meta[f"FDF{dim}SW"] for dim in self.order)
 
-    @sw.setter
-    def sw(self, value):
-        # Make sure the given 'value' iterable matches the number of dimensions
-        ndims = self.ndims
-        ordered_dims = self.order[:ndims]
-        assert len(value) == ndims, (
-            f"The number of spectral widths '{value}' should match the number "
-            f"of dimensions ({ndims}).")
-
-        # Set the new spectral widths
-        for dim, v in zip(ordered_dims, value):
-            self.meta[f"FDF{dim}SW"] = v
-
-    def sign_adjustment(self,
-                        dim: int = None,
-                        value: t.Optional[SignAdjustment] = None) \
-            -> SignAdjustment:
-        """Whether the dimension requires sign alternation.
-
-        Parameters
-        ----------
-        dim
-            The dimension (1-4) to evaluate whether it's in the frequency
-             domain. By default, this returns the current dimension.
-        value
-            If specified, set the sign adjustment to this value
-
-        Returns
-        -------
-        sign_adjustment
-            The current value of the sign adjustment setting.
+    @property
+    def sign_adjustment(self) -> t.Tuple[SignAdjustment, ...]:
+        """The type of sign adjustment needed for each dimension.
         """
-        dim = dim if dim is not None else self.order[0]
-        ndims = self.ndims
-        assert 0 < dim <= ndims, (
-            f"The specified dimension '{dim}' must be between 1-{ndims}.")
-        label = f"FDF{dim}AQSIGN"
-
-        if value is not None:
-            self.meta[label] = value.value
-
-        return SignAdjustment(self.meta.get(label, SignAdjustment.NONE))
+        sign_adjustments = []
+        for dim in self.order:
+            value = self.meta[f'FDF{dim}AQSIGN']
+            if isclose(value, 1.0):
+                sign_adjustments.append(SignAdjustment.REAL)
+            elif isclose(value, 2.0):
+                sign_adjustments.append(SignAdjustment.COMPLEX)
+            elif isclose(value, 16.0):
+                sign_adjustments.append(SignAdjustment.NEGATE_IMAG)
+            elif isclose(value, 17.0):
+                sign_adjustments.append(SignAdjustment.REAL_NEGATE_IMAG)
+            elif isclose(value, 18.0):
+                sign_adjustments.append(SignAdjustment.COMPLEX_NEGATE_IMAG)
+            else:
+                sign_adjustments.append(SignAdjustment.NONE)
+        return tuple(sign_adjustments)
 
     @property
     def plane2dphase(self):
@@ -170,41 +120,40 @@ class NMRPipeSpectrum(NMRSpectrum):
 
     def load(self,
              in_filepath: t.Optional['pathlib.Path'] = None,
-             force_iterator: bool = False,
-             in_plane: str = 'x', out_plane: str = 'DEFAULT'):
+             shared: bool = True,
+             device: t.Optional[str] = None,
+             force_gpu: bool = False):
         """Load the NMRPipeSpectrum.
 
         Parameters
         ----------
         in_filepath
             The filepath for the spectrum file(s) to load.
-        force_iterator
-            If True, force the loading of the nmrPipe spectrum using an
-            iterator for multiple files, which is used for 3Ds, 4Ds, etc.
-        in_plane
-            The plane read as the direct dimension. e.g. 'x', 'y', 'z', 'a'
-        out_plane
-             The plane written as the direct dimension. e.g. 'x', 'y', 'z',
-             'a', 'DEFAULT'. (Default means it's the same as the in_plane)
+        shared
+            Create the tensor storage to be shared between threads/processing
+        device
+            The name of the device to allocate the memory on.
+        force_gpu
+            Force allocating the tensor on the GPU
         """
         super().load(in_filepath=in_filepath)
 
         # Determine if the spectrum should be loaded as a series of planes
         # (3D, 4D, etc.) or as and 1D or 2D (plane)
-        is_iterator = re.search(r'%\d+d', str(self.in_filepath)) is not None
+        is_multifile = re.search(r'%\d+d', str(self.in_filepath)) is not None
 
         # Load the spectrum and assign attributes
-        if is_iterator or force_iterator:
-            # Load the iterator. The iterator must be run once to populate
-            # self.meta and self.data (see __next__)
-            iterator = pipe_fileio.iter3D(str(self.in_filepath),
-                                          in_plane, out_plane)
-
-            self.iterator = iterator
+        if is_multifile:
+            # Load the tensor from multiple files
+            meta_dicts, data = load_nmrpipe_multifile_tensor(
+                filemask=str(self.in_filepath), shared=shared, device=device,
+                force_gpu=force_gpu)
+            self.meta, self.data = meta_dicts[0], data
         else:
-            dic, data = pipe_fileio.read(str(self.in_filepath))
-            self.meta = dic
-            self.data = data
+            meta, data = load_nmrpipe_tensor(filename=str(self.in_filepath),
+                                             shared=shared, device=device,
+                                             force_gpu=force_gpu)
+            self.meta, self.data = meta, data
 
     def save(self,
              out_filepath: t.Optional['pathlib.Path'] = None,
