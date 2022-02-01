@@ -3,64 +3,15 @@ NMRSpectrum in NMRPipe format
 """
 import re
 import typing as t
-from math import isclose
 
 import numpy as np
 
-from .constants import Plane2DPhase, SignAdjustment
+from .constants import Plane2DPhase, SignAdjustment, find_mapping
 from .fileio import load_nmrpipe_tensor, load_nmrpipe_multifile_tensor
 from ..nmr_spectrum import NMRSpectrum
 from ..constants import DomainType
 
 __all__ = ('NMRPipeSpectrum',)
-
-# Mappings between enum values and NMRPipe header values
-mappings = {
-    'domain_type': {0.0: DomainType.TIME,
-                    1.0: DomainType.FREQ,
-                    None: DomainType.UNKNOWN},
-    'sign_adjustment': {1.0: SignAdjustment.REAL,
-                        2.0: SignAdjustment.COMPLEX,
-                        16.0: SignAdjustment.NEGATE_IMAG,
-                        17.0: SignAdjustment.REAL_NEGATE_IMAG,
-                        18.0: SignAdjustment.COMPLEX_NEGATE_IMAG,
-                        None: SignAdjustment.NONE},
-    'fd2dphase': {0.0: Plane2DPhase.MAGNITUDE,
-                  1.0: Plane2DPhase.TPPI,
-                  2.0: Plane2DPhase.STATES,
-                  3.0: Plane2DPhase.IMAGE,
-                  4.0: Plane2DPhase.ARRAY,
-                  None: Plane2DPhase.NONE},
-}
-
-
-def find_mapping(name, cnst, reverse=False, round_cnst=True) \
-        -> t.Union[DomainType, SignAdjustment, Plane2DPhase]:
-    """Find the mapping for constant (enum) values.
-
-    Parameters
-    ----------
-    name
-        The name of the mapping to use. e.g. 'domain_type'
-    cnst
-        The cnst to retrieve for the mapping
-    reverse
-        If False (default), map the cnst to the mapping dict key
-        If True, map the cnst to the mapping dict value
-    round_cnst
-        If the cnst is a floating point number, round it to the nearest
-        integer float value. (ex: 3.9 -> 4.0)
-    """
-    d_mapping = mappings[name]
-    none_value = d_mapping[None]
-    if reverse:
-        d_mapping = {v: k for k, v in d_mapping.items()}
-        none_value = None
-
-    # Clean the cnst, if needed
-    if round_cnst and isinstance(cnst, float):
-        cnst = round(cnst, 1)
-    return d_mapping.get(cnst, none_value)
 
 
 # Concrete subclass
@@ -190,21 +141,22 @@ class NMRPipeSpectrum(NMRSpectrum):
         overwrite
             If True (default), overwrite existing files.
         """
-        # Setup arguments
-        out_filepath = (out_filepath if out_filepath is not None else
-                        self.out_filepath)
-        dic = self.meta
-
-        # Save the spectrum
-        if isinstance(self.iterator, pipe_fileio.iter3D):
-            # The data must be convert to float32 for the following write
-            # function
-            data = self.data.view(np.float32)
-            self.iterator.write(filemask=str(out_filepath), plane=data,
-                                dic=dic)
-        else:
-            pipe_fileio.write(filename=str(out_filepath), dic=dic,
-                              data=self.data, overwrite=overwrite)
+        pass
+        # # Setup arguments
+        # out_filepath = (out_filepath if out_filepath is not None else
+        #                 self.out_filepath)
+        # dic = self.meta
+        #
+        # # Save the spectrum
+        # if isinstance(self.iterator, pipe_fileio.iter3D):
+        #     # The data must be convert to float32 for the following write
+        #     # function
+        #     data = self.data.view(np.float32)
+        #     self.iterator.write(filemask=str(out_filepath), plane=data,
+        #                         dic=dic)
+        # else:
+        #     pipe_fileio.write(filename=str(out_filepath), dic=dic,
+        #                       data=self.data, overwrite=overwrite)
 
     # Processing methods
 
