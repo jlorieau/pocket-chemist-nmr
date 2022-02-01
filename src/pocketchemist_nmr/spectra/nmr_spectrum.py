@@ -5,6 +5,7 @@ import abc
 import typing as t
 from pathlib import Path
 
+from torch import permute
 from pocketchemist.processors import FFTType
 
 from .constants import DomainType
@@ -23,19 +24,12 @@ class NMRSpectrum(abc.ABC):
           dict, which is implementation specific.
     """
 
-    #: metadata on the spectrum
+    #: metadata on the spectrum.
+    #: All methods should maintain the correct integrity of the metadata
     meta: dict
 
     #: The data for the spectrum, either an array or an iterator
     data: 'torch.Tensor'
-
-    #: If specified, this is the iterator do generate sub-spectra from
-    #: multiple files
-    iterator = None
-
-    #: If True, then all of the subspectra for the iterator have been
-    #: accessed (i.e. a StopIteration was raised)
-    iterator_done: t.Optional[bool] = None
 
     #: The filepath for the file corresponding to the spectrum
     in_filepath: 'pathlib.Path'
@@ -55,17 +49,6 @@ class NMRSpectrum(abc.ABC):
         # Load the spectrum
         self.load()
 
-    def __iter__(self):
-        """Return an iterator of the spectrum, if the spectrum is in iterator
-        mode.
-        """
-        return self if self.is_iterator else None
-
-    def __next__(self):
-        """Advance the iterator of the spectrum, if the spectrum is in
-        iterator mode. """
-        raise NotImplementedError
-
     # Basic accessor/mutator methods
 
     @property
@@ -76,59 +59,21 @@ class NMRSpectrum(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def order(self) -> t.Tuple[int, ...]:
-        """The order of the dimensions for the data.
-
-        Valid dimensions start with 1 and end with the number of dimensions
-        (self.ndims).
-
-        Returns
-        -------
-        order
-            The ordering of the dimensions for the :attr:`data` dataset.
-            - The first dimension corresponds to the rows of the dataset
-              (axis=1 for numpy)
-            - The second dimension corresponds to the columns of the dataset
-              (axis=0 for numpy)
-            - The third and higher dimensions corresponds to additional
-              dimensions, which may be represented by an iterator
-        """
-        raise NotImplementedError
-
-    @order.setter
-    @abc.abstractmethod
-    def order(self, new_order: t.Tuple[int, ...]):
-        """Change the order of the dimensions for the data.
-
-        Valid dimensions start with 1 and end with the number of dimensions
-        (self.ndims).
-
-        Parameters
-        ----------
-        new_order
-            The new order of the dataset. This function is typically invoked
-            for transpose operations.
-        """
-        raise NotImplementedError
-
-    def domain_type(self,
-                    dim: int = None,
-                    value: t.Optional[DomainType] = None) -> DomainType:
-        """The data domain type for the given dimension
-
-        Parameters
-        ----------
-        dim
-            The dimension (1-4) to evaluate the domain type. By default,
-            the current dimension is used.
-        value
-            If specified, set the domain type to this value
+    def domain_type(self) -> t.Tuple[DomainType, ...]:
+        """The data domain type (freq, time) for the given dimension.
 
         Returns
         -------
         domain_type
             The current value of the domain type setting.
         """
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def sw(self) -> t.Tuple[int, ...]:
+        """Spectral widths (in Hz) of all available dimensions, as ordered by
+        self.order"""
         raise NotImplementedError
 
     # I/O methods
