@@ -12,7 +12,7 @@ rm -rf ft3/ ft3T/
 
 # REMOVE EXT!!
 
-xyz2pipe -in ft2/test%03d.ft2 -z -verb \
+xyz2pipe -in ft2/spec%03d.ft2 -z -verb \
 | nmrPipe  -fn EXT -xn $NUMPOINTS -sw \
 #| nmrPipe  -fn LP -after  -fb -ord 32 \
 | nmrPipe  -fn SP -off 0.45 -end 0.98 -pow 1 -c 0.5 \
@@ -25,9 +25,9 @@ xyz2pipe -in ft2/test%03d.ft2 -z -verb \
 | nmrPipe -fn TP \
 | nmrPipe -fn POLY -auto \
 | nmrPipe -fn TP \
-| pipe2xyz -out ft3/test%04d.ft3 -y
+| pipe2xyz -out ft3/spec%04d.ft3 -y
 
-proj3D.tcl -in ft3/test%04d.ft3
+proj3D.tcl -in ft3/spec%04d.ft3
 
 echo "$NUMPOINTS of $TOTALNUMPOINTS points collected in the third dimension"
 
@@ -35,5 +35,5 @@ echo "$NUMPOINTS of $TOTALNUMPOINTS points collected in the third dimension"
 #| pipe2xyz -out ft3T/test%04d.ft3 -z
 #rm -rf ft3/
 
-xyz2pipe -in ft3/test%04d.ft3 -out ./$PULPROG.ft3
+xyz2pipe -in ft3/spec%04d.ft3 -out ./$PULPROG.ft3
 

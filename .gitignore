@@ -133,7 +133,9 @@ test*.ft*
 2ri
 2ir
 2ii
+*.dat
 *.fid
 *.ft
+*.ft1
 *.ft2
 *.ft3
