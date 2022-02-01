@@ -73,6 +73,10 @@ class NMRPipeSpectrum(NMRSpectrum):
         return tuple(self.meta[f"FDF{dim}SW"] for dim in self.order)
 
     @property
+    def label(self) -> t.Tuple[str, ...]:
+        return tuple(self.meta[f"FDF{dim}LABEL"] for dim in self.order)
+
+    @property
     def sign_adjustment(self) -> t.Tuple[SignAdjustment, ...]:
         """The type of sign adjustment needed for each dimension.
         """
@@ -158,10 +162,18 @@ class NMRPipeSpectrum(NMRSpectrum):
         #     pipe_fileio.write(filename=str(out_filepath), dic=dic,
         #                       data=self.data, overwrite=overwrite)
 
-    # Processing methods
+    # Manipulator methods
+
+    def permute(self, new_dims: t.Tuple[int, ...]):
+        # Get the old dimension order axis -> F1/F2/F3
+        old_order = {i: order for i, order in enumerate(self.order)}
+        super().permute(new_dims)
+
+        # Change the dimension ordering in the metadata
+        for i, new_dim in enumerate(new_dims):
+            self.meta[f'FDDIMORDER{i}'] = old_order[i]
 
     def ft(self,
-           ft_func: t.Callable,
            auto: bool = False,
            real: bool = False,
            inv: bool = False,

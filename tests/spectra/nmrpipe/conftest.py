@@ -15,7 +15,7 @@ def expected(include=None, exclude=None) -> tuple[dict]:
         If specified, exclude spectra with the given titles (tuple)
     """
     spectra = (
-        # 1D spectra (expected0)
+        # 1D spectra
         {'title': '1d complex fid',
          'filepath': Path('data') / 'bruker' /
           'CD20170124_av500hd_100_ubq_oneone1d' / 'spec.fid',
@@ -27,11 +27,11 @@ def expected(include=None, exclude=None) -> tuple[dict]:
          'shape': (799 * 1,),
          'domain_type': (DomainType.TIME,),  # Type of domain for each dim
          'sw': (10000.,),  # The spectra width in Hz
+         'label': ('1H',),  # The labels for each dimension
          'sign_adjustment': (SignAdjustment.NONE,),  # Sign adjustment
          'data_heights': (((0,), 0. + 0.j),
                           ((-1,), -359985.70000 - 16418.97000j))},
 
-        # (expected1)
         {'title': '1d real fid',
          'filepath': Path('data') / 'bruker' /
          'CD20170124_av500hd_100_ubq_oneone1d' / 'oneone-echo_N-dcpl.jll.ft',
@@ -43,11 +43,11 @@ def expected(include=None, exclude=None) -> tuple[dict]:
          'shape': (8192 * 1,),
          'domain_type': (DomainType.FREQ,),
          'sw': (10000.,),
+         'label': ('1H',),
          'sign_adjustment': (SignAdjustment.NONE,),
          'data_heights': (((0,), 491585.80000),
                           ((-1,), 594718.70000))},
 
-        # (expected2)
         {'title': '1d real spectrum',
          'filepath': Path('data') / 'bruker' /
          'CD20170124_av500hd_100_ubq_oneone1d' /
@@ -60,11 +60,12 @@ def expected(include=None, exclude=None) -> tuple[dict]:
          'shape': (8192 * 1,),
          'domain_type': (DomainType.FREQ,),
          'sw': (10000.,),
+         'label': ('1H',),
          'sign_adjustment': (SignAdjustment.NONE,),
          'data_heights': (((0,), 491585.80000 - 1010224.00000j),
                           ((-1,), 594718.70000 - 968423.10000j)),},
 
-        # 2D spectra (expected3)
+        # 2D spectra
         {'title': '2d complex fid',
          'filepath': Path('data') / 'bruker' /
          'CD20170124_av500hd_101_ubq_hsqcsi2d' / 'spec.fid',
@@ -78,13 +79,13 @@ def expected(include=None, exclude=None) -> tuple[dict]:
          'shape': (184 * 2, 640 * 1),
          'domain_type': (DomainType.TIME, DomainType.TIME),
          'sw': (8012.820801, 1671.682007),
+         'label': ('HN', '15N'),
          'sign_adjustment': (SignAdjustment.NONE, SignAdjustment.NONE),
          'data_heights': (((0, 0), 0. + 0.j),
                           ((0, -1), 5619.12600 - 4132.80200j),
                           ((1, 0), 0. + 0.j),
                           ((-1, -1), -761.71680 - 996.09120j))},
 
-        # (expected4)
         {'title': '2d real spectrum',
          'filepath': Path('data') / 'bruker' /
          'CD20170124_av500hd_101_ubq_hsqcsi2d' / 'hsqcetfpf3gpsi2.ft2',
@@ -96,13 +97,13 @@ def expected(include=None, exclude=None) -> tuple[dict]:
          'shape': (1024 * 1, 368 * 1),
          'domain_type': (DomainType.FREQ, DomainType.FREQ),
          'sw': (1671.682007, 2003.205200),
+         'label': ('15N', 'HN'),
          'sign_adjustment': (SignAdjustment.NONE, SignAdjustment.NONE),
          'data_heights': (((0, 0), 551430.50000),
                           ((0, -1), 204368.90000),
                           ((1, 0), 493020.70000),
                           ((-1, -1), -216286.20000))},
 
-        # (expected5)
         {'title': '2d complex spectrum',
          'filepath': Path('data') / 'bruker' /
          'CD20170124_av500hd_101_ubq_hsqcsi2d' / 'hsqcetfpf3gpsi2_complex.ft2',
@@ -113,13 +114,14 @@ def expected(include=None, exclude=None) -> tuple[dict]:
          'shape': (368 * 2, 1024 * 1),
          'domain_type': (DomainType.FREQ, DomainType.FREQ),
          'sw': (2003.205200, 1671.682007),
+         'label': ('HN', '15N'),
          'sign_adjustment': (SignAdjustment.NONE, SignAdjustment.NONE),
          'data_heights': (((0, 0), 551430.50000 - 76349.69000j),
                           ((0, -1), 73015.44000 + 445419.70000j),
                           ((1, 0), -472929.90000 + 416353.10000j),
                           ((-1, -1), -136615.50000 - 991015.50000j))},
 
-        # 3D Spectra (expected6)
+        # 3D Spectra
         {'title': '3d complex fid (2d plane)',
          'filepath': Path('data') / 'bruker' /
          'CD20170124_av500hd_103_ubq_hncosi2d' / 'fid' / 'spec001.fid',
@@ -131,6 +133,7 @@ def expected(include=None, exclude=None) -> tuple[dict]:
          'shape': (39 * 2, 559),
          'domain_type': (DomainType.TIME, DomainType.TIME, DomainType.TIME),
          'sw': (6996.269043, 1671.682007, 1445.921997),
+         'label': ('HN', '15N', '13C'),
          'sign_adjustment': (SignAdjustment.NONE, SignAdjustment.NONE,
                              SignAdjustment.NONE),
          'data_heights': (((0, 0), 0. + 0.j),
@@ -138,7 +141,6 @@ def expected(include=None, exclude=None) -> tuple[dict]:
                           ((1, 0), 0. + 0.j),
                           ((-1, -1), -676.75750 + 13228.51000j,))},
 
-        # (expected7)
         {'title': '3d real spectrum',
          'filepath': Path('data') / 'bruker' /
          'CD20170124_av500hd_103_ubq_hncosi2d' / 'hncogp3d.ft3',
@@ -149,6 +151,7 @@ def expected(include=None, exclude=None) -> tuple[dict]:
          'shape': (256, 512, 805),
          'domain_type': (DomainType.FREQ, DomainType.FREQ, DomainType.FREQ),
          'sw': (6996.269043, 1445.921997, 1671.682007),
+         'label': ('HN', '13C', '15N'),
          'sign_adjustment': (SignAdjustment.NONE, SignAdjustment.NONE,
                              SignAdjustment.NONE),
          'data_heights': (((0, 0, 0), -263255.90000),
@@ -158,7 +161,6 @@ def expected(include=None, exclude=None) -> tuple[dict]:
                           ((0, 0, -1), 563424.8125),
                           ((-1, -1, -1), 392196.70000))},
 
-        # (expected8)
         {'title': '3d real spectrum (2d planes)',
          'filepath': Path('data') / 'bruker' /
          'CD20170124_av500hd_103_ubq_hncosi2d' / 'ft3' / 'spec%04d.ft3',
@@ -169,6 +171,7 @@ def expected(include=None, exclude=None) -> tuple[dict]:
          'shape': (256, 512, 805),
          'domain_type': (DomainType.FREQ, DomainType.FREQ, DomainType.FREQ),
          'sw': (6996.269043, 1445.921997, 1671.682007),
+         'label': ('HN', '13C', '15N'),
          'sign_adjustment': (SignAdjustment.NONE, SignAdjustment.NONE,
                              SignAdjustment.NONE),
          'data_heights': (((0, 0, 0), -263255.90000),

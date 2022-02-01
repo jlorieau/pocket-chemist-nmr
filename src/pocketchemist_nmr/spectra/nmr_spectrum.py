@@ -60,7 +60,8 @@ class NMRSpectrum(abc.ABC):
     @property
     @abc.abstractmethod
     def domain_type(self) -> t.Tuple[DomainType, ...]:
-        """The data domain type (freq, time) for the given dimension.
+        """The data domain type (freq, time) for all available dimensions, as
+        ordered in the data.
 
         Returns
         -------
@@ -72,8 +73,14 @@ class NMRSpectrum(abc.ABC):
     @property
     @abc.abstractmethod
     def sw(self) -> t.Tuple[int, ...]:
-        """Spectral widths (in Hz) of all available dimensions, as ordered by
-        self.order"""
+        """Spectral widths (in Hz) of all available dimensions, as order in the
+        data."""
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def label(self) -> t.Tuple[str, ...]:
+        """The labels for all dimensions, as ordered in the data."""
         raise NotImplementedError
 
     # I/O methods
@@ -88,10 +95,6 @@ class NMRSpectrum(abc.ABC):
             The (optional) filepath to use for loading the spectrum, instead
             of self.in_filepath.
         """
-        # Setup arguments
-        in_filepath = (Path(in_filepath) if in_filepath is not None else
-                       self.in_filepath)
-
         # Reset attrs, excluding in_filepath and out_filepath
         reset_attrs = tuple(attr for attr in self.reset_attrs
                             if attr not in ('in_filepath', 'out_filepath'))
@@ -133,8 +136,13 @@ class NMRSpectrum(abc.ABC):
         for attr in attrs:
             setattr(self, attr, None)
 
+    # Manipulator methods
+
+    def permute(self, new_dims: t.Tuple[int, ...]):
+        """Permute (transpose) axes according to the new dimension order."""
+        self.data = permute(self.data, new_dims)
+
     def ft(self,
-           ft_func: t.Callable,
            auto: bool = False,
            real: bool = False,
            inv: bool = False,
