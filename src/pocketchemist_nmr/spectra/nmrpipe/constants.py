@@ -16,16 +16,17 @@ data_size_bytes = 4
 # Enumeration types
 class Plane2DPhase(Enum):
     """Values for the 2D plane phase--i.e. the 'FD2DPHASE' value """
+    NONE = None  # Data is not a 2D plane
     MAGNITUDE = 0.0  # Magnitude mode data
     TPPI = 1.0  # TPPI (Time Proportional Phase Incrementation)
     STATES = 2.0  # States or States-TPPI
     IMAGE = 3.0  # Image data
-    NONE = None  # Data is not a 2D plane
+    ARRAY = 4.0  # Array data
 
 
 class SignAdjustment(Enum):
     """Values for the sign adjustment needed for FFT"""
-    NONE = 0.0  # No sign adjustment needed
+    NONE = None  # No sign adjustment needed
     REAL = 1.0  # Sign alternation of the real component
     COMPLEX = 2.0  # Sign alternation of both real and imaginary components
     NEGATE_IMAG = 16.0  # Negate the imaginary component

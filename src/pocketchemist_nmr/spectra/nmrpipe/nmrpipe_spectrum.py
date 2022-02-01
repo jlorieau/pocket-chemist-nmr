@@ -14,6 +14,54 @@ from ..constants import DomainType
 
 __all__ = ('NMRPipeSpectrum',)
 
+# Mappings between enum values and NMRPipe header values
+mappings = {
+    'domain_type': {0.0: DomainType.TIME,
+                    1.0: DomainType.FREQ,
+                    None: DomainType.UNKNOWN},
+    'sign_adjustment': {1.0: SignAdjustment.REAL,
+                        2.0: SignAdjustment.COMPLEX,
+                        16.0: SignAdjustment.NEGATE_IMAG,
+                        17.0: SignAdjustment.REAL_NEGATE_IMAG,
+                        18.0: SignAdjustment.COMPLEX_NEGATE_IMAG,
+                        None: SignAdjustment.NONE},
+    'fd2dphase': {0.0: Plane2DPhase.MAGNITUDE,
+                  1.0: Plane2DPhase.TPPI,
+                  2.0: Plane2DPhase.STATES,
+                  3.0: Plane2DPhase.IMAGE,
+                  4.0: Plane2DPhase.ARRAY,
+                  None: Plane2DPhase.NONE},
+}
+
+
+def find_mapping(name, cnst, reverse=False, round_cnst=True) \
+        -> t.Union[DomainType, SignAdjustment, Plane2DPhase]:
+    """Find the mapping for constant (enum) values.
+
+    Parameters
+    ----------
+    name
+        The name of the mapping to use. e.g. 'domain_type'
+    cnst
+        The cnst to retrieve for the mapping
+    reverse
+        If False (default), map the cnst to the mapping dict key
+        If True, map the cnst to the mapping dict value
+    round_cnst
+        If the cnst is a floating point number, round it to the nearest
+        integer float value. (ex: 3.9 -> 4.0)
+    """
+    d_mapping = mappings[name]
+    none_value = d_mapping[None]
+    if reverse:
+        d_mapping = {v: k for k, v in d_mapping.items()}
+        none_value = None
+
+    # Clean the cnst, if needed
+    if round_cnst and isinstance(cnst, float):
+        cnst = round(cnst, 1)
+    return d_mapping.get(cnst, none_value)
+
 
 # Concrete subclass
 class NMRPipeSpectrum(NMRSpectrum):
@@ -64,14 +112,7 @@ class NMRPipeSpectrum(NMRSpectrum):
         domain_types = []
         for dim in self.order:
             value = self.meta[f"FDF{dim}FTFLAG"]
-
-            if isclose(value, 0.0):
-                domain_types.append(DomainType.TIME)
-            elif isclose(value, 1.0):
-                domain_types.append(DomainType.FREQ)
-            else:
-                domain_types.append(DomainType.UNKNOWN)
-
+            domain_types.append(find_mapping('domain_type', value))
         return tuple(domain_types)
 
     @property
@@ -87,34 +128,13 @@ class NMRPipeSpectrum(NMRSpectrum):
         sign_adjustments = []
         for dim in self.order:
             value = self.meta[f'FDF{dim}AQSIGN']
-            if isclose(value, 1.0):
-                sign_adjustments.append(SignAdjustment.REAL)
-            elif isclose(value, 2.0):
-                sign_adjustments.append(SignAdjustment.COMPLEX)
-            elif isclose(value, 16.0):
-                sign_adjustments.append(SignAdjustment.NEGATE_IMAG)
-            elif isclose(value, 17.0):
-                sign_adjustments.append(SignAdjustment.REAL_NEGATE_IMAG)
-            elif isclose(value, 18.0):
-                sign_adjustments.append(SignAdjustment.COMPLEX_NEGATE_IMAG)
-            else:
-                sign_adjustments.append(SignAdjustment.NONE)
+            sign_adjustments.append(find_mapping('sign_adjustment', value))
         return tuple(sign_adjustments)
 
     @property
     def plane2dphase(self):
         """The phase of 2D planes for 2-, 3-, 4-dimensional self.data values."""
-        ndims = self.ndims
-        fd2dphase = self.meta.get('FD2DPHASE', None)
-        if ndims > 1 and fd2dphase is not None:
-            return Plane2DPhase(fd2dphase)
-        else:
-            return Plane2DPhase.NONE
-
-    @plane2dphase.setter
-    def plane2dphase(self, value: Plane2DPhase):
-        if value is not Plane2DPhase.NONE:
-            self.meta['FD2DPHASE'] = value.value
+        return find_mapping('plane2dphase', self.meta['FD2DPHASE'])
 
     # I/O methods
 
