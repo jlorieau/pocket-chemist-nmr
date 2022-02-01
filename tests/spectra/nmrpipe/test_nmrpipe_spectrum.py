@@ -19,8 +19,10 @@ from .conftest import expected
                                  expected()))
 def test_nmrpipe_spectrum_properties(prop,expected):
     """Test the NMRPipeSpectrum accessor properties"""
-    # Load the spectrum
-    spectrum = NMRPipeSpectrum(expected['filepath'])
+    # Load the spectrum, if needed (cache for future tests)
+    if 'spectrum' not in expected:
+        expected['spectrum'] = NMRPipeSpectrum(expected['filepath'])
+    spectrum = expected['spectrum']
 
     # Check that the spectral widths are reasonable
     spectrum_value = getattr(spectrum, prop)
@@ -36,22 +38,6 @@ def test_nmrpipe_spectrum_properties(prop,expected):
     else:
         assert spectrum_value == expected_value
 
-
-# @pytest.mark.parametrize("expected", expected())
-# def test_nmrpipe_spectrum_sign_adjustment(in_filepath):
-#     """Test the NMRPipeSpectrum sign_adjustment method"""
-#     # Load the spectrum
-#     spectrum = NMRPipeSpectrum(in_filepath)
-#
-#     # If it's spectrum with an iterator, it has to be iterator once to
-#     # populate self.meta and self.dict
-#     if spectrum.iterator is not None:
-#         next(spectrum)
-#
-#     assert spectrum.sign_adjustment() is SignAdjustment.NONE
-#     assert spectrum.sign_adjustment(1) is SignAdjustment.NONE
-#
-#
 # @pytest.mark.parametrize("in_filepath", spectrum2d_exs + spectrum3d_exs)
 # def test_nmrpipe_spectrum_plane2dphase(in_filepath):
 #     """Test the NMRPipeSpectrum plane2dphase method"""
