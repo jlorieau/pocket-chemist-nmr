@@ -4,4 +4,6 @@ tasks:
   build_test_datasets:
     desc: Build datasets needed for tests
     cmds:
+      - make -C data/bruker/CD20170124_av500hd_100_ubq_oneone1d/
       - make -C data/bruker/CD20170124_av500hd_101_ubq_hsqcsi2d/
+      - make -C data/bruker/CD20170124_av500hd_103_ubq_hnco3d/

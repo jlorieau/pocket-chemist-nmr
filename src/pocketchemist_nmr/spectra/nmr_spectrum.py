@@ -140,6 +140,7 @@ class NMRSpectrum(abc.ABC):
 
     def permute(self, new_dims: t.Tuple[int, ...]):
         """Permute (transpose) axes according to the new dimension order."""
+        # Reorganize data
         self.data = permute(self.data, new_dims)
 
     def ft(self,

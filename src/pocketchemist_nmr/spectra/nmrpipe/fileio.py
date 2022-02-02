@@ -12,6 +12,7 @@ from torch import Tensor, FloatStorage, FloatTensor, cuda, complex, stack
 from .meta import NMRPipeMetaDict, load_nmrpipe_meta
 from .constants import header_size_bytes, data_size_bytes
 from ..constants import DataType
+from ..utils import split_to_complex
 
 __all__ = ('parse_nmrpipe_meta', 'load_nmrpipe_tensor',
            'load_nmrpipe_multifile_tensor')
@@ -219,6 +220,7 @@ def load_nmrpipe_tensor(filename: t.Union[str, Path],
         assert real is not None and imag is not None
 
         return meta, complex(real=real, imag=imag)
+        # return meta, split_to_complex(tensor[header_elems:].reshape(*points[::-1]))
     else:
         return meta, tensor[header_elems:].reshape(*points[::-1])
 
