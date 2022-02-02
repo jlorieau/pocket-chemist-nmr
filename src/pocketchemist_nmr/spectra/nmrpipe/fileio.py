@@ -196,6 +196,9 @@ def load_nmrpipe_tensor(filename: t.Union[str, Path],
     tensor = (FloatTensor(storage) if device is None else
               FloatStorage(storage, device=device))
 
+    # Strip the header
+    tensor = tensor[header_elems:]
+
     # Strip the header from the tensor, reshape tensor and return tensor
     # The shape ordering has to be reversed from the number of points (pts).
     # NMRPipe data: inner->outer1->outer2
@@ -203,26 +206,9 @@ def load_nmrpipe_tensor(filename: t.Union[str, Path],
     if data_type[0] == DataType.COMPLEX:
         # Recast real/imag numbers. Data ordered as:
         # R(1) R(2) ... R(N) I(1) I(2) ... I(N)
-        # Split into 2 sets, real and imag
-        split = tensor[header_elems:].reshape(*data_points[1:][::-1],
-                                              2, int(data_points[0] / 2))
-
-        # Find and pull out the real and imag components
-        real, imag = None, None
-        for dim, dim_size in enumerate(split.size()):
-            if dim_size == 2:
-                # Dimensions not yet assigned
-                assert real is None and imag is None
-
-                # Assign real / imag components
-                real = split.select(dim, 0)
-                imag = split.select(dim, 1)
-        assert real is not None and imag is not None
-
-        return meta, complex(real=real, imag=imag)
-        # return meta, split_to_complex(tensor[header_elems:].reshape(*points[::-1]))
+        return meta, split_to_complex(tensor.reshape(data_points[::-1]))
     else:
-        return meta, tensor[header_elems:].reshape(*points[::-1])
+        return meta, tensor.reshape(*data_points[::-1])
 
 
 def load_nmrpipe_multifile_tensor(filemask: str,
