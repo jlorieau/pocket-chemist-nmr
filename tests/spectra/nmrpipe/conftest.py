@@ -4,15 +4,15 @@ from pocketchemist_nmr.spectra.constants import DataType, DomainType
 from pocketchemist_nmr.spectra.nmrpipe.constants import SignAdjustment
 
 
-def expected(include=None, exclude=None) -> tuple[dict]:
+def expected(multifile: bool = None) -> tuple[dict, ...]:
     """Return an iteratable of dicts with expected values
 
     Parameters
     ----------
-    include
-        If specified, only include spectra with the given titles (tuple)
-    exclude
-        If specified, exclude spectra with the given titles (tuple)
+    multifile
+        If True, only return multifile datasets
+        If False, do not return multifile datasets
+        If None, return datasets regardless of whether they're multifile
     """
     spectra = (
         # 1D spectra
@@ -162,9 +162,32 @@ def expected(include=None, exclude=None) -> tuple[dict]:
                           ((-1, 0, 0), -872241.80000),
                           ((-1, -1, -1), -2219091.00000))},
 
+        {'title': '3d real/real/complex spectrum (2d planes)',
+         'filepath': Path('data') / 'bruker' /
+         'CD20170124_av500hd_103_ubq_hnco3d' / 'ft2' / 'spec%03d.ft2',
+         'multifile': True,
+         'ndims': 3, 'order': (2, 1, 3),
+         'data_type': (DataType.REAL, DataType.REAL, DataType.COMPLEX),
+         'data_pts': (220 * 1, 256 * 1, 51 * 2),
+         'pts': (220, 256, 51),
+         'shape': (51 * 2, 256 * 1, 220 * 1),
+         'domain_type': (DomainType.FREQ, DomainType.FREQ, DomainType.FREQ),
+         'sw': (6996.269043, 1445.921997, 1671.682007),
+         'label': ('HN', '13C', '15N'),
+         'sign_adjustment': (SignAdjustment.NONE, SignAdjustment.NONE,
+                             SignAdjustment.NONE),
+         'data_heights': (((0, 0, 0), -114428.60000),
+                          ((0, 0, -1), 43824.73000),
+                          ((0, 1, 0), -137487.00000),
+                          ((0, -1, 0), -47025.36000),
+                          ((1, 0, 0), 91014.32000),
+                          ((-1, 0, 0), -3568.61700),
+                          ((-1, -1, -1), 1224.21000))},
+
         {'title': '3d real spectrum (2d planes)',
          'filepath': Path('data') / 'bruker' /
          'CD20170124_av500hd_103_ubq_hnco3d' / 'ft3' / 'spec%04d.ft3',
+         'multifile': True,
          'ndims': 3, 'order': (2, 3, 1),
          'data_type': (DataType.REAL, DataType.REAL, DataType.REAL,),
          'data_pts': (220 * 1, 512 * 1, 256 * 1),
@@ -185,11 +208,13 @@ def expected(include=None, exclude=None) -> tuple[dict]:
     )
 
     # Filter spectra
-    if include is not None:
+    if multifile is True:
         spectra = tuple(spectrum for spectrum in spectra
-                        if spectrum['title'] in include)
-    if exclude is not None:
+                        if spectrum.get('multifile', False))
+    elif multifile is False:
         spectra = tuple(spectrum for spectrum in spectra
-                        if spectrum['title'] not in exclude)
+                        if not spectrum.get('multifile', False))
+    else:
+        pass
 
     return spectra

@@ -11,13 +11,17 @@ from pocketchemist_nmr.spectra.nmrpipe.meta import load_nmrpipe_meta
 from .conftest import expected
 
 
-@pytest.mark.parametrize('expected',
-                         expected(exclude=('3d real spectrum (2d planes)',)))
+@pytest.mark.parametrize('expected', expected())
 def test_parse_nmrpipe_tensor(expected):
     """Test the parse_nmrpipe_meta function"""
     # Load the meta dict
-    with open(expected['filepath'], 'rb') as f:
-        print(f"Loading '{expected['filepath']}'")
+    if str(expected['filepath']).count('%') == 1:
+        filepath = str(expected['filepath']) % 1
+    else:
+        filepath = str(expected['filepath'])
+
+    with open(filepath, 'rb') as f:
+        print(f"Loading '{filepath}'")
         meta = load_nmrpipe_meta(f)
 
     # Check the parsing of values
@@ -31,8 +35,7 @@ def test_parse_nmrpipe_tensor(expected):
     assert result['pts'] == expected['pts']
 
 
-@pytest.mark.parametrize('expected',
-                         expected(exclude=('3d real spectrum (2d planes)',)))
+@pytest.mark.parametrize('expected', expected(multifile=False))
 def test_load_nmrpipe_tensor(expected, benchmark):
     """Test the load_nmrpipe_tensor function."""
     # Load the tensor
@@ -49,11 +52,11 @@ def test_load_nmrpipe_tensor(expected, benchmark):
         assert isclose(tensor[loc], data_height, rel_tol=0.001)
 
 
-@pytest.mark.parametrize('expected',
-                         expected(include=('3d real spectrum (2d planes)',)))
+@pytest.mark.parametrize('expected', expected(multifile=True))
 def test_load_nmrpipe_multifile_tensor(expected, benchmark):
     """Test the load_nmrpipe_multifile_tensor function."""
     # Load the tensor
+    print(f"Loading '{expected['filepath']}'")
     benchmark.extra_info['filepath'] = expected['filepath']
     meta_dict, tensor = benchmark(load_nmrpipe_multifile_tensor,
                                   expected['filepath'])
@@ -68,4 +71,5 @@ def test_load_nmrpipe_multifile_tensor(expected, benchmark):
 
     # Check the data values for some key points (locations) in the data
     for loc, data_height in expected['data_heights']:
+        print(loc, data_height)
         assert isclose(tensor[loc], data_height, rel_tol=0.001)
