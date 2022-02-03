@@ -4,7 +4,7 @@ Constants for NMRPipe spectra
 from enum import Enum
 import typing as t
 
-from ..constants import DomainType
+from ..constants import DomainType, DataType
 
 __all__ = ('header_size_bytes', 'data_size_bytes', 'Plane2DPhase',
            'SignAdjustment')
@@ -42,6 +42,9 @@ mappings = {
     'domain_type': {0.0: DomainType.TIME,
                     1.0: DomainType.FREQ,
                     None: DomainType.UNKNOWN},
+    'data_type': {0.0: DataType.COMPLEX,
+                  1.0: DataType.REAL,
+                  None: DataType.UNKNOWN},
     'sign_adjustment': {1.0: SignAdjustment.REAL,
                         2.0: SignAdjustment.COMPLEX,
                         16.0: SignAdjustment.NEGATE_IMAG,

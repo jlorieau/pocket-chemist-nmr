@@ -8,7 +8,7 @@ from pathlib import Path
 from torch import permute
 from pocketchemist.processors import FFTType
 
-from .constants import DomainType
+from .constants import DomainType, DataType
 
 __all__ = ('NMRSpectrum',)
 
@@ -72,9 +72,16 @@ class NMRSpectrum(abc.ABC):
 
     @property
     @abc.abstractmethod
+    def data_type(self) -> t.Tuple[DataType, ...]:
+        """The type data (real, imag, complex) of all available dimensions, as
+        ordered in the data."""
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
     def sw(self) -> t.Tuple[int, ...]:
-        """Spectral widths (in Hz) of all available dimensions, as order in the
-        data."""
+        """Spectral widths (in Hz) of all available dimensions, as ordered in
+        the data."""
         raise NotImplementedError
 
     @property

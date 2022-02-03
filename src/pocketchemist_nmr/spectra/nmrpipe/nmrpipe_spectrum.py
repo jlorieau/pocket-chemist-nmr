@@ -4,12 +4,10 @@ NMRSpectrum in NMRPipe format
 import re
 import typing as t
 
-import numpy as np
-
 from .constants import Plane2DPhase, SignAdjustment, find_mapping
 from .fileio import load_nmrpipe_tensor, load_nmrpipe_multifile_tensor
 from ..nmr_spectrum import NMRSpectrum
-from ..constants import DomainType
+from ..constants import DomainType, DataType
 
 __all__ = ('NMRPipeSpectrum',)
 
@@ -65,6 +63,15 @@ class NMRPipeSpectrum(NMRSpectrum):
             value = self.meta[f"FDF{dim}FTFLAG"]
             domain_types.append(find_mapping('domain_type', value))
         return tuple(domain_types)
+
+    @property
+    def data_type(self) -> t.Tuple[DataType, ...]:
+        # Setup mappings between DataTypes and the meta dict values
+        data_types = []
+        for dim in self.order:
+            value = self.meta[f"FDF{dim}QUADFLAG"]
+            data_types.append(find_mapping('data_type', value))
+        return tuple(data_types)
 
     @property
     def sw(self):

@@ -14,8 +14,9 @@ from .conftest import expected
 
 # Property Accessors/Mutators
 @pytest.mark.parametrize("prop,expected",
-                         product(('ndims', 'order', 'domain_type', 'sw',
-                                  'label', 'sign_adjustment', 'plane2dphase'),
+                         product(('ndims', 'order', 'domain_type', 'data_type',
+                                  'sw', 'label', 'sign_adjustment',
+                                  'plane2dphase'),
                                  expected()))
 def test_nmrpipe_spectrum_properties(prop, expected):
     """Test the NMRPipeSpectrum accessor properties"""
