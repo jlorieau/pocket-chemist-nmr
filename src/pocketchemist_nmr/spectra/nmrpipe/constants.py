@@ -48,12 +48,12 @@ mappings = {
                         17.0: SignAdjustment.REAL_NEGATE_IMAG,
                         18.0: SignAdjustment.COMPLEX_NEGATE_IMAG,
                         None: SignAdjustment.NONE},
-    'fd2dphase': {0.0: Plane2DPhase.MAGNITUDE,
-                  1.0: Plane2DPhase.TPPI,
-                  2.0: Plane2DPhase.STATES,
-                  3.0: Plane2DPhase.IMAGE,
-                  4.0: Plane2DPhase.ARRAY,
-                  None: Plane2DPhase.NONE},
+    'plane2dphase': {0.0: Plane2DPhase.MAGNITUDE,
+                     1.0: Plane2DPhase.TPPI,
+                     2.0: Plane2DPhase.STATES,
+                     3.0: Plane2DPhase.IMAGE,
+                     4.0: Plane2DPhase.ARRAY,
+                     None: Plane2DPhase.NONE},
 }
 
 

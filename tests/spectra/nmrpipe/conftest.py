@@ -1,7 +1,8 @@
 """Utilities, functions and fixtures for NMRPipeSpectrum tests"""
 from pathlib import Path
 from pocketchemist_nmr.spectra.constants import DataType, DomainType
-from pocketchemist_nmr.spectra.nmrpipe.constants import SignAdjustment
+from pocketchemist_nmr.spectra.nmrpipe.constants import (SignAdjustment,
+                                                         Plane2DPhase)
 
 
 def expected(multifile: bool = None) -> tuple[dict, ...]:
@@ -29,6 +30,7 @@ def expected(multifile: bool = None) -> tuple[dict, ...]:
          'sw': (10000.,),  # The spectra width in Hz
          'label': ('1H',),  # The labels for each dimension
          'sign_adjustment': (SignAdjustment.NONE,),  # Sign adjustment
+         'plane2dphase': Plane2DPhase.MAGNITUDE,  # Type of 2d phase
          'data_heights': (((0,), 0. + 0.j),
                           ((-1,), -359985.70000 - 16418.97000j))},
 
@@ -45,6 +47,7 @@ def expected(multifile: bool = None) -> tuple[dict, ...]:
          'sw': (10000.,),
          'label': ('1H',),
          'sign_adjustment': (SignAdjustment.NONE,),
+         'plane2dphase': Plane2DPhase.MAGNITUDE,
          'data_heights': (((0,), 491585.80000),
                           ((-1,), 594718.70000))},
 
@@ -62,6 +65,7 @@ def expected(multifile: bool = None) -> tuple[dict, ...]:
          'sw': (10000.,),
          'label': ('1H',),
          'sign_adjustment': (SignAdjustment.NONE,),
+         'plane2dphase': Plane2DPhase.MAGNITUDE,
          'data_heights': (((0,), 491585.80000 - 1010224.00000j),
                           ((-1,), 594718.70000 - 968423.10000j)),},
 
@@ -81,6 +85,7 @@ def expected(multifile: bool = None) -> tuple[dict, ...]:
          'sw': (8012.820801, 1671.682007),
          'label': ('HN', '15N'),
          'sign_adjustment': (SignAdjustment.NONE, SignAdjustment.NONE),
+         'plane2dphase': Plane2DPhase.STATES,
          'data_heights': (((0, 0), 0. + 0.j),
                           ((0, -1), 5619.12600 - 4132.80200j),
                           ((1, 0), 0. + 0.j),
@@ -99,6 +104,7 @@ def expected(multifile: bool = None) -> tuple[dict, ...]:
          'sw': (1671.682007, 2003.205200),
          'label': ('15N', 'HN'),
          'sign_adjustment': (SignAdjustment.NONE, SignAdjustment.NONE),
+         'plane2dphase': Plane2DPhase.STATES,
          'data_heights': (((0, 0), 551430.50000),
                           ((0, -1), 204368.90000),
                           ((1, 0), 493020.70000),
@@ -116,6 +122,7 @@ def expected(multifile: bool = None) -> tuple[dict, ...]:
          'sw': (2003.205200, 1671.682007),
          'label': ('HN', '15N'),
          'sign_adjustment': (SignAdjustment.NONE, SignAdjustment.NONE),
+         'plane2dphase': Plane2DPhase.STATES,
          'data_heights': (((0, 0), 551430.50000 - 76349.69000j),
                           ((0, -1), 73015.44000 + 445419.70000j),
                           ((1, 0), -472929.90000 + 416353.10000j),
@@ -132,10 +139,11 @@ def expected(multifile: bool = None) -> tuple[dict, ...]:
          'pts': (559, 39, 51),
          'shape': (39 * 2, 559),
          'domain_type': (DomainType.TIME, DomainType.TIME, DomainType.TIME),
-         'sw': (6996.269043, 1671.682007, 1445.921997),
+         'sw': (6996.26904296875, 1671.682007, 1445.921997),
          'label': ('HN', '15N', '13C'),
          'sign_adjustment': (SignAdjustment.NONE, SignAdjustment.NONE,
                              SignAdjustment.NONE),
+         'plane2dphase': Plane2DPhase.STATES,
          'data_heights': (((0, 0), 0. + 0.j),
                           ((0, -1), -6837.88700 + 5389.64600j),
                           ((1, 0), 0. + 0.j),
@@ -150,10 +158,11 @@ def expected(multifile: bool = None) -> tuple[dict, ...]:
          'pts': (220, 512, 256),
          'shape': (256, 512, 220),
          'domain_type': (DomainType.FREQ, DomainType.FREQ, DomainType.FREQ),
-         'sw': (6996.269043, 1445.921997, 1671.682007),
+         'sw': (2753.451171875, 1445.921997, 1671.682007),
          'label': ('HN', '13C', '15N'),
          'sign_adjustment': (SignAdjustment.NONE, SignAdjustment.NONE,
                              SignAdjustment.NONE),
+         'plane2dphase': Plane2DPhase.STATES,
          'data_heights': (((0, 0, 0), -1199905.00000),
                           ((0, 0, -1), -2773523.00000),
                           ((0, 1, 0), -1257113.00000),
@@ -171,11 +180,12 @@ def expected(multifile: bool = None) -> tuple[dict, ...]:
          'data_pts': (220 * 1, 256 * 1, 51 * 2),
          'pts': (220, 256, 51),
          'shape': (51 * 2, 256 * 1, 220 * 1),
-         'domain_type': (DomainType.FREQ, DomainType.FREQ, DomainType.FREQ),
-         'sw': (6996.269043, 1445.921997, 1671.682007),
-         'label': ('HN', '13C', '15N'),
+         'domain_type': (DomainType.FREQ, DomainType.FREQ, DomainType.TIME),
+         'sw': (2753.451171875, 1671.682007, 1445.921997),
+         'label': ('HN', '15N', '13C'),
          'sign_adjustment': (SignAdjustment.NONE, SignAdjustment.NONE,
                              SignAdjustment.NONE),
+         'plane2dphase': Plane2DPhase.STATES,
          'data_heights': (((0, 0, 0), -114428.60000),
                           ((0, 0, -1), 43824.73000),
                           ((0, 1, 0), -137487.00000),
@@ -194,10 +204,11 @@ def expected(multifile: bool = None) -> tuple[dict, ...]:
          'pts': (220, 512, 256),
          'shape': (256, 512, 220),
          'domain_type': (DomainType.FREQ, DomainType.FREQ, DomainType.FREQ),
-         'sw': (6996.269043, 1445.921997, 1671.682007),
+         'sw': (2753.451171875, 1445.921997, 1671.682007),
          'label': ('HN', '13C', '15N'),
          'sign_adjustment': (SignAdjustment.NONE, SignAdjustment.NONE,
                              SignAdjustment.NONE),
+         'plane2dphase': Plane2DPhase.STATES,
          'data_heights': (((0, 0, 0), -1199905.00000),
                           ((0, 0, -1), -2773523.00000),
                           ((0, 1, 0), -1257113.00000),

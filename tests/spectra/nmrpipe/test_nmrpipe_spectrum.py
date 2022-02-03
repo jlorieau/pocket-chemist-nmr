@@ -15,10 +15,12 @@ from .conftest import expected
 # Property Accessors/Mutators
 @pytest.mark.parametrize("prop,expected",
                          product(('ndims', 'order', 'domain_type', 'sw',
-                                  'label', 'sign_adjustment'),
+                                  'label', 'sign_adjustment', 'plane2dphase'),
                                  expected()))
-def test_nmrpipe_spectrum_properties(prop,expected):
+def test_nmrpipe_spectrum_properties(prop, expected):
     """Test the NMRPipeSpectrum accessor properties"""
+    print(f"Loading spectrum '{expected['filepath']}")
+
     # Load the spectrum, if needed (cache for future tests)
     if 'spectrum' not in expected:
         expected['spectrum'] = NMRPipeSpectrum(expected['filepath'])
@@ -33,32 +35,12 @@ def test_nmrpipe_spectrum_properties(prop,expected):
        all(isinstance(i, float) for i in expected_value)):
         # For parameters that are lists of floats, compare each individually
         # in case there are floating point errors
-        assert all(isclose(i, j) for i, j in zip(spectrum_value,
-                                                 expected_value))
+        assert all([isclose(i, j) for i, j in zip(spectrum_value,
+                                                  expected_value)])
     else:
         assert spectrum_value == expected_value
 
-# @pytest.mark.parametrize("in_filepath", spectrum2d_exs + spectrum3d_exs)
-# def test_nmrpipe_spectrum_plane2dphase(in_filepath):
-#     """Test the NMRPipeSpectrum plane2dphase method"""
-#     # Load the spectrum
-#     spectrum = NMRPipeSpectrum(in_filepath)
-#
-#     # If it's spectrum with an iterator, it has to be iterator once to
-#     # populate self.meta and self.dict
-#     if spectrum.iterator is not None:
-#         next(spectrum)
-#
-#     # Check the method's value
-#     assert spectrum.plane2dphase is Plane2DPhase.STATES
-#     assert spectrum.meta['FD2DPHASE'] == 2.0
-#
-#     # Try modifying the value
-#     spectrum.plane2dphase = Plane2DPhase.TPPI
-#     assert spectrum.plane2dphase is Plane2DPhase.TPPI
-#     assert spectrum.meta['FD2DPHASE'] == 1.0
-#
-#
+
 # # I/O methods
 #
 # @pytest.mark.parametrize("in_filepath", spectrum2d_exs)
