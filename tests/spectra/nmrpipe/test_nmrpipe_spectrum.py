@@ -17,20 +17,21 @@ from .conftest import expected
                          product(('ndims', 'order', 'domain_type', 'data_type',
                                   'sw', 'label', 'sign_adjustment',
                                   'plane2dphase'),
-                                 expected()))
+                                 expected().values()))
 def test_nmrpipe_spectrum_properties(prop, expected):
     """Test the NMRPipeSpectrum accessor properties"""
-    print(f"Loading spectrum '{expected['filepath']}")
-
     # Load the spectrum, if needed (cache for future tests)
-    if 'spectrum' not in expected:
-        expected['spectrum'] = NMRPipeSpectrum(expected['filepath'])
-    spectrum = expected['spectrum']
+    print(f"Loading spectrum '{expected['filepath']}")
+    if 'loaded_spectrum' not in expected:
+        expected['loaded_spectrum'] = NMRPipeSpectrum(expected['filepath'])
+    spectrum = expected['loaded_spectrum']
 
     # Check that the spectral widths are reasonable
     spectrum_value = getattr(spectrum, prop)
-    expected_value = expected[prop]
+    expected_value = expected['spectrum'][prop]
 
+    print(f"property: {prop}, spectrum value: '{spectrum_value}', "
+          f"expected value: '{expected_value}'")
     # Check that the values match expected
     if (hasattr(expected_value, '__iter__') and
        all(isinstance(i, float) for i in expected_value)):
@@ -123,3 +124,35 @@ def test_nmrpipe_spectrum_properties(prop, expected):
 
 
 # Mutators/Processing methods
+
+@pytest.mark.parametrize('expected', expected(include=(
+        '1d real fid', '2d complex fid',
+        '3d real/real/complex spectrum (2d planes)')).values())
+def test_nmrpipe_spectrum_permute(expected):
+    """Test the NMRPipeSpectrum permute method with a 1d spectrum"""
+    # Load the spectrum, if needed (cache for future tests)
+    print(f"Loading spectrum '{expected['filepath']}")
+    if 'loaded_spectrum' not in expected:
+        expected['loaded_spectrum'] = NMRPipeSpectrum(expected['filepath'])
+    spectrum = expected['loaded_spectrum']
+
+    # 1d spectra cannot be permuted
+    if spectrum.ndims == 1:
+        with pytest.raises(AssertionError):
+            spectrum.permute((1,))
+        return None
+
+    # Copy old_values to compare to
+    old = {attr: getattr(spectrum, attr) for attr in ('sw', 'label',
+                                                      'data_type')}
+    old_size = spectrum.data.size()
+
+    # Try reversing the axes
+    spectrum.permute(tuple(range(spectrum.ndims)[::-1]))
+
+    # Check that the data was correctly updated
+    for attr, old_value in old.items():
+        new_value = getattr(spectrum, attr)
+        print("old value:", old_value, "-> new_value:", new_value)
+        assert old_value == new_value[::-1]  # reverse order
+

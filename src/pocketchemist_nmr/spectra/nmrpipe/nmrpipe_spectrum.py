@@ -34,6 +34,10 @@ class NMRPipeSpectrum(NMRSpectrum):
           (1.0) or the time domain (0.0)
         - 'FD2DPHASE': Describes the type of 2D file plane, if the data is 2-,
           3-, 4-dimensional.
+
+    .. note:: NMRPipe orders data in the file as inner-outer1-outer2 wherease
+              torch tensors are setup as outer2-outer1-inner. Consequently,
+              the order of dimensions in the methods are reversed.
     """
     # Basic accessor/mutator methods
 
@@ -53,7 +57,10 @@ class NMRPipeSpectrum(NMRSpectrum):
         The order is a value between 1 and 4.
         """
         fddimorder = [int(self.meta[f"FDDIMORDER{dim}"]) for dim in range(1, 5)]
-        return tuple(fddimorder[:self.ndims])
+
+        # Swap order. Tenors are stored outer-inner while NMRPipe is stored
+        # inner-outer
+        return tuple(fddimorder[:self.ndims][::-1])
 
     @property
     def domain_type(self) -> t.Tuple[DomainType, ...]:
@@ -171,14 +178,20 @@ class NMRPipeSpectrum(NMRSpectrum):
 
     # Manipulator methods
 
-    def permute(self, new_dims: t.Tuple[int, ...]):
-        # Get the old dimension order axis -> F1/F2/F3
-        old_order = {i: order for i, order in enumerate(self.order)}
-        super().permute(new_dims)
+    def permute(self, new_dims: t.Tuple[int, ...], interleave=True):
+        # Get the mapping between the dimension order (0, 1, .. self.ndims)
+        # and the F1/F2/F3/F4 dimensions
+        old_label_order = [self.meta.get(f'FDDIMORDER{i}')
+                           for i in range(1, self.ndims + 1)]
+        new_label_order = [value for order, value in
+                           sorted(zip(new_dims, old_label_order))]
 
-        # Change the dimension ordering in the metadata
-        for i, new_dim in enumerate(new_dims):
-            self.meta[f'FDDIMORDER{i}'] = old_order[i]
+        # Conduct the permute operation
+        super().permute(new_dims, interleave=interleave)
+
+        # Update the metadata values with the new order
+        for i, order in enumerate(new_label_order, 1):
+            self.meta[f'FDDIMORDER{i}'] = order
 
     def ft(self,
            auto: bool = False,

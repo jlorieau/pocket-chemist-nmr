@@ -11,7 +11,7 @@ from pocketchemist_nmr.spectra.nmrpipe.meta import load_nmrpipe_meta
 from .conftest import expected
 
 
-@pytest.mark.parametrize('expected', expected())
+@pytest.mark.parametrize('expected', expected().values())
 def test_parse_nmrpipe_tensor(expected):
     """Test the parse_nmrpipe_meta function"""
     # Load the meta dict
@@ -28,14 +28,14 @@ def test_parse_nmrpipe_tensor(expected):
     result = parse_nmrpipe_meta(meta)
 
     # See the variable definitions from the expected function
-    assert result['ndims'] == expected['ndims']
-    assert result['order'] == expected['order']
-    assert result['data_type'] == expected['data_type']
-    assert result['data_pts'] == expected['data_pts']
-    assert result['pts'] == expected['pts']
+    assert result['ndims'] == expected['header']['ndims']
+    assert result['order'] == expected['header']['order']
+    assert result['data_type'] == expected['header']['data_type']
+    assert result['data_pts'] == expected['header']['data_pts']
+    assert result['pts'] == expected['header']['pts']
 
 
-@pytest.mark.parametrize('expected', expected(multifile=False))
+@pytest.mark.parametrize('expected', expected(multifile=False).values())
 def test_load_nmrpipe_tensor(expected, benchmark):
     """Test the load_nmrpipe_tensor function."""
     # Load the tensor
@@ -44,15 +44,15 @@ def test_load_nmrpipe_tensor(expected, benchmark):
     meta, tensor = benchmark(load_nmrpipe_tensor, expected['filepath'])
 
     # Check the loaded tensor
-    assert tensor.shape == expected['shape']
+    assert tensor.shape == expected['spectrum']['shape']
 
     # Check the data values for some key points (locations) in the data
-    for loc, data_height in expected['data_heights']:
+    for loc, data_height in expected['spectrum']['data_heights']:
         print(loc, data_height)
         assert isclose(tensor[loc], data_height, rel_tol=0.001)
 
 
-@pytest.mark.parametrize('expected', expected(multifile=True))
+@pytest.mark.parametrize('expected', expected(multifile=True).values())
 def test_load_nmrpipe_multifile_tensor(expected, benchmark):
     """Test the load_nmrpipe_multifile_tensor function."""
     # Load the tensor
@@ -67,9 +67,9 @@ def test_load_nmrpipe_multifile_tensor(expected, benchmark):
     print(f"Tensor size: {tensor_size_bytes / (1024 * 1024)} MB")
 
     # Check the loaded tensor
-    assert tensor.shape == expected['shape']
+    assert tensor.shape == expected['spectrum']['shape']
 
     # Check the data values for some key points (locations) in the data
-    for loc, data_height in expected['data_heights']:
+    for loc, data_height in expected['spectrum']['data_heights']:
         print(loc, data_height)
         assert isclose(tensor[loc], data_height, rel_tol=0.001)
