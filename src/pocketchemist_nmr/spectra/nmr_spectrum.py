@@ -9,6 +9,7 @@ from torch import permute
 from pocketchemist.processors import FFTType
 
 from .constants import DomainType, DataType
+from .utils import split_to_complex, combine_from_complex
 
 __all__ = ('NMRSpectrum',)
 
@@ -145,10 +146,40 @@ class NMRSpectrum(abc.ABC):
 
     # Manipulator methods
 
-    def permute(self, new_dims: t.Tuple[int, ...]):
-        """Permute (transpose) axes according to the new dimension order."""
+    def permute(self, new_dims: t.Tuple[int, ...],
+                interleave=True):
+        """Permute (transpose) axes according to the new dimension order.
+
+        Parameters
+        ----------
+        new_dims
+            The new order of the dimensions. Dimensions are ordered from
+            0 to (self.ndims - 1).
+        interleave
+            Split/stack the inner dimension between complex and real points,
+            depending on whether the dimension is complex or not.
+        """
+        # Only works if there is more than 1 dimension
+        assert self.ndims > 1, (
+            "Can only permute multiple dimensions")
+
+        # Get the datatypes for each dimension before and after permute
+        before_data_types = self.data_type
+        after_data_types = tuple(data_type for _, data_type in
+                                 sorted(zip(new_dims, before_data_types)))
+
+        # If the last dimension is complex, stack the real/imag points
+        # into a set of real points before permuting
+        if interleave and before_data_types[-1] == DataType.COMPLEX:
+            self.data = combine_from_complex(self.data)
+
         # Reorganize data
         self.data = permute(self.data, new_dims)
+
+        # If the last dimension should be complex, split the stack of real/imag
+        # points into a complex dimension
+        if interleave and after_data_types[-1] == DataType.COMPLEX:
+            self.data = split_to_complex(self.data)
 
     def ft(self,
            auto: bool = False,
