@@ -212,6 +212,40 @@ def expected(include: t.Optional[t.Tuple[str, ...]] = None,
                                   ((-1, -1), -676.75750 + 13228.51000j,))},
         },
 
+        '3d complex fid': {
+            'filepath': (Path('data') / 'bruker' /
+                         'CD20170124_av500hd_103_ubq_hnco3d' / 'fid' /
+                         'spec%03d.fid'),
+            'header': {
+                'multifile': True,
+                'ndims': 3,
+                'order': (2, 1, 3),
+                'data_type': (DataType.COMPLEX, DataType.COMPLEX,
+                              DataType.COMPLEX,),
+                'data_pts': (559 * 2, 39 * 2, 51 * 2),
+                'pts': (559, 39, 51)},
+            'spectrum': {
+                'ndims': 3,
+                'order': (3, 1, 2),
+                'shape': (51*2, 39 * 2, 559),
+                'domain_type': (DomainType.TIME, DomainType.TIME,
+                                DomainType.TIME),
+                'data_type': (DataType.COMPLEX, DataType.COMPLEX,
+                              DataType.COMPLEX,),
+                'sw': (1445.921997, 1671.682007, 6996.26904296875),
+                'label': ('13C',  '15N', 'HN'),
+                'sign_adjustment': (SignAdjustment.NONE, SignAdjustment.NONE,
+                                    SignAdjustment.NONE),
+                'plane2dphase': Plane2DPhase.STATES,
+                'data_heights': (((0, 0, 0), 0. + 0.j),
+                                 ((0, 0, -1), -6837.88700 + 5389.64600j),
+                                 ((0, 1, 0), 0. + 0.j),
+                                 ((0, -1, 0), 0. + 0.j),
+                                 ((1, 0, 0), 0. + 0.j),
+                                 ((-1, 0, 0), 0. + 0.j),
+                                 ((-1, -1, -1), 1723.63200 -2121.09300j))},
+        },
+
         '3d real spectrum': {
             'filepath': (Path('data') / 'bruker' /
                          'CD20170124_av500hd_103_ubq_hnco3d' / 'hncogp3d.ft3'),
