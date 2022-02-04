@@ -61,7 +61,7 @@ mappings = {
 
 
 def find_mapping(name, cnst, reverse=False, round_cnst=True) \
-        -> t.Union[DomainType, SignAdjustment, Plane2DPhase]:
+        -> t.Union[DomainType, SignAdjustment, Plane2DPhase, DataType]:
     """Find the mapping for constant (enum) values.
 
     Parameters
