@@ -48,7 +48,9 @@ def split_to_complex(tensor: torch.Tensor) -> torch.Tensor:
     >>> cmplx.size()
     torch.Size([4, 1, 2])
     """
-    real, imag = torch.hsplit(tensor, 2)
+    real, imag = torch.split(tensor,
+                             int(tensor.size()[-1] / 2),
+                             dim=tensor.dim() - 1)
     return torch.complex(real=real, imag=imag)
 
 
