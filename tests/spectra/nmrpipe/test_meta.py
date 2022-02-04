@@ -2,10 +2,12 @@
 Tests for the NMRPipe metadata functions
 """
 from pathlib import Path
+import io
 
 import pytest
 from pocketchemist_nmr.spectra.meta import NMRMetaDict
-from pocketchemist_nmr.spectra.nmrpipe.meta import load_nmrpipe_meta
+from pocketchemist_nmr.spectra.nmrpipe.meta import (load_nmrpipe_meta,
+                                                    save_nmrpipe_meta)
 
 
 spectra_exs = {Path('data') / 'bruker' /
@@ -205,20 +207,41 @@ spectra_exs = {Path('data') / 'bruker' /
 @pytest.mark.parametrize('in_filepath,meta_answerkey', spectra_exs.items())
 def test_load_nmrpipe_meta(in_filepath, meta_answerkey):
     """Test the loading of meta data for NMRPipe files."""
+    # Load the meta dict
     with open(in_filepath, 'rb') as f:
-        # Load the meta dict
         meta = load_nmrpipe_meta(f)
 
-        # Make sure it's the correct type
-        assert isinstance(meta, NMRMetaDict)
+    # Make sure it's the correct type
+    assert isinstance(meta, NMRMetaDict)
 
-        # Check the values from the answer key
-        for key, value in meta_answerkey.items():
-            if isinstance(value, float):
-                assert meta[key] == pytest.approx(value, rel=0.001)
-            else:
-                assert meta[key] == value
+    # Check the values from the answer key
+    for key, value in meta_answerkey.items():
+        if isinstance(value, float):
+            assert meta[key] == pytest.approx(value, rel=0.001)
+        else:
+            assert meta[key] == value
 
-        # Make sure there are no missing keys from the meta_answerkey
-        missing_keys = meta.keys() - meta_answerkey.keys()
-        assert len(missing_keys) == 0
+    # Make sure there are no missing keys from the meta_answerkey
+    missing_keys = meta.keys() - meta_answerkey.keys()
+    assert len(missing_keys) == 0
+
+
+@pytest.mark.parametrize('in_filepath,meta_answerkey', spectra_exs.items())
+def test_save_nmrpipe_meta(in_filepath, meta_answerkey):
+    """Test the saving of meta data for NMRPipe files."""
+    # Load the meta dict
+    with open(in_filepath, 'rb') as f:
+        meta = load_nmrpipe_meta(f)
+
+    # Save the meta into bytes
+    b = save_nmrpipe_meta(meta)
+
+    # Reload the meta from bytes
+    meta_saved = load_nmrpipe_meta(io.BytesIO(b))
+
+    # Compare the original with the reloaded
+    for k in meta:
+        print(k, meta[k], meta_saved[k])
+        assert k in meta_saved
+        assert meta[k] == meta_saved[k]
+
