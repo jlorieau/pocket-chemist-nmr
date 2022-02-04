@@ -6,8 +6,8 @@ from itertools import product
 
 import pytest
 
-from pocketchemist_nmr.spectra.nmrpipe import (NMRPipeSpectrum, Plane2DPhase,
-                                               SignAdjustment)
+from pocketchemist_nmr.spectra.nmrpipe import NMRPipeSpectrum
+from pocketchemist_nmr.spectra.constants import DataType
 
 from .conftest import expected
 
@@ -143,16 +143,25 @@ def test_nmrpipe_spectrum_permute(expected):
         return None
 
     # Copy old_values to compare to
-    old = {attr: getattr(spectrum, attr) for attr in ('sw', 'label',
-                                                      'data_type')}
-    old_size = spectrum.data.size()
+    old = {attr: getattr(spectrum, attr) for attr in ('domain_type',
+                                                      'data_type', 'sw',
+                                                      'label',
+                                                      'sign_adjustment')}
+    old_size = list(spectrum.data.size())
 
-    # Try reversing the axes
+    # Try reversing the axes. e.g. (0, 1, 2) -> (2, 1, 0)
     spectrum.permute(tuple(range(spectrum.ndims)[::-1]))
 
     # Check that the data was correctly updated
     for attr, old_value in old.items():
         new_value = getattr(spectrum, attr)
-        print("old value:", old_value, "-> new_value:", new_value)
         assert old_value == new_value[::-1]  # reverse order
 
+    # The tensor size is reversed and may have increased or decreased depending
+    # on whether a complex dimension was split or stacked
+    if old['data_type'][-1] == DataType.COMPLEX:
+        old_size[-1] = int(old_size[-1] * 2)
+    if spectrum.data_type[-1] == DataType.COMPLEX:
+        old_size[0] = int(old_size[0] / 2)
+
+    assert spectrum.data.size() == tuple(old_size)[::-1]
