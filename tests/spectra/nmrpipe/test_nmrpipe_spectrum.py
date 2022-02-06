@@ -9,7 +9,7 @@ import pytest
 from pocketchemist_nmr.spectra.nmrpipe import NMRPipeSpectrum
 from pocketchemist_nmr.spectra.constants import DataType
 
-from .conftest import expected
+from ...conftest import expected
 
 #: Attributes to test
 attrs = ('ndims', 'order', 'domain_type', 'data_type', 'sw', 'label',
@@ -114,5 +114,15 @@ def test_nmrpipe_spectrum_permute(expected):
         old_size[0] = int(old_size[0] / 2)
 
     assert spectrum.data.size() == tuple(old_size)[::-1]
+
+
+@pytest.mark.parametrize('expected', expected(include=(
+        '1d real fid', '2d complex fid',
+        '3d complex fid')).values())
+def test_nmrpipe_spectrum_ft(expected):
+    """Test the NMRPipeSpectrum ft method"""
+    # Load the spectrum, if needed (cache for future tests)
+    print(f"Loading spectrum '{expected['filepath']}")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
 
 

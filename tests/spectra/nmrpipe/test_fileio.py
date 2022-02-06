@@ -10,7 +10,7 @@ from pocketchemist_nmr.spectra.nmrpipe.fileio import (
     save_nmrpipe_tensor)
 from pocketchemist_nmr.spectra.nmrpipe.meta import load_nmrpipe_meta
 
-from .conftest import expected
+from ...conftest import expected
 
 
 @pytest.mark.parametrize('expected', expected().values())
