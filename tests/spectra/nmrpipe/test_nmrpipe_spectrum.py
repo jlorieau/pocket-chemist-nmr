@@ -83,9 +83,7 @@ def test_nmrpipe_spectrum_permute(expected):
     """Test the NMRPipeSpectrum permute method"""
     # Load the spectrum, if needed (cache for future tests)
     print(f"Loading spectrum '{expected['filepath']}")
-    if 'loaded_spectrum' not in expected:
-        expected['loaded_spectrum'] = NMRPipeSpectrum(expected['filepath'])
-    spectrum = expected['loaded_spectrum']
+    spectrum = NMRPipeSpectrum(expected['filepath'])
 
     # 1d spectra cannot be permuted
     if spectrum.ndims == 1:
@@ -116,3 +114,5 @@ def test_nmrpipe_spectrum_permute(expected):
         old_size[0] = int(old_size[0] / 2)
 
     assert spectrum.data.size() == tuple(old_size)[::-1]
+
+
