@@ -2,10 +2,12 @@
 Test the NMRPipe fileio functions
 """
 from cmath import isclose
+from pathlib import Path
 
 import pytest
 from pocketchemist_nmr.spectra.nmrpipe.fileio import (
-    parse_nmrpipe_meta, load_nmrpipe_tensor, load_nmrpipe_multifile_tensor)
+    parse_nmrpipe_meta, load_nmrpipe_tensor, load_nmrpipe_multifile_tensor,
+    save_nmrpipe_tensor)
 from pocketchemist_nmr.spectra.nmrpipe.meta import load_nmrpipe_meta
 
 from .conftest import expected
@@ -73,3 +75,25 @@ def test_load_nmrpipe_multifile_tensor(expected, benchmark):
     for loc, data_height in expected['spectrum']['data_heights']:
         print(loc, data_height)
         assert isclose(tensor[loc], data_height, rel_tol=0.001)
+
+
+@pytest.mark.parametrize('expected', expected(multifile=False).values())
+def test_save_nmrpipe_tensor(expected, tmpdir, benchmark):
+    """Test the save_nmrpipe_tensor function."""
+    # Load the tensor
+    print(f"Loading '{expected['filepath']}'")
+    benchmark.extra_info['filepath'] = expected['filepath']
+    meta, tensor = load_nmrpipe_tensor(expected['filepath'])
+
+    # Save the tensor to a file
+    tmpfilename = Path(tmpdir) / expected['filepath'].name
+    save_nmrpipe_tensor(filename=tmpfilename, meta=meta, tensor=tensor)
+
+    # Reload the tensor and see if it's the same
+    meta, tensor = benchmark(load_nmrpipe_tensor, tmpfilename)
+
+    # Check the data values for some key points (locations) in the data
+    for loc, data_height in expected['spectrum']['data_heights']:
+        print(loc, data_height)
+        assert isclose(tensor[loc], data_height, rel_tol=0.001)
+

@@ -5,7 +5,8 @@ import re
 import typing as t
 
 from .constants import Plane2DPhase, SignAdjustment, find_mapping
-from .fileio import load_nmrpipe_tensor, load_nmrpipe_multifile_tensor
+from .fileio import (load_nmrpipe_tensor, load_nmrpipe_multifile_tensor,
+                     save_nmrpipe_tensor)
 from ..nmr_spectrum import NMRSpectrum
 from ..constants import DomainType, DataType
 
@@ -159,22 +160,10 @@ class NMRPipeSpectrum(NMRSpectrum):
         overwrite
             If True (default), overwrite existing files.
         """
-        pass
-        # # Setup arguments
-        # out_filepath = (out_filepath if out_filepath is not None else
-        #                 self.out_filepath)
-        # dic = self.meta
-        #
-        # # Save the spectrum
-        # if isinstance(self.iterator, pipe_fileio.iter3D):
-        #     # The data must be convert to float32 for the following write
-        #     # function
-        #     data = self.data.view(np.float32)
-        #     self.iterator.write(filemask=str(out_filepath), plane=data,
-        #                         dic=dic)
-        # else:
-        #     pipe_fileio.write(filename=str(out_filepath), dic=dic,
-        #                       data=self.data, overwrite=overwrite)
+        # Setup arguments
+        out_filepath = (out_filepath if out_filepath is not None else
+                        self.out_filepath)
+        save_nmrpipe_tensor(filename=out_filepath, overwrite=overwrite)
 
     # Manipulator methods
 

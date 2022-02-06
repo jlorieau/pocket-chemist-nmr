@@ -7,12 +7,12 @@ from itertools import zip_longest
 from math import isclose
 from pathlib import Path
 
-from torch import Tensor, FloatStorage, FloatTensor, cuda, complex, stack
+from torch import Tensor, FloatStorage, FloatTensor, cuda, stack
 
-from .meta import NMRPipeMetaDict, load_nmrpipe_meta
+from .meta import NMRPipeMetaDict, load_nmrpipe_meta, save_nmrpipe_meta
 from .constants import header_size_bytes, data_size_bytes
 from ..constants import DataType
-from ..utils import split_to_complex
+from ..utils import split_to_complex, combine_from_complex
 
 __all__ = ('parse_nmrpipe_meta', 'load_nmrpipe_tensor',
            'load_nmrpipe_multifile_tensor')
@@ -276,3 +276,28 @@ def load_nmrpipe_multifile_tensor(filemask: str,
     meta_dicts = [meta for meta, _ in datasets]
     tensor = stack(tuple(data for _, data in datasets))
     return meta_dicts, tensor
+
+
+def save_nmrpipe_tensor(filename: t.Union[str, Path],
+                        meta: NMRPipeMetaDict,
+                        tensor: Tensor,
+                        overwrite=True):
+    """Save a tensor in a single file in NMRPipe format."""
+    if Path(filename).exists() and not overwrite:
+        raise FileExistsError
+
+    with open(filename, 'wb') as f:
+        # Save the header
+        data = save_nmrpipe_meta(meta=meta)
+        f.write(data)
+
+        # Unpack the real/imag components
+        complex_tensor = tensor.is_complex()
+        if complex_tensor:
+            tensor = combine_from_complex(tensor)
+
+        # Create a flattend view of the tensor
+        flatten = tensor.flatten()
+
+        # Save the data in inner-outer1-outer2 order
+        flatten.numpy().tofile(f)
