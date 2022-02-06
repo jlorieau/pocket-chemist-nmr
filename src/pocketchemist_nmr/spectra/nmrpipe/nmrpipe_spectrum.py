@@ -3,10 +3,12 @@ NMRSpectrum in NMRPipe format
 """
 import re
 import typing as t
+from pathlib import Path
 
 from .constants import Plane2DPhase, SignAdjustment, find_mapping
 from .fileio import (load_nmrpipe_tensor, load_nmrpipe_multifile_tensor,
                      save_nmrpipe_tensor)
+from .meta import NMRPipeMetaDict
 from ..nmr_spectrum import NMRSpectrum
 from ..constants import DomainType, DataType
 
@@ -40,6 +42,9 @@ class NMRPipeSpectrum(NMRSpectrum):
               torch tensors are setup as outer2-outer1-inner. Consequently,
               the order of dimensions in the methods are reversed.
     """
+    #: Header metadata dict
+    meta: NMRPipeMetaDict
+
     # Basic accessor/mutator methods
 
     @property
@@ -109,7 +114,7 @@ class NMRPipeSpectrum(NMRSpectrum):
     # I/O methods
 
     def load(self,
-             in_filepath: t.Optional['pathlib.Path'] = None,
+             in_filepath: t.Optional[t.Union[str, Path]] = None,
              shared: bool = True,
              device: t.Optional[str] = None,
              force_gpu: bool = False):
@@ -146,7 +151,7 @@ class NMRPipeSpectrum(NMRSpectrum):
             self.meta, self.data = meta, data
 
     def save(self,
-             out_filepath: t.Optional['pathlib.Path'] = None,
+             out_filepath: t.Optional[t.Union[str, Path]] = None,
              format: str = None,
              overwrite: bool = True):
         """Save the spectrum to the specified filepath
@@ -163,7 +168,8 @@ class NMRPipeSpectrum(NMRSpectrum):
         # Setup arguments
         out_filepath = (out_filepath if out_filepath is not None else
                         self.out_filepath)
-        save_nmrpipe_tensor(filename=out_filepath, overwrite=overwrite)
+        save_nmrpipe_tensor(filename=out_filepath, meta=self.meta,
+                            tensor=self.data, overwrite=overwrite)
 
     # Manipulator methods
 
@@ -189,11 +195,10 @@ class NMRPipeSpectrum(NMRSpectrum):
            alt: bool = False,
            neg: bool = False,
            bruk: bool = False,
-           data: t.Optional['numpy.ndarray'] = None,
            **kwargs):
         # Setup the arguments
         if auto:
-            if self.is_freq():
+            if self.domain_type[-1] == DomainType.FREQ:
                 # The current dimension is in the freq domain
                 inv = True  # perform inverse FT
                 real = False  # do not perform a real FT
@@ -210,7 +215,7 @@ class NMRPipeSpectrum(NMRSpectrum):
 
                 # Alternate sign, based on sign_adjustment
                 # TODO: The commented out section differs from NMRPipe/nmrglue
-                alt = self.sign_adjustment() in (
+                alt = self.sign_adjustment[-1] in (
                     SignAdjustment.REAL,
                     SignAdjustment.COMPLEX,
                     # SignAdjustment.NEGATE_IMAG,
@@ -218,22 +223,30 @@ class NMRPipeSpectrum(NMRSpectrum):
                     # SignAdjustment.COMPLEX_NEGATE_IMAG
                     )
 
-                neg = self.sign_adjustment() in (
+                neg = self.sign_adjustment[-1] in (
                     SignAdjustment.NEGATE_IMAG,
                     SignAdjustment.REAL_NEGATE_IMAG,
                     SignAdjustment.COMPLEX_NEGATE_IMAG)
-
-        # Update the self.meta dict as needed
-        self.sign_adjustment(value=SignAdjustment.NONE)  # sign adj. applied
-
-        # Switch the domain type, based on the type of Fourier Transform
-        new_domain_type = DomainType.TIME if inv else DomainType.FREQ
-        self.domain_type(value=new_domain_type)
 
         # Switch the inv flag. This is because NMRPipe, by default, uses ifft
         # to describe fft (i.e. positive frequencies are on the left, negative
         # frequencies are on the right)
         inv = not inv
 
-        return super().ft(ft_func=ft_func, auto=False, real=real, inv=inv,
-                          alt=alt, neg=neg, bruk=bruk, data=data)
+        # Conduct the Fourier transform
+        rv = super().ft(auto=False, real=real, inv=inv, alt=alt, neg=neg,
+                        bruk=bruk)
+
+        # Update the self.meta dict as needed
+        last_dim = self.order[-1]
+        new_sign_adjustment = find_mapping('sign_adjustment',
+                                           SignAdjustment.NONE, reverse=True)
+        self.meta[f'FDF{last_dim}AQSIGN'] = new_sign_adjustment
+
+        # Switch the domain type, based on the type of Fourier Transform
+        new_domain_type = DomainType.TIME if inv else DomainType.FREQ
+        new_domain_type = find_mapping('domain_type', new_domain_type,
+                                       reverse=True)
+        self.meta[f"FDF{last_dim}FTFLAG"] = new_domain_type
+
+        return rv
