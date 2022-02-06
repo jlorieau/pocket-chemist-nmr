@@ -5,10 +5,10 @@ import abc
 import typing as t
 from pathlib import Path
 
-from torch import permute
-from pocketchemist.processors import FFTType
+from torch import permute, fft
 
 from .constants import DomainType, DataType
+from .meta import NMRMetaDict
 from .utils import split_to_complex, combine_from_complex
 
 __all__ = ('NMRSpectrum',)
@@ -27,7 +27,7 @@ class NMRSpectrum(abc.ABC):
 
     #: metadata on the spectrum.
     #: All methods should maintain the correct integrity of the metadata
-    meta: dict
+    meta: NMRMetaDict
 
     #: The data for the spectrum, either an array or an iterator
     data: 'torch.Tensor'
@@ -134,10 +134,12 @@ class NMRSpectrum(abc.ABC):
         attrs
             A listing of attributes to clear.
         """
-        if hasattr(self, 'meta') and isinstance(self.meta, dict):
+        if hasattr(self, 'meta') and hasattr(self.meta, 'clear'):
             self.meta.clear()
         else:
-            self.meta = dict()
+            # Create a new meta dict based on the annotation
+            meta_cls = t.get_type_hints(self)['meta']
+            self.meta = meta_cls()
 
         # Rest the attributes
         attrs = attrs if attrs is not None else self.reset_attrs
@@ -188,7 +190,6 @@ class NMRSpectrum(abc.ABC):
            alt: bool = False,
            neg: bool = False,
            bruk: bool = False,
-           data: t.Optional['numpy.ndarray'] = None,
            **kwargs):
         """Perform a Fourier Transform
 
@@ -227,7 +228,7 @@ class NMRSpectrum(abc.ABC):
         - nmrglue.process.proc_base
         """
         # Setup the arguments
-        data = data if data is not None else self.data
+        fft_func = fft.fft
 
         # Setup the flags
         if auto:
@@ -242,24 +243,23 @@ class NMRSpectrum(abc.ABC):
             alt = True
         if real:
             # Remove the imaginary component for real transformation
-            data.imag = 0.0
+            self.data.imag = 0.0
         if inv:
             # Set the FFT function type to inverse Fourier transformation
-            ft_func.fft_type = FFTType.IFFT
+            fft_func = fft.ifft
         if alt and not inv:
             # Alternate the sign of points
-            data[..., 1::2] = data[..., 1::2] * -1.
+            self.data[..., 1::2] = self.data[..., 1::2] * -1.
         if neg:
             # Negate (multiple by -1) the imaginary component
-            data.imag *= -1.0
+            self.data.imag *= -1.0
 
         # Perform the FFT then a frequency shift
-        self.data = ft_func(data=data)
+        self.data = fft_func(data=self.data)
 
         # Post process the data
         if inv and alt:
-            data[..., 1::2] = data[..., 1::2] * -1
+            self.data[..., 1::2] = self.data[..., 1::2] * -1
 
         # Prepare the return value
-        kwargs['data'] = data
         return kwargs
