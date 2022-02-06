@@ -139,6 +139,11 @@ def load_nmrpipe_tensor(filename: t.Union[str, Path],
     meta, tensor
         The metadata dict and tensor for the spectrum's data
     """
+    # Check that the file exists
+    if not Path(filename).exists():
+        raise FileNotFoundError(
+            f"Could not find file for file path '{filename}'")
+
     # Load the meta dict, if needed
     if meta is None:
         with open(filename, 'rb') as f:
@@ -268,6 +273,10 @@ def load_nmrpipe_multifile_tensor(filemask: str,
                 break
     else:
         raise NotImplementedError
+
+    if len(filepaths) == 0:
+        raise FileNotFoundError(
+            f"Could not find files that matched the file mask '{filemask}'")
 
     # Concatenate tensors
     datasets = tuple(load_nmrpipe_tensor(filepath, meta=meta,shared=shared,
