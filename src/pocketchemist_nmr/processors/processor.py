@@ -57,7 +57,6 @@ class NMRGroupProcessor(GroupProcessor):
             [result.get() for result in results]
 
 
-
 class FTSpectra(FFTProcessor, NMRProcessor):
     """Fourier Transform spectra (one or more)"""
 

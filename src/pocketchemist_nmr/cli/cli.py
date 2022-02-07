@@ -119,7 +119,7 @@ def nmrpipe_out(format, overwrite, out_filepaths):
 
     # Setup a Group processor and a processor to load spectra
     group += SaveSpectra(out_filepaths=out_filepaths, format=format,
-                                overwrite=overwrite)
+                         overwrite=overwrite)
 
     # Run the processor group
     kwargs = group.process()
