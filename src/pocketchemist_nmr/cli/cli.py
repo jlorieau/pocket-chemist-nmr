@@ -1,6 +1,8 @@
+import io
 import typing as t
 import sys
 import pickle
+from contextlib import redirect_stdout
 
 import click
 from click_option_group import optgroup, MutuallyExclusiveOptionGroup
@@ -36,7 +38,7 @@ class HyphenGroup(click.Group):
 
     # The name of commands and groups whose preceeding hyphen should be
     # stripped to allow proper routing.
-    hyphen_groups = ('-fn', '-in', '-out')
+    hyphen_groups = ('-fn', '-in')
 
     def parse_args(self, ctx: click.Context, args: t.List[str]) -> t.List[str]:
         """Parse group arguments to hyphen groups"""
@@ -62,10 +64,52 @@ def nmrpipe(ctx: click.Context):
     pass
 
 
-# Spectrum input
+# Spectrum input/output
+
+def nmrpipe_out(func):
+    @click.option('-out', '--out-filepaths', default=None,
+                  help="Filename to write spectrum")
+    @click.option('-outfmt', '--out-format',
+                  type=click.Choice(('default',)),
+                  default='default', show_default=True,
+                  help='The format of the saved spectrum')
+    @click.option('-ov', '--overwrite', is_flag=True, default=True,
+                  show_default=True,
+                  help="Overwrite the file if it exists")
+    def _nmrpipe_out(out_filepaths, out_format, overwrite, *args, **kwargs):
+        logger.debug(f"out_filepaths={out_filepaths}")
+
+        # Run the inner function, capturing the stdout
+        fd = io.BytesIO()
+        buff = io.TextIOWrapper(fd, sys.stdout.encoding)
+        with redirect_stdout(buff):
+            rv = func(*args, **kwargs)
+
+        if out_filepaths is not None:
+            # If a output file was specified, write it to the disk
+            from ..processors.fileio import SaveSpectra
+
+            # Unpack the stdin
+            buff.buffer.seek(io.SEEK_SET)  # Reset buffer to start
+            group = pickle.load(buff.buffer)  # Read in the stdout
+
+            # Setup a Group processor and a processor to load spectra
+            group += SaveSpectra(out_filepaths=out_filepaths, format=out_format,
+                                 overwrite=overwrite)
+
+            # Run the processor group
+            kwargs = group.process()
+        else:
+            # Otherwise write it to stdout as usual
+            buff.buffer.seek(io.SEEK_SET)  # Reset buffer to start
+            sys.stdout.buffer.write(buff.buffer.read())  # Send buffer to stdout
+
+        return rv
+    return _nmrpipe_out
+
 
 @nmrpipe.command(name='-in', context_settings=CONTEXT_SETTINGS)
-@click.option('-fmt', '--format',
+@click.option('-infmt', '--in-format',
               type=click.Choice(('nmrpipe',)),
               default='nmrpipe', show_default=True,
               help='The format of the loaded spectrum')
@@ -73,7 +117,8 @@ def nmrpipe(ctx: click.Context):
               is_flag=True, default=False,
               help="Output information on the spectrum's header")
 @click.argument('in_filepaths', nargs=-1)
-def nmrpipe_in(format, show_header, in_filepaths):
+@nmrpipe_out
+def nmrpipe_in(in_format, show_header, in_filepaths):
     """NMR spectra to load in"""
     from ..processors.processor import NMRGroupProcessor
     from ..processors.fileio import LoadSpectra
@@ -82,7 +127,7 @@ def nmrpipe_in(format, show_header, in_filepaths):
 
     # Setup a Group processor and a processor to load spectra
     group = NMRGroupProcessor()
-    group += LoadSpectra(in_filepaths=in_filepaths, format=format)
+    group += LoadSpectra(in_filepaths=in_filepaths, format=in_format)
 
     # Write the objects to stdout
     if show_header:
@@ -98,31 +143,6 @@ def nmrpipe_in(format, show_header, in_filepaths):
                                            ('Name', 'Value')))
     else:
         write_stdout(group)
-
-
-@nmrpipe.command(name='-out', context_settings=CONTEXT_SETTINGS)
-@click.option('-fmt', '--format',
-              type=click.Choice(('default',)),
-              default='default', show_default=True,
-              help='The format of the loaded spectrum')
-@click.option('-ov', '--overwrite', is_flag=True,
-              default=True, show_default=True)
-@click.argument('out_filepaths', nargs=-1)
-def nmrpipe_out(format, overwrite, out_filepaths):
-    """The NMR spectra to save"""
-    from ..processors.fileio import SaveSpectra
-
-    logger.debug(f"out_filepaths={out_filepaths}")
-
-    # Unpack the stdin
-    group = read_stdin()
-
-    # Setup a Group processor and a processor to load spectra
-    group += SaveSpectra(out_filepaths=out_filepaths, format=format,
-                         overwrite=overwrite)
-
-    # Run the processor group
-    kwargs = group.process()
 
 
 # Spectrum processing functions
@@ -142,6 +162,7 @@ def nmrpipe_fn():
 @click.option('-fs', type=int, default=1, show_default=True,
               help="Filter shape: 1 = Boxcar, 2 = Sine, 3 = Sine^2 "
                    "(low pass filter)")
+@nmrpipe_out
 def nmrpipe_fn_sol(mode, fl, fs):
     """Solvent suppression"""
     # Unpack the stdin
@@ -163,7 +184,7 @@ def nmrpipe_fn_sol(mode, fl, fs):
                  help='Transform real data only')
 @optgroup.option('-inv', 'mode', flag_value='inv', type=click.STRING,
                  help='Perform an inverse transform')
-
+@nmrpipe_out
 # @optgroup.group("Fourier Transform options",
 #                 help="Optional processing methods for the Fourier Transform")
 # @optgroup.option('-alt', is_flag=True,
