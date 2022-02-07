@@ -28,8 +28,7 @@ class NMRGroupProcessor(GroupProcessor):
 
     def process(self, **kwargs):
         # Setup a spectra list
-        return self.process_pool()
-        #return self.process_sequence(**kwargs)
+        return self.process_sequence(**kwargs)
 
     def process_sequence(self, **kwargs):
         """Process subprocessors in sequence"""
@@ -71,13 +70,9 @@ class FTSpectra(FFTProcessor, NMRProcessor):
                 mode: str = None,
                 **kwargs):
 
-        # Setup the fft/ifft functions
-        ft_func = self.get_module_callable(category='fft')
-        ft_opts = {'auto': self.mode == 'auto'}
-
         # Perform the Fourier transformation
         for spectrum in spectra:
-            spectrum.ft(ft_func=ft_func, ft_opts=ft_opts)
+            spectrum.ft()
 
         # Setup the arguments that are passed to future processors
         kwargs['spectra'] = spectra
