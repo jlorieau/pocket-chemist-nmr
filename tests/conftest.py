@@ -30,6 +30,7 @@ def expected(include: t.Optional[t.Tuple[str, ...]] = None,
         '1d complex fid': {
             'filepath': (Path('data') / 'bruker' /
                          'CD20170124_av500hd_100_ubq_oneone1d' / 'spec.fid'),
+            'format': 'nmrpipe',
             # Header (meta values). NMRPipe ordering (inner-outer1-outer2)
             'header': {
                 'ndims': 1,  # Number of dimensions in spectrum
@@ -56,6 +57,7 @@ def expected(include: t.Optional[t.Tuple[str, ...]] = None,
             'filepath': (Path('data') / 'bruker' /
                          'CD20170124_av500hd_100_ubq_oneone1d' /
                          'oneone-echo_N-dcpl.jll.ft'),
+            'format': 'nmrpipe',
             'header': {
                 'ndims': 1,
                 'order': (2,),
@@ -80,6 +82,7 @@ def expected(include: t.Optional[t.Tuple[str, ...]] = None,
             'filepath': (Path('data') / 'bruker' /
                          'CD20170124_av500hd_100_ubq_oneone1d' /
                          'oneone-echo_N-dcpl.jll_complex.ft'),
+            'format': 'nmrpipe',
             'header': {
                 'ndims': 1,
                 'order': (2,),
@@ -104,6 +107,7 @@ def expected(include: t.Optional[t.Tuple[str, ...]] = None,
         '2d complex fid': {
             'filepath': (Path('data') / 'bruker' /
                          'CD20170124_av500hd_101_ubq_hsqcsi2d' / 'spec.fid'),
+            'format': 'nmrpipe',
             'header': {
                 'ndims': 2,  # Number of dimensions in spectrum
                 # Data ordering of data. (direct, indirect) e.g. F1, F2
@@ -133,6 +137,7 @@ def expected(include: t.Optional[t.Tuple[str, ...]] = None,
             'filepath': (Path('data') / 'bruker' /
                          'CD20170124_av500hd_101_ubq_hsqcsi2d' /
                          'hsqcetfpf3gpsi2.ft2'),
+            'format': 'nmrpipe',
             'header': {
                 'ndims': 2,
                 'order': (1, 2),
@@ -159,6 +164,7 @@ def expected(include: t.Optional[t.Tuple[str, ...]] = None,
             'filepath': (Path('data') / 'bruker' /
                          'CD20170124_av500hd_101_ubq_hsqcsi2d' /
                          'hsqcetfpf3gpsi2_complex.ft2'),
+            'format': 'nmrpipe',
             'header': {
                 'ndims': 2,
                 'order': (2, 1),
@@ -186,6 +192,7 @@ def expected(include: t.Optional[t.Tuple[str, ...]] = None,
             'filepath': (Path('data') / 'bruker' /
                          'CD20170124_av500hd_103_ubq_hnco3d' / 'fid' /
                          'spec001.fid'),
+            'format': 'nmrpipe',
             'header': {
                 'ndims': 3,
                 'order': (2, 1, 3),
@@ -216,6 +223,7 @@ def expected(include: t.Optional[t.Tuple[str, ...]] = None,
             'filepath': (Path('data') / 'bruker' /
                          'CD20170124_av500hd_103_ubq_hnco3d' / 'fid' /
                          'spec%03d.fid'),
+            'format': 'nmrpipe',
             'header': {
                 'multifile': True,
                 'ndims': 3,
@@ -249,6 +257,7 @@ def expected(include: t.Optional[t.Tuple[str, ...]] = None,
         '3d real spectrum': {
             'filepath': (Path('data') / 'bruker' /
                          'CD20170124_av500hd_103_ubq_hnco3d' / 'hncogp3d.ft3'),
+            'format': 'nmrpipe',
             'header': {
                 'ndims': 3,
                 'order': (2, 3, 1),
@@ -280,6 +289,7 @@ def expected(include: t.Optional[t.Tuple[str, ...]] = None,
             'filepath': (Path('data') / 'bruker' /
                          'CD20170124_av500hd_103_ubq_hnco3d' / 'ft2' /
                          'spec%03d.ft2'),
+            'format': 'nmrpipe',
             'header': {
                 'multifile': True,
                 'ndims': 3,
@@ -312,6 +322,7 @@ def expected(include: t.Optional[t.Tuple[str, ...]] = None,
             'filepath': (Path('data') / 'bruker' /
                          'CD20170124_av500hd_103_ubq_hnco3d' / 'ft3' /
                          'spec%04d.ft3'),
+            'format': 'nmrpipe',
             'header': {
                 'multifile': True,
                 'ndims': 3,

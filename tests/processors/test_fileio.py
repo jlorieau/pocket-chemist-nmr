@@ -6,30 +6,15 @@ import pytest
 from pocketchemist_nmr.processors.fileio import LoadSpectra, SaveSpectra
 from pocketchemist_nmr.spectra import NMRPipeSpectrum
 
-spectrum2d_nmrpipe = (Path('data') / 'bruker' /
-                      'CD20170124_av500hd_101_ubq_hsqcsi2d' /
-                      'hsqcetfpf3gpsi2.ft2',)
-
-spectrum3d_nmrpipe = (Path('data') / 'bruker' /
-                      'CD20170124_av500hd_103_ubq_hncosi2d' /
-                      'fid' / 'test%03d.fid',)
+from ..conftest import expected
 
 
-def get_spectra():
-    return ([(spec, NMRPipeSpectrum, 2) for spec in spectrum2d_nmrpipe] +
-            [(spec, NMRPipeSpectrum, 3) for spec in spectrum3d_nmrpipe])
-
-
-@pytest.mark.parametrize("in_filepath,spectrum_cls,ndims", get_spectra())
-def test_load_spectra_nmrpipe(in_filepath, spectrum_cls, ndims):
+@pytest.mark.parametrize("expected", expected().values())
+def test_load_spectra_nmrpipe(expected):
     """Test the LoadSpectra processor"""
     # Run the processor
-    if spectrum_cls == NMRPipeSpectrum:
-        fmt = 'nmrpipe'
-    else:
-        raise NotImplementedError
-
-    processor = LoadSpectra(in_filepaths=in_filepath, format=fmt)
+    processor = LoadSpectra(in_filepaths=expected['filepath'],
+                            format=expected['format'])
     kwargs = processor.process()
 
     # Check that the spectrum was correctly loaded and returned in the kwargs
@@ -38,32 +23,42 @@ def test_load_spectra_nmrpipe(in_filepath, spectrum_cls, ndims):
 
     # Check the spectrum's class and metadata
     spectrum = kwargs['spectra'][0]
-    assert isinstance(spectrum, spectrum_cls)
-    assert spectrum.ndims == ndims
+    assert isinstance(spectrum, NMRPipeSpectrum)
+    assert spectrum.ndims == expected['header']['ndims']
 
 
-@pytest.mark.parametrize("in_filepath,spectrum_cls,ndims", get_spectra())
-def test_save_spectra_nmrpipe(in_filepath, spectrum_cls, ndims, tmpdir):
-    """Test the SaveSpectra processor"""
-    tmpdir = Path(tmpdir)
+@pytest.mark.parametrize("expected", expected().values())
+def test_load_spectra_nmrpipe(expected, tmpdir):
+    """Test the LoadSpectra processor"""
+    # Run the processor
+    processor = LoadSpectra(in_filepaths=expected['filepath'],
+                            format=expected['format'])
+    kwargs = processor.process()
 
-    # Load the spectrum
-    if spectrum_cls == NMRPipeSpectrum:
-        fmt = 'nmrpipe'
-    else:
-        raise NotImplementedError
+    # Check that the spectrum was correctly loaded and returned in the kwargs
+    assert 'spectra' in kwargs
+    assert len(kwargs['spectra']) == 1
+    spectrum = kwargs['spectra'][0]
 
-    loader = LoadSpectra(in_filepaths=in_filepath, format=fmt)
-    kwargs = loader.process()
+    # Save spectra and try reloading
+    out_filepath = Path(tmpdir) / expected['filepath'].name.replace("%", "")
+    assert not out_filepath.exists()
+    processor = SaveSpectra(out_filepaths=out_filepath,
+                            format=expected['format'])
+    kwargs = processor.process(**kwargs)
 
-    # Save the spectra to a new place
-    out_filepath = tmpdir / in_filepath
-    saver = SaveSpectra(out_filepaths=out_filepath, format=fmt)
-    saver.process(**kwargs)
-
-    # Check that the file exists
-    if "%03d" in str(out_filepath):
-        # This uses a filemask, check the first file
-        out_filepath = Path(str(out_filepath).replace("%03d", "001"))
-
+    # Check that the file was saved
     assert out_filepath.exists()
+
+    # Check that the saved spectrum can be reloaded
+    processor = LoadSpectra(in_filepaths=out_filepath,
+                            format=expected['format'])
+    kwargs = processor.process()
+
+    # Check the spectrum's class and metadata
+    spectrum = kwargs['spectra'][0]
+    assert isinstance(spectrum, NMRPipeSpectrum)
+    assert spectrum.ndims == expected['header']['ndims']
+
+    # Delete the file
+    out_filepath.unlink()
