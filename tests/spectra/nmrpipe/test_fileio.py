@@ -97,3 +97,5 @@ def test_save_nmrpipe_tensor(expected, tmpdir, benchmark):
         print(loc, data_height)
         assert isclose(tensor[loc], data_height, rel_tol=0.001)
 
+    # Delete the file
+    tmpfilename.unlink()
