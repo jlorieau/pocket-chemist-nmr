@@ -18,7 +18,7 @@ class LoadSpectra(NMRProcessor):
     def process(self,
                 spectra: t.Optional[t.List[NMRSpectrum]] = None,
                 in_filepaths: t.Optional[FilePaths] = None,
-                **kwargs):
+                **kwargs: t.Any):
         """Load or iterate spectra into the kwargs
 
         Parameters
@@ -44,18 +44,6 @@ class LoadSpectra(NMRProcessor):
                     raise NotImplementedError(f"An NMR spectrum of format "
                                               f"'{self.format}' is not "
                                               f"supported")
-
-        # Iterate spectra, if needed
-        for spectrum in spectra:
-            # Do not iterate if there is not iterator
-            if spectrum.iterator is None:
-                continue
-
-            # Try the iteration
-            try:
-                next(spectrum)
-            except StopIteration:
-                pass
 
         kwargs['spectra'] = spectra
         return kwargs
