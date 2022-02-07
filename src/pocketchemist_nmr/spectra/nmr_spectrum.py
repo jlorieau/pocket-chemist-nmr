@@ -255,7 +255,7 @@ class NMRSpectrum(abc.ABC):
             self.data.imag *= -1.0
 
         # Perform the FFT then a frequency shift
-        self.data = fft_func(data=self.data)
+        self.data = fft_func(self.data)
 
         # Post process the data
         if inv and alt:
