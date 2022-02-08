@@ -200,13 +200,13 @@ class NMRPipeSpectrum(NMRSpectrum):
         if auto:
             if self.domain_type[-1] == DomainType.FREQ:
                 # The current dimension is in the freq domain
-                inv = True  # perform inverse FT
+                inv = False  # inverse transform, reverse in NMRPipe
                 real = False  # do not perform a real FT
                 alt = False  # do not perform sign alternation
                 neg = False  # do not perform negation of imaginaries
             else:
                 # The current dimension is in the time domain
-                inv = False  # do not perform inverse FT
+                inv = True  # forward transform, reversed in NMRPipe
 
                 # Real, TPPI and Sequential data is real transform
                 # TODO: Evaluation of this flag differs from NMRPipe/nmrglue
@@ -227,11 +227,6 @@ class NMRPipeSpectrum(NMRSpectrum):
                     SignAdjustment.NEGATE_IMAG,
                     SignAdjustment.REAL_NEGATE_IMAG,
                     SignAdjustment.COMPLEX_NEGATE_IMAG)
-
-        # Switch the inv flag. This is because NMRPipe, by default, uses ifft
-        # to describe fft (i.e. positive frequencies are on the left, negative
-        # frequencies are on the right)
-        inv = not inv
 
         # Conduct the Fourier transform
         rv = super().ft(auto=False, real=real, inv=inv, alt=alt, neg=neg,
