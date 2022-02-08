@@ -50,7 +50,7 @@ mappings = {
                         16.0: SignAdjustment.NEGATE_IMAG,
                         17.0: SignAdjustment.REAL_NEGATE_IMAG,
                         18.0: SignAdjustment.COMPLEX_NEGATE_IMAG,
-                        None: SignAdjustment.NONE},
+                        0.0: SignAdjustment.NONE},
     'plane2dphase': {0.0: Plane2DPhase.MAGNITUDE,
                      1.0: Plane2DPhase.TPPI,
                      2.0: Plane2DPhase.STATES,
@@ -78,12 +78,10 @@ def find_mapping(name, cnst, reverse=False, round_cnst=True) \
         integer float value. (ex: 3.9 -> 4.0)
     """
     d_mapping = mappings[name]
-    none_value = d_mapping[None]
     if reverse:
         d_mapping = {v: k for k, v in d_mapping.items()}
-        none_value = None
 
     # Clean the cnst, if needed
     if round_cnst and isinstance(cnst, float):
         cnst = round(cnst, 1)
-    return d_mapping.get(cnst, none_value)
+    return d_mapping[cnst]
