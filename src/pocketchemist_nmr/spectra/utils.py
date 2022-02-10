@@ -1,17 +1,87 @@
 """
 Utility functions for spectra
+
+Data can be stored in block interleave and single interleave (interleave of 1).
+
+The following example is block interleaved on the X-axis (2N) and single
+interleaved on the Y-axis. The inner loop is the last dimension, so this
+dataset is (Y: single, X: block) interleaved
+
+    N X-Real + N X-Imag / 1 Y-Real
+    N X-Real + N X-Imag / 1 Y-Imag
+    ...
+    N X-Real + N X-Imag / M Y-Real
+    N X-Real + N X-Imag / M Y-Imag
+
+A simple transpose would produce (X: block, Y: single):
+
+    1 Y-Real, 1 Y-Imag, ... M Y-Real, M Y-Imag / 1 X-Real
+    1 Y-Real, 1 Y-Imag, ... M Y-Real, M Y-Imag / 2 X-Real
+    ...
+    1 Y-Real, 1 Y-Imag, ... M Y-Real, M Y-Imag / 1 Y-Imag
+    1 Y-Real, 1 Y-Imag, ... M Y-Real, M Y-Imag / 2 Y-Imag
+    ...
+    1 Y-Real, 1 Y-Imag, ... M Y-Real, M Y-Imag / N Y-Imag
+    1 Y-Real, 1 Y-Imag, ... M Y-Real, M Y-Imag / N Y-Imag
+
 """
 import torch
 
+__all__ = ('interleave_block_to_single', 'interleave_single_to_block',
+           'split_block_to_complex', 'combine_block_from_complex')
 
-def split_to_complex(tensor: torch.Tensor) -> torch.Tensor:
-    """Split a tensor with interleaved real/imag data in the last dimension to
-    a complex tensor.
+
+def interleave_block_to_single(tensor: torch.Tensor) -> torch.Tensor:
+    """Change interleave of the last tensor dimension from block interleave
+    to single interleave.
 
     Parameters
     ----------
     tensor
-        Tensor with real interleaved data in the last dimension
+        A real tensor with block-interleaved data in the last dimension
+
+    Returns
+    -------
+    tensor
+        A real tensor with single-interleaved data in the last dimension
+    """
+    # Separate the blocks
+    block1, block2 = torch.split(tensor, int(tensor.size()[-1] / 2),
+                                 dim=tensor.dim() - 1)
+
+    # Stack/Interleave the blocks
+    return torch.stack((block1, block2), dim=tensor.dim()).view(tensor.size())
+
+
+def interleave_single_to_block(tensor: torch.Tensor) -> torch.Tensor:
+    """Change interleave of the last tensor dimension from single interleave
+    to block interleave
+
+    Parameters
+    ----------
+    tensor
+        A real tensor with single-interleaved data in the last dimension
+
+    Returns
+    -------
+    tensor
+        A real tensor with block-interleaved data in the last dimension
+    """
+    # Separate the interleaved data
+    block1, block2 = tensor[..., ::2], tensor[..., 1::2]
+
+    # Stack/Interleave the blocks
+    return torch.hstack((block1, block2))
+
+
+def split_block_to_complex(tensor: torch.Tensor) -> torch.Tensor:
+    """Split a tensor with block interleaved real/imag data in the last
+    dimension to a complex tensor.
+
+    Parameters
+    ----------
+    tensor
+        Tensor with real block-interleaved data in the last dimension
 
     Returns
     -------
@@ -54,9 +124,9 @@ def split_to_complex(tensor: torch.Tensor) -> torch.Tensor:
     return torch.complex(real=real, imag=imag)
 
 
-def combine_from_complex(complex_tensor: torch.Tensor) -> torch.Tensor:
-    """Combine a complex tensor into a real tensor with real/imag interleaved
-    dimension.
+def combine_block_from_complex(complex_tensor: torch.Tensor) -> torch.Tensor:
+    """Combine a complex tensor into a real tensor with real/imag block
+    interleave in the last dimension.
 
     Parameters
     ----------
@@ -66,8 +136,8 @@ def combine_from_complex(complex_tensor: torch.Tensor) -> torch.Tensor:
     Returns
     -------
     tensor
-        A real tensor with the real/imag components interleaved data in the
-        last dimension.
+        A real tensor with the real/imag components block-interleaved data in
+        the last dimension.
 
     Examples
     --------
