@@ -105,6 +105,7 @@ def nmrpipe_out(func):
             sys.stdout.buffer.write(buff.buffer.read())  # Send buffer to stdout
 
         return rv
+    _nmrpipe_out.__doc__ = func.__doc__  # pass the docstring to wrapper
     return _nmrpipe_out
 
 
@@ -173,7 +174,6 @@ def nmrpipe_fn_sol(mode, fl, fs):
 
 
 @nmrpipe_fn.command(name='FT', context_settings=CONTEXT_SETTINGS)
-
 @optgroup.group("Fourier Transform mode",
                 help="The type of Fourier Transformation to conduct",
                 cls=MutuallyExclusiveOptionGroup)
@@ -203,6 +203,22 @@ def nmrpipe_fn_ft(mode):
 
     # Add the FT processor
     group += FTSpectra(mode=mode)
+
+    # Write the objects to stdout
+    write_stdout(group)
+
+
+@nmrpipe_fn.command(name='TP', context_settings=CONTEXT_SETTINGS)
+@nmrpipe_out
+def nmrpipe_fn_tp():
+    """Transpose the last 2 dimensions of the spectrum (X/Y -> Y/X)"""
+    from ..processors.processor import Transpose2D
+
+    # Unpack the stdin
+    group = read_stdin()
+
+    # Add the FT processor
+    group += Transpose2D()
 
     # Write the objects to stdout
     write_stdout(group)
