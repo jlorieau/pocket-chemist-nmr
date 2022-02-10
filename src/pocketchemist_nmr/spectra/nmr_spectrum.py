@@ -9,7 +9,7 @@ from torch import permute, fft
 
 from .constants import DomainType, DataType
 from .meta import NMRMetaDict
-from .utils import split_to_complex, combine_from_complex
+from .utils import split_block_to_complex, combine_block_from_complex
 
 __all__ = ('NMRSpectrum',)
 
@@ -173,7 +173,7 @@ class NMRSpectrum(abc.ABC):
         # If the last dimension is complex, stack the real/imag points
         # into a set of real points before permuting
         if interleave and before_data_types[-1] == DataType.COMPLEX:
-            self.data = combine_from_complex(self.data)
+            self.data = combine_block_from_complex(self.data)
 
         # Reorganize data
         self.data = permute(self.data, new_dims)
@@ -181,7 +181,7 @@ class NMRSpectrum(abc.ABC):
         # If the last dimension should be complex, split the stack of real/imag
         # points into a complex dimension
         if interleave and after_data_types[-1] == DataType.COMPLEX:
-            self.data = split_to_complex(self.data)
+            self.data = split_block_to_complex(self.data)
 
     def ft(self,
            auto: bool = False,
