@@ -222,3 +222,25 @@ def nmrpipe_fn_tp():
 
     # Write the objects to stdout
     write_stdout(group)
+
+
+@nmrpipe_fn.command(name='PS', context_settings=CONTEXT_SETTINGS)
+@click.option('-p0', required=True, type=float,
+              help="The zeroth order (frequency independent) phase correction")
+@click.option('-p1', required=True, type=float,
+              help="The first order (linear frequency) phase correction")
+@click.option('-di', is_flag=True, type=bool, default=True,
+              help="Discard imaginary component")
+@nmrpipe_out
+def nmrpipe_fn_ps(p0, p1, di):
+    """Phase the last dimension of a spectrum"""
+    from ..processors.processor import Phase2D
+
+    # Unpack the stdin
+    group = read_stdin()
+
+    # Add the FT processor
+    group += Phase2D(p0=p0, p1=p1, discard_imaginaries=di)
+
+    # Write the objects to stdout
+    write_stdout(group)

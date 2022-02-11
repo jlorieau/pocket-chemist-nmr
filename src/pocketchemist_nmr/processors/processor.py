@@ -77,3 +77,34 @@ class FTSpectra(FFTProcessor, NMRProcessor):
         # Setup the arguments that are passed to future processors
         kwargs['spectra'] = spectra
         return kwargs
+
+
+class Transpose2D(NMRProcessor):
+    """Transpose the last 2 dimension (outer1-inner) of a dataset"""
+
+    def process(self, spectra: t.Iterable[NMRSpectrum], **kwargs):
+        for spectrum in spectra:
+            assert spectrum.ndims > 1, (
+                f"Spectrum has {spectrum.ndims} dimensions and at least 2 "
+                f"dimensions are required for a transpose."
+            )
+            # Switch the last 2 dimensions
+            order = list(range(spectrum.ndims))  # 0, 1, 2
+            spectrum.transpose(dim0=order[-2], dim1=order[-1])
+        # Setup the arguments that are passed to future processors
+        kwargs['spectra'] = spectra
+        return kwargs
+
+
+class Phase2D(NMRProcessor):
+    """Phase the last dimension of a dataset"""
+
+    required_params = ('p0', 'p1', 'discard_imaginaries')
+
+    def process(self, spectra: t.Iterable[NMRSpectrum], **kwargs):
+        for spectrum in spectra:
+            spectrum.phase(p0=self.p0, p1=self.p1,
+                           discard_imaginaries=self.discard_imaginaries)
+        # Setup the arguments that are passed to future processors
+        kwargs['spectra'] = spectra
+        return kwargs
