@@ -4,13 +4,14 @@ NMRSpectrum in NMRPipe format
 import re
 import typing as t
 from pathlib import Path
+from functools import reduce
 
 from .constants import Plane2DPhase, SignAdjustment, find_mapping
 from .fileio import (load_nmrpipe_tensor, load_nmrpipe_multifile_tensor,
                      save_nmrpipe_tensor)
 from .meta import NMRPipeMetaDict
 from ..nmr_spectrum import NMRSpectrum
-from ..constants import DomainType, DataType
+from ..constants import DomainType, DataType, DataLayout
 
 __all__ = ('NMRPipeSpectrum',)
 
@@ -96,6 +97,23 @@ class NMRPipeSpectrum(NMRSpectrum):
     def label(self) -> t.Tuple[str, ...]:
         return tuple(self.meta[f"FDF{dim}LABEL"] for dim in self.order)
 
+    def data_layout(self, data_type: DataType, dim: int) -> DataLayout:
+        # For NMRPipe, the last dimension (inner loop) is block interleaved
+        # when complex whereas other dimensions as single interleaved (outer
+        # loops) when complex.
+        ndims = self.ndims
+
+        if data_type in (DataType.REAL, DataType.IMAG):
+            return DataLayout.CONTIGUOUS
+        elif data_type is DataType.COMPLEX:
+            if dim < ndims - 1:
+                return DataLayout.SINGLE_INTERLEAVE
+            else:
+                return DataLayout.BLOCK_INTERLEAVE
+        else:
+            raise NotImplementedError
+
+
     @property
     def sign_adjustment(self) -> t.Tuple[SignAdjustment, ...]:
         """The type of sign adjustment needed for each dimension.
@@ -173,20 +191,27 @@ class NMRPipeSpectrum(NMRSpectrum):
 
     # Manipulator methods
 
-    def permute(self, new_dims: t.Tuple[int, ...], interleave=True):
+    def transpose(self, dim0, dim1, interleave_complex=True):
         # Get the mapping between the dimension order (0, 1, .. self.ndims)
         # and the F1/F2/F3/F4 dimensions
-        old_label_order = [self.meta.get(f'FDDIMORDER{i}')
-                           for i in range(1, self.ndims + 1)]
-        new_label_order = [value for order, value in
-                           sorted(zip(new_dims, old_label_order))]
+        # The order must be reversed because tensors are stored
+        # outer2-outer1-inner whereas NMRPipe orders them as inner-outer1-outer2
+        new_order = list(self.order)[::-1]
+        new_order[dim0], new_order[dim1] = new_order[dim1], new_order[dim0]
 
         # Conduct the permute operation
-        super().permute(new_dims, interleave=interleave)
+        super().transpose(dim0, dim1, interleave_complex)
 
         # Update the metadata values with the new order
-        for i, order in enumerate(new_label_order, 1):
-            self.meta[f'FDDIMORDER{i}'] = order
+        for i, ord in enumerate(new_order, 1):
+            self.meta[f'FDDIMORDER{i}'] = round(ord, 1)
+
+        self.meta['FDSIZE'] = self.data.size()[-1]
+        self.meta['FDSPECNUM'] = reduce(lambda x, y: x * y,
+                                        self.data.size()[:-1])
+        self.meta['FDSLICECOUNT0'] = self.meta['FDSPECNUM']
+        self.meta['FDTRANSPOSED'] = (0.0 if self.meta['FDTRANSPOSED'] == 1.0
+                                     else 1.0)
 
     def ft(self,
            auto: bool = False,

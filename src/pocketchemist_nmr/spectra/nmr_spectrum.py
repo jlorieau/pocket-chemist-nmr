@@ -5,11 +5,12 @@ import abc
 import typing as t
 from pathlib import Path
 
-from torch import permute, fft
+import torch
 
-from .constants import DomainType, DataType
+from .constants import DomainType, DataType, DataLayout
 from .meta import NMRMetaDict
-from .utils import split_block_to_complex, combine_block_from_complex
+from .utils import (split_block_to_complex, combine_block_from_complex,
+                    interleave_single_to_block, interleave_block_to_single)
 
 __all__ = ('NMRSpectrum',)
 
@@ -91,6 +92,27 @@ class NMRSpectrum(abc.ABC):
         """The labels for all dimensions, as ordered in the data."""
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def data_layout(self, data_type: DataType, dim: int) -> DataLayout:
+        """Give the expected data layout for the given data type and dimension.
+
+        Parameters
+        ----------
+        data_type
+            The data type (Complex, Real, Imag) for which the data layout
+            should be investigated.
+        dim
+            The dimension for the data for which the data layout should be
+            investigated. The dimension starts at 0 (outer loop) and ends at
+            self.ndims - 1 (inner loop)
+
+        Returns
+        -------
+        data_layout
+            The data layout for the given data type and dimension
+        """
+        raise NotImplementedError
+
     # I/O methods
 
     @abc.abstractmethod
@@ -147,41 +169,87 @@ class NMRSpectrum(abc.ABC):
             setattr(self, attr, None)
 
     # Manipulator methods
-
-    def permute(self, new_dims: t.Tuple[int, ...],
-                interleave=True):
-        """Permute (transpose) axes according to the new dimension order.
+    def transpose(self, dim0, dim1, interleave_complex=True):
+        """Transpose two axes (dim0 <-> dim1)
 
         Parameters
         ----------
-        new_dims
-            The new order of the dimensions. Dimensions are ordered from
-            0 to (self.ndims - 1).
-        interleave
-            Split/stack the inner dimension between complex and real points,
-            depending on whether the dimension is complex or not.
+        dim0
+            The first dimension to transpose, starting from 0 to self.ndims - 1
+        dim1
+            The second dimension to transpose, starting from 0 to self.ndims - 1
+        interleave_complex
+            If True (default), reorganize complex data by interleaving/
+            deinterleaving according to the self.data_layout.
         """
         # Only works if there is more than 1 dimension
         assert self.ndims > 1, (
             "Can only permute multiple dimensions")
 
-        # Get the datatypes for each dimension before and after permute
-        before_data_types = self.data_type
-        after_data_types = tuple(data_type for _, data_type in
-                                 sorted(zip(new_dims, before_data_types)))
+        # Sort the order of the dimensions
+        dim0, dim1 = min(dim0, dim1), max(dim0, dim1)
 
-        # If the last dimension is complex, stack the real/imag points
-        # into a set of real points before permuting
-        if interleave and before_data_types[-1] == DataType.COMPLEX:
-            self.data = combine_block_from_complex(self.data)
+        # Get the data_type and data_layout for each dimension
+        data_type = self.data_type
+        data_type0, data_type1 = data_type[dim0], data_type[dim1]
 
-        # Reorganize data
-        self.data = permute(self.data, new_dims)
+        # Determine the data_layout before and after transpose
+        before_layout0, before_layout1 = (self.data_layout(data_type0, dim0),
+                                          self.data_layout(data_type1, dim1))
+        after_layout0, after_layout1 = (self.data_layout(data_type1, dim0),
+                                        self.data_layout(data_type0, dim1))
 
-        # If the last dimension should be complex, split the stack of real/imag
-        # points into a complex dimension
-        if interleave and after_data_types[-1] == DataType.COMPLEX:
-            self.data = split_block_to_complex(self.data)
+        # The interleave in the last dimension is handled as a special case,
+        # since it may have a different interleave than the other dimensions
+        # (see NMRPipeSpectrum)
+        if interleave_complex and self.ndims - 1 == dim1:
+            if data_type1 is DataType.COMPLEX:
+                # Currently only implemented for a block layout in the last
+                # dimension
+                assert before_layout1 is DataLayout.BLOCK_INTERLEAVE
+
+                # Unpack complex values in the last dimension
+                self.data = combine_block_from_complex(self.data)
+
+                # Change the layout in the last dimension, if the layout to
+                # the new dimension is different
+                if after_layout1 is DataLayout.SINGLE_INTERLEAVE:
+                    self.data = interleave_block_to_single(self.data)
+
+        # Conduct the transpose
+        self.data = torch.transpose(self.data, dim0, dim1)
+
+        # Determine if the interleave has to be change in the last dimension
+        if interleave_complex and self.ndims - 1 == dim1:
+            if data_type0 is DataType.COMPLEX:
+                # Convert to block interleave before converting to complex
+                if before_layout0 is DataLayout.SINGLE_INTERLEAVE:
+                    self.data = interleave_single_to_block(self.data)
+
+                # Split to form complex numbers
+                self.data = split_block_to_complex(self.data)
+
+    def phase(self, p0: float, p1: float, discard_imaginaries: bool = True):
+        """Apply phase correction to the last dimension
+
+        Parameters
+        ----------
+        p0
+            The zero-order phase correction in degrees
+        p1
+            The first-order phase correction in degrees / Hz
+        discard_imaginaries
+            Only keep the real component of complex numbers after phase
+            correction and discard the imaginary component
+        """
+        # Get the spectra width and data length for the last dimension
+        sw = self.sw[-1]
+        npts = self.data.size()[-1]
+        freqs = torch.linspace(-sw / 2., sw / 2., npts )
+        phase = p0 + p1*freqs
+        self.data *= torch.exp(phase * 1.j)
+        if discard_imaginaries:
+            self.data = self.data.real
 
     def ft(self,
            auto: bool = False,
@@ -191,7 +259,7 @@ class NMRSpectrum(abc.ABC):
            neg: bool = False,
            bruk: bool = False,
            **kwargs):
-        """Perform a Fourier Transform
+        """Perform a Fourier Transform to the last dimension
 
         This method is designed to be used on instances and as a class method.
 
@@ -228,7 +296,7 @@ class NMRSpectrum(abc.ABC):
         - nmrglue.process.proc_base
         """
         # Setup the arguments
-        fft_func = fft.fft
+        fft_func = torch.fft.fft
 
         # Setup the flags
         if auto:
@@ -246,7 +314,7 @@ class NMRSpectrum(abc.ABC):
             self.data.imag = 0.0
         if inv:
             # Set the FFT function type to inverse Fourier transformation
-            fft_func = fft.ifft
+            fft_func = torch.fft.ifft
         if alt and not inv:
             # Alternate the sign of points
             self.data[..., 1::2] = self.data[..., 1::2] * -1.

@@ -48,6 +48,18 @@ def test_nmrpipe_spectrum_properties(expected):
     check_attributes(spectrum, expected)
 
 
+@pytest.mark.parametrize("expected", expected().values())
+def test_nmrpipe_spectrum_data_layout(expected):
+    """Test the NMRPipeSpectrum data_layout method
+    """
+    # Load the spectrum
+    print(f"Loading spectrum '{expected['filepath']}")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+
+    for dim, data_type in enumerate(spectrum.data_type):
+        data_layout = spectrum.data_layout(data_type, dim)
+        assert data_layout is expected['spectrum']['data_layout'][dim]
+
 # # I/O methods
 
 @pytest.mark.parametrize('expected', expected(include=(
@@ -78,17 +90,18 @@ def test_nmrpipe_spectrum_load_save(expected, tmpdir):
 
 @pytest.mark.parametrize('expected', expected(include=(
         '1d real fid', '2d complex fid',
-        '3d real/real/complex spectrum (2d planes)')).values())
-def test_nmrpipe_spectrum_permute(expected):
-    """Test the NMRPipeSpectrum permute method"""
+#        '3d real/real/complex spectrum (2d planes)'
+)).values())
+def test_nmrpipe_spectrum_transpose(expected):
+    """Test the NMRPipeSpectrum transpose method"""
     # Load the spectrum, if needed (cache for future tests)
     print(f"Loading spectrum '{expected['filepath']}")
     spectrum = NMRPipeSpectrum(expected['filepath'])
 
     # 1d spectra cannot be permuted
     if spectrum.ndims == 1:
-        with pytest.raises(AssertionError):
-            spectrum.permute((1,))
+        with pytest.raises(IndexError):
+            spectrum.transpose(0, 1)
         return None
 
     # Copy old_values to compare to
@@ -98,13 +111,16 @@ def test_nmrpipe_spectrum_permute(expected):
                                                       'sign_adjustment')}
     old_size = list(spectrum.data.size())
 
-    # Try reversing the axes. e.g. (0, 1, 2) -> (2, 1, 0)
-    spectrum.permute(tuple(range(spectrum.ndims)[::-1]))
+    # Try reversing the last 2 axes
+    dims = list(range(spectrum.ndims))
+    spectrum.transpose(dims[-1], dims[-2])
 
     # Check that the data was correctly updated
     for attr, old_value in old.items():
-        new_value = getattr(spectrum, attr)
-        assert old_value == new_value[::-1]  # reverse order
+        # Swap the last 2 values of the last dimension
+        new_value = list(getattr(spectrum, attr))
+        new_value[-2], new_value[-1] = new_value[-1], new_value[-2]
+        assert old_value == tuple(new_value)
 
     # The tensor size is reversed and may have increased or decreased depending
     # on whether a complex dimension was split or stacked
@@ -114,6 +130,19 @@ def test_nmrpipe_spectrum_permute(expected):
         old_size[0] = int(old_size[0] / 2)
 
     assert spectrum.data.size() == tuple(old_size)[::-1]
+
+    # Check the header values
+    for field_name, expected_value in expected['tp'].items():
+        if not field_name.startswith('FD'):
+            continue
+        print(f"{field_name}: expected value: '{expected_value}', "
+              f"actual value: '{spectrum.meta[field_name]}'")
+        assert isclose(spectrum.meta[field_name], expected_value)
+
+    # Check the data values for some key points (locations) in the data
+    for loc, data_height in expected['tp']['data_heights']:
+        print(loc, data_height)
+        assert isclose(spectrum.data[loc], data_height, rel_tol=0.001)
 
 
 @pytest.mark.parametrize('expected', expected(include=(
