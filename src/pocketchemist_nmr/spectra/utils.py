@@ -45,12 +45,10 @@ def interleave_block_to_single(tensor: torch.Tensor) -> torch.Tensor:
     tensor
         A real tensor with single-interleaved data in the last dimension
     """
-    # Separate the blocks
-    block1, block2 = torch.split(tensor, int(tensor.size()[-1] / 2),
-                                 dim=tensor.dim() - 1)
-
-    # Stack/Interleave the blocks
-    return torch.stack((block1, block2), dim=tensor.dim()).view(tensor.size())
+    # Single Interleave the blocks
+    return torch.stack(tensor.split(int(tensor.size()[-1] / 2),
+                                    dim=tensor.dim() - 1),
+                       dim=tensor.dim()).view(tensor.size())
 
 
 def interleave_single_to_block(tensor: torch.Tensor) -> torch.Tensor:
@@ -67,11 +65,8 @@ def interleave_single_to_block(tensor: torch.Tensor) -> torch.Tensor:
     tensor
         A real tensor with block-interleaved data in the last dimension
     """
-    # Separate the interleaved data
-    block1, block2 = tensor[..., ::2], tensor[..., 1::2]
-
-    # Stack/Interleave the blocks
-    return torch.hstack((block1, block2))
+    # Separate single interleave and interleave the blocks
+    return torch.hstack((tensor[..., ::2], tensor[..., 1::2]))
 
 
 def split_block_to_complex(tensor: torch.Tensor) -> torch.Tensor:
@@ -118,10 +113,27 @@ def split_block_to_complex(tensor: torch.Tensor) -> torch.Tensor:
     >>> cmplx.size()
     torch.Size([4, 1, 2])
     """
-    real, imag = torch.split(tensor,
-                             int(tensor.size()[-1] / 2),
-                             dim=tensor.dim() - 1)
-    return torch.complex(real=real, imag=imag)
+    return torch.complex(*torch.split(tensor, int(tensor.size()[-1] / 2),
+                                      dim=tensor.dim() - 1))
+
+
+def split_single_to_complex(tensor: torch.Tensor) -> torch.Tensor:
+    """Split a tensor with single interleaved real/imag data in the last
+    dimension to a complex tensor.
+
+    Parameters
+    ----------
+    tensor
+        Tensor with real single-interleaved data in the last dimension
+
+    Returns
+    -------
+    complex_tensor
+        A complex tensor constructed from deinterleaved data in the last
+        dimension.
+    """
+    # Separate the interleaved data into real and complex components
+    return torch.complex(real=tensor[..., ::2], imag=tensor[..., 1::2])
 
 
 def combine_block_from_complex(complex_tensor: torch.Tensor) -> torch.Tensor:
@@ -149,3 +161,27 @@ def combine_block_from_complex(complex_tensor: torch.Tensor) -> torch.Tensor:
     tensor(True)
     """
     return torch.hstack((complex_tensor.real, complex_tensor.imag))
+
+
+def combine_single_from_complex(complex_tensor: torch.Tensor) -> torch.Tensor:
+    """Combine a complex tensor into a real tensor with real/imag single
+    interleave in the last dimension.
+
+    Parameters
+    ----------
+    complex_tensor
+        Tensor with complex data in the last dimension
+
+    Returns
+    -------
+    tensor
+        A real tensor with the real/imag components block-interleaved data in
+        the last dimension.
+    """
+    # Single Interleave the blocks
+    dim = complex_tensor.dim()
+    # Increase the last dimension's size by a factor of 2
+    size = tuple(s if i < dim - 1 else int(s * 2.)
+                 for i, s in enumerate(complex_tensor.size()))
+    return torch.stack((complex_tensor.real, complex_tensor.imag),
+                       dim=dim).view(size)
