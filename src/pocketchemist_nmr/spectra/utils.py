@@ -28,7 +28,8 @@ A simple transpose would produce (X: block, Y: single):
 import torch
 
 __all__ = ('interleave_block_to_single', 'interleave_single_to_block',
-           'split_block_to_complex', 'combine_block_from_complex')
+           'split_block_to_complex', 'split_single_to_complex',
+           'combine_block_from_complex', 'combine_single_from_complex')
 
 
 def interleave_block_to_single(tensor: torch.Tensor) -> torch.Tensor:
