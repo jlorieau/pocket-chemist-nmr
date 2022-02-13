@@ -136,18 +136,37 @@ def expected(include: t.Optional[t.Tuple[str, ...]] = None,
                                  ((0, -1), 5619.12600 - 4132.80200j),
                                  ((1, 0), 0. + 0.j),
                                  ((-1, -1), -761.71680 - 996.09120j))},
-            'tp': {  # Header parameters changed transposed spectra
-                'FDDIMORDER1': 1.0,
-                'FDDIMORDER2': 2.0,
-                'FDSIZE': 184.0,
-                'FDSPECNUM': 1280.0,
-                'FDTRANSPOSED': 1.0,
-                'FDSLICECOUNT0': 1280.0,
+        },
+
+        '2d complex fid (tp)': {
+            'filepath': (Path('data') / 'bruker' /
+                         'CD20170124_av500hd_101_ubq_hsqcsi2d' / 'spec_tp.fid'),
+            'format': 'nmrpipe',
+            'header': {
+                'ndims': 2,  # Number of dimensions in spectrum
+                # Data ordering of data. (direct, indirect) e.g. F1, F2
+                'order': (1, 2),
+                # Type of data (Complex/Real/Imag)
+                'data_type': (DataType.COMPLEX, DataType.COMPLEX),
+                'data_pts': (184 * 2, 640 * 2),  # Num of real + imag pts
+                'pts': (184, 640)},  # Num of complex or real pts, data ordered
+            'spectrum': {
+                'ndims': 2,
+                'order': (2, 1),
+                # Shape of returned tensor (indirect, direct), reverse of pts
+                'shape': (640 * 2, 184 * 1),
+                'domain_type': (DomainType.TIME, DomainType.TIME),
+                'data_type': (DataType.COMPLEX, DataType.COMPLEX),
+                'data_layout': (DataLayout.SINGLE_INTERLEAVE,
+                                DataLayout.SINGLE_INTERLEAVE,),
+                'sw': (8012.820801, 1671.682007),
+                'label': ('15N', 'HN'),
+                'sign_adjustment': (SignAdjustment.NONE, SignAdjustment.NONE),
+                'plane2dphase': Plane2DPhase.STATES,
                 'data_heights': (((0, 0), 0. + 0.j),
                                  ((0, -1), 0. + 0.j),
                                  ((1, 0), 0. + 0.j),
-                                 ((-1, -1), 566.40480 -996.09120j))
-            }
+                                 ((-1, -1), 566.40480 - 996.09120j))},
         },
 
         '2d real spectrum': {
@@ -206,6 +225,46 @@ def expected(include: t.Optional[t.Tuple[str, ...]] = None,
                                   ((0, -1), 73015.44000 + 445419.70000j),
                                   ((1, 0), -472929.90000 + 416353.10000j),
                                   ((-1, -1), -136615.50000 - 991015.50000j))},
+            'tp': {  # Header parameters changed transposed spectra
+                'FDDIMORDER1': 1.0,
+                'FDDIMORDER2': 2.0,
+                'FDSIZE': 368.0,
+                'FDSPECNUM': 2048.0,
+                'FDTRANSPOSED': 1.0,
+                'FDSLICECOUNT0': 2048.0,
+                'data_heights': (((0, 0), 551430.50000 - 76349.69000j),
+                                 ((0, -1), 0. + 0.j),
+                                 ((1, 0), 0. + 0.j),
+                                 ((-1, -1), 566.40480 -996.09120j))},
+        },
+
+        '2d complex spectrum (tp)': {
+            'filepath': (Path('data') / 'bruker' /
+                         'CD20170124_av500hd_101_ubq_hsqcsi2d' /
+                         'hsqcetfpf3gpsi2_complex_tp.ft2'),
+            'format': 'nmrpipe',
+            'header': {
+                'ndims': 2,
+                'order': (1, 2),
+                'data_type': (DataType.COMPLEX, DataType.COMPLEX),
+                'data_pts': (368 * 2, 1024 * 2),
+                'pts': (368, 1024)},
+            'spectrum': {
+                'ndims': 2,
+                'order': (2, 1),
+                'shape': (1024 * 2, 368 * 1),
+                'domain_type': (DomainType.FREQ, DomainType.FREQ),
+                'data_type': (DataType.COMPLEX, DataType.COMPLEX),
+                'data_layout': (DataLayout.SINGLE_INTERLEAVE,
+                                DataLayout.BLOCK_INTERLEAVE,),
+                'sw': (2003.205200, 1671.682007),
+                'label': ('15N', 'HN'),
+                'sign_adjustment': (SignAdjustment.NONE, SignAdjustment.NONE),
+                'plane2dphase': Plane2DPhase.STATES,
+                'data_heights': (((0, 0), 551430.50000 - 472929.90000j),
+                                 ((0, -1), 204368.80000 - 486499.50000j),
+                                 ((1, 0), -76349.69000 + 416353.10000j),
+                                 ((-1, -1), 289894.20000 - 991015.50000j))},
         },
 
         # 3D Spectra
@@ -229,9 +288,9 @@ def expected(include: t.Optional[t.Tuple[str, ...]] = None,
                                 DomainType.TIME),
                 'data_type': (DataType.COMPLEX, DataType.COMPLEX,
                               DataType.COMPLEX,),
-                'data_layout': (DataLayout.SINGLE_INTERLEAVE,
+                'data_layout': (DataLayout.BLOCK_INTERLEAVE,
                                 DataLayout.SINGLE_INTERLEAVE,
-                                DataLayout.BLOCK_INTERLEAVE,),
+                                DataLayout.SINGLE_INTERLEAVE,),
                 'sw': (1445.921997, 1671.682007, 6996.26904296875),
                 'label': ('13C',  '15N', 'HN'),
                 'sign_adjustment': (SignAdjustment.NONE, SignAdjustment.NONE,
@@ -264,9 +323,9 @@ def expected(include: t.Optional[t.Tuple[str, ...]] = None,
                                 DomainType.TIME),
                 'data_type': (DataType.COMPLEX, DataType.COMPLEX,
                               DataType.COMPLEX,),
-                'data_layout': (DataLayout.SINGLE_INTERLEAVE,
+                'data_layout': (DataLayout.BLOCK_INTERLEAVE,
                                 DataLayout.SINGLE_INTERLEAVE,
-                                DataLayout.BLOCK_INTERLEAVE,),
+                                DataLayout.SINGLE_INTERLEAVE,),
                 'sw': (1445.921997, 1671.682007, 6996.26904296875),
                 'label': ('13C',  '15N', 'HN'),
                 'sign_adjustment': (SignAdjustment.NONE, SignAdjustment.NONE,
