@@ -1,6 +1,6 @@
 # Build test datasets
 
-all: spec.fid hsqcetfpf3gpsi2.ft2 hsqcetfpf3gpsi2_complex.ft2
+all: spec.fid hsqcetfpf3gpsi2.ft2 hsqcetfpf3gpsi2_complex.ft2 hsqcetfpf3gpsi2_complex_tp.ft2
 
 spec.fid: ser
 	./fid.com
@@ -10,3 +10,6 @@ hsqcetfpf3gpsi2.ft2: spec.fid
 
 hsqcetfpf3gpsi2_complex.ft2: spec.fid
 	./ft12_complex.com
+
+hsqcetfpf3gpsi2_complex_tp.ft2: spec.fid
+	./ft12_complex_tp.com
