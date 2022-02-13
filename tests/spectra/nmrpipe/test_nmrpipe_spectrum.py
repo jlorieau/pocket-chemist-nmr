@@ -5,9 +5,13 @@ from cmath import isclose
 from pathlib import Path
 
 import pytest
+import torch
 
 from pocketchemist_nmr.spectra.nmrpipe import NMRPipeSpectrum
-from pocketchemist_nmr.spectra.constants import DataType
+from pocketchemist_nmr.spectra.utils import (split_block_to_complex,
+                                             split_single_to_complex,
+                                             combine_single_from_complex,
+                                             combine_block_from_complex)
 
 from ...conftest import expected
 
@@ -60,6 +64,7 @@ def test_nmrpipe_spectrum_data_layout(expected):
         data_layout = spectrum.data_layout(data_type, dim)
         assert data_layout is expected['spectrum']['data_layout'][dim]
 
+
 # # I/O methods
 
 @pytest.mark.parametrize('expected', expected(include=(
@@ -88,61 +93,33 @@ def test_nmrpipe_spectrum_load_save(expected, tmpdir):
 
 # Mutators/Processing methods
 
-@pytest.mark.parametrize('expected', expected(include=(
-        '1d real fid', '2d complex fid',
-#        '3d real/real/complex spectrum (2d planes)'
-)).values())
-def test_nmrpipe_spectrum_transpose(expected):
-    """Test the NMRPipeSpectrum transpose method"""
-    # Load the spectrum, if needed (cache for future tests)
-    print(f"Loading spectrum '{expected['filepath']}")
-    spectrum = NMRPipeSpectrum(expected['filepath'])
-
-    # 1d spectra cannot be permuted
-    if spectrum.ndims == 1:
-        with pytest.raises(IndexError):
-            spectrum.transpose(0, 1)
-        return None
-
-    # Copy old_values to compare to
-    old = {attr: getattr(spectrum, attr) for attr in ('domain_type',
-                                                      'data_type', 'sw',
-                                                      'label',
-                                                      'sign_adjustment')}
-    old_size = list(spectrum.data.size())
+def test_nmrpipe_spectrum_transpose_2d():
+    """Test the NMRPipeSpectrum transpose method with 2D spectra"""
+    # Load the spectrum and its transpose
+    e = expected()
+    spectrum1 = e['2d complex fid']['filepath']
+    spectrum1_tp = e['2d complex fid (tp)']['filepath']
+    print(f"Loading spectrum1: '{spectrum1}' and '{spectrum1_tp}'")
+    spectrum1 = NMRPipeSpectrum(spectrum1)
+    spectrum1_tp = NMRPipeSpectrum(spectrum1_tp)
 
     # Try reversing the last 2 axes
-    dims = list(range(spectrum.ndims))
-    spectrum.transpose(dims[-1], dims[-2])
+    dims = list(range(spectrum1.ndims))
+    spectrum1.transpose(dims[-1], dims[-2])
 
-    # Check that the data was correctly updated
-    for attr, old_value in old.items():
-        # Swap the last 2 values of the last dimension
-        new_value = list(getattr(spectrum, attr))
-        new_value[-2], new_value[-1] = new_value[-1], new_value[-2]
-        assert old_value == tuple(new_value)
+    # Check attributes to see if they were transposed correctly
+    for attr in ('domain_type', 'data_type', 'sw', 'label'):
+        print(f"spectrum1 attr: '{getattr(spectrum1, attr)}', "
+              f"spectrum1_tp attr: '{getattr(spectrum1_tp, attr)}'")
+        assert getattr(spectrum1, attr) == getattr(spectrum1_tp, attr)
 
-    # The tensor size is reversed and may have increased or decreased depending
-    # on whether a complex dimension was split or stacked
-    if old['data_type'][-1] == DataType.COMPLEX:
-        old_size[-1] = int(old_size[-1] * 2)
-    if spectrum.data_type[-1] == DataType.COMPLEX:
-        old_size[0] = int(old_size[0] / 2)
+    # Check the data shape
+    assert spectrum1.data.size() == spectrum1_tp.data.size()
 
-    assert spectrum.data.size() == tuple(old_size)[::-1]
-
-    # Check the header values
-    for field_name, expected_value in expected['tp'].items():
-        if not field_name.startswith('FD'):
-            continue
-        print(f"{field_name}: expected value: '{expected_value}', "
-              f"actual value: '{spectrum.meta[field_name]}'")
-        assert isclose(spectrum.meta[field_name], expected_value)
-
-    # Check the data values for some key points (locations) in the data
-    for loc, data_height in expected['tp']['data_heights']:
-        print(loc, data_height)
-        assert isclose(spectrum.data[loc], data_height, rel_tol=0.001)
+    # Check the values, row-by-row
+    for i, (row1, row2) in enumerate(zip(spectrum1.data, spectrum1_tp.data)):
+        print(f"Row #{i}")
+        assert tuple(row1) == tuple(row2)
 
 
 @pytest.mark.parametrize('expected', expected(include=(

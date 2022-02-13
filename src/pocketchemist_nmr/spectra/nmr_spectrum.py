@@ -6,11 +6,12 @@ import typing as t
 from pathlib import Path
 
 import torch
+from loguru import logger
 
 from .constants import DomainType, DataType, DataLayout
 from .meta import NMRMetaDict
 from .utils import (split_block_to_complex, combine_block_from_complex,
-                    interleave_single_to_block, interleave_block_to_single)
+                    split_single_to_complex, combine_single_from_complex)
 
 __all__ = ('NMRSpectrum',)
 
@@ -93,18 +94,17 @@ class NMRSpectrum(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def data_layout(self, data_type: DataType, dim: int) -> DataLayout:
-        """Give the expected data layout for the given data type and dimension.
+    def data_layout(self, dim: int,
+                    data_type: t.Optional[DataType] = None) -> DataLayout:
+        """Give the current data layout for all dimensions or the expected
+        data layout for the given data type and dimension.
 
         Parameters
         ----------
-        data_type
-            The data type (Complex, Real, Imag) for which the data layout
-            should be investigated.
         dim
-            The dimension for the data for which the data layout should be
-            investigated. The dimension starts at 0 (outer loop) and ends at
-            self.ndims - 1 (inner loop)
+            The current or expected data layout for the given dimension
+        data_type
+            If specified, give the expected data layout for the given data type
 
         Returns
         -------
@@ -169,7 +169,7 @@ class NMRSpectrum(abc.ABC):
             setattr(self, attr, None)
 
     # Manipulator methods
-    def transpose(self, dim0, dim1, interleave_complex=True):
+    def transpose(self, dim0: int, dim1: int, update_data_layout: bool = True):
         """Transpose two axes (dim0 <-> dim1)
 
         Parameters
@@ -178,56 +178,48 @@ class NMRSpectrum(abc.ABC):
             The first dimension to transpose, starting from 0 to self.ndims - 1
         dim1
             The second dimension to transpose, starting from 0 to self.ndims - 1
-        interleave_complex
-            If True (default), reorganize complex data by interleaving/
-            deinterleaving according to the self.data_layout.
+        update_data_layout
+            If True (default), automatically convert conplex numbers and handle
+            changes in data layout according to the
+            :meth:`.NMRSpectrum.data_layout` method.
         """
         # Only works if there is more than 1 dimension
         assert self.ndims > 1, (
-            "Can only permute multiple dimensions")
+            "Can only transpose spectrum with more than 1 dimension")
 
         # Sort the order of the dimensions
         dim0, dim1 = min(dim0, dim1), max(dim0, dim1)
 
-        # Get the data_type and data_layout for each dimension
-        data_type = self.data_type
-        data_type0, data_type1 = data_type[dim0], data_type[dim1]
+        # # Unpack complex numbers in the last dimension, if needed
+        if (update_data_layout and dim1 == self.ndims - 1 and
+           self.data_type[dim1] is DataType.COMPLEX):
+            # Determine the data layout the new dimension will need
+            new_data_layout = self.data_layout(dim0, data_type=DataType.COMPLEX)
+            logger.debug(f"new_data_layout: {new_data_layout}")
 
-        # Determine the data_layout before and after transpose
-        before_layout0, before_layout1 = (self.data_layout(data_type0, dim0),
-                                          self.data_layout(data_type1, dim1))
-        after_layout0, after_layout1 = (self.data_layout(data_type1, dim0),
-                                        self.data_layout(data_type0, dim1))
-
-        # The interleave in the last dimension is handled as a special case,
-        # since it may have a different interleave than the other dimensions
-        # (see NMRPipeSpectrum)
-        if interleave_complex and self.ndims - 1 == dim1:
-            if data_type1 is DataType.COMPLEX:
-                # Currently only implemented for a block layout in the last
-                # dimension
-                assert before_layout1 is DataLayout.BLOCK_INTERLEAVE
-
-                # Unpack complex values in the last dimension
+            if new_data_layout is DataLayout.BLOCK_INTERLEAVE:
                 self.data = combine_block_from_complex(self.data)
-
-                # Change the layout in the last dimension, if the layout to
-                # the new dimension is different
-                if after_layout1 is DataLayout.SINGLE_INTERLEAVE:
-                    self.data = interleave_block_to_single(self.data)
+            elif new_data_layout is DataLayout.SINGLE_INTERLEAVE:
+                self.data = combine_single_from_complex(self.data)
+            else:
+                raise NotImplementedError
 
         # Conduct the transpose
         self.data = torch.transpose(self.data, dim0, dim1)
 
-        # Determine if the interleave has to be change in the last dimension
-        if interleave_complex and self.ndims - 1 == dim1:
-            if data_type0 is DataType.COMPLEX:
-                # Convert to block interleave before converting to complex
-                if before_layout0 is DataLayout.SINGLE_INTERLEAVE:
-                    self.data = interleave_single_to_block(self.data)
+        # Determine if the new last dimension should be converted to complex
+        if (update_data_layout and dim1 == self.ndims - 1 and
+           self.data_type[dim0] is DataType.COMPLEX):
+            # Determine the data layout for the old dimension
+            old_data_layout = self.data_layout(dim0, data_type=DataType.COMPLEX)
+            logger.debug(f"old_data_layout: {old_data_layout}")
 
-                # Split to form complex numbers
+            if old_data_layout is DataLayout.BLOCK_INTERLEAVE:
                 self.data = split_block_to_complex(self.data)
+            elif old_data_layout is DataLayout.SINGLE_INTERLEAVE:
+                self.data = split_single_to_complex(self.data)
+            else:
+                raise NotImplementedError
 
     def phase(self, p0: float, p1: float, discard_imaginaries: bool = True):
         """Apply phase correction to the last dimension
