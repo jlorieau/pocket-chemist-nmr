@@ -6,6 +6,8 @@ import typing as t
 from pathlib import Path
 from functools import reduce
 
+from loguru import logger
+
 from .constants import Plane2DPhase, SignAdjustment, find_mapping
 from .fileio import (load_nmrpipe_tensor, load_nmrpipe_multifile_tensor,
                      save_nmrpipe_tensor)
@@ -97,22 +99,22 @@ class NMRPipeSpectrum(NMRSpectrum):
     def label(self) -> t.Tuple[str, ...]:
         return tuple(self.meta[f"FDF{dim}LABEL"] for dim in self.order)
 
-    def data_layout(self, data_type: DataType, dim: int) -> DataLayout:
+    def data_layout(self, dim: int,
+                    data_type: t.Optional[DataType] = None) -> DataLayout:
         # For NMRPipe, the last dimension (inner loop) is block interleaved
         # when complex whereas other dimensions as single interleaved (outer
         # loops) when complex.
-        ndims = self.ndims
+        data_type = self.data_type[dim] if data_type is not None else data_type
 
         if data_type in (DataType.REAL, DataType.IMAG):
             return DataLayout.CONTIGUOUS
+        elif dim == self.ndims - 1 and data_type is DataType.COMPLEX:
+            # The last dimension's data layout is different
+            return DataLayout.BLOCK_INTERLEAVE
         elif data_type is DataType.COMPLEX:
-            if dim < ndims - 1:
-                return DataLayout.SINGLE_INTERLEAVE
-            else:
-                return DataLayout.BLOCK_INTERLEAVE
+            return DataLayout.SINGLE_INTERLEAVE
         else:
             raise NotImplementedError
-
 
     @property
     def sign_adjustment(self) -> t.Tuple[SignAdjustment, ...]:
@@ -212,6 +214,18 @@ class NMRPipeSpectrum(NMRSpectrum):
         self.meta['FDSLICECOUNT0'] = self.meta['FDSPECNUM']
         self.meta['FDTRANSPOSED'] = (0.0 if self.meta['FDTRANSPOSED'] == 1.0
                                      else 1.0)
+
+    def phase(self, p0: float, p1: float, discard_imaginaries: bool = True):
+        rv = super().phase(p0, p1, discard_imaginaries)
+
+        # Update the header, as needed
+        dim = self.order[-1]
+        if discard_imaginaries and self.data_type[-1] is DataType.COMPLEX:
+            self.meta[f"FDF{dim}QUADFLAG"] = find_mapping('data_type',
+                                                          DataType.REAL,
+                                                          reverse=True)
+
+        return rv
 
     def ft(self,
            auto: bool = False,
