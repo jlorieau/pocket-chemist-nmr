@@ -21,7 +21,11 @@ __all__ = ('parse_nmrpipe_meta', 'load_nmrpipe_tensor',
 # Single file I/O
 
 def parse_nmrpipe_meta(meta: t.Optional[NMRPipeMetaDict]) -> dict:
-    """Retrieve meta data from an NMRPipe meta dict."""
+    """Retrieve meta data from an NMRPipe meta dict.
+
+    Data is ordered according to NMRPipe ordering, which has the
+    inner-outer1-outer2 order.
+    """
     result = dict()
 
     # Constants used for calculations
@@ -38,6 +42,10 @@ def parse_nmrpipe_meta(meta: t.Optional[NMRPipeMetaDict]) -> dict:
 
     # Retrieve the number of 1Ds in the file (real + imag)
     result['fdspecnum'] = int(meta['FDSPECNUM'])
+
+    # Retrieve the interleave/block of the last dimension
+    result['fdslicecount0'] = int(meta['FDSLICECOUNT0'])
+    result['fdslicecount1'] = int(meta['FDSLICECOUNT1'])
 
     # Retrieve the number of planes (3D, 4D) in the file (real + imag)
     result['fdf3size'] = int(meta['FDF3SIZE'])
@@ -73,6 +81,7 @@ def parse_nmrpipe_meta(meta: t.Optional[NMRPipeMetaDict]) -> dict:
     # ordered in the data -- i.e. same order as result['order']
     pts = []  # Complex OR Real points
     data_pts = []  # Real + Imag points
+
     for dim, data_type, label in zip_longest(
             result['order'], result['data_type'],
             ('fdsize', 'fdspecnum', 'fdf3size', 'fdf4size'), fillvalue=None):
@@ -87,7 +96,7 @@ def parse_nmrpipe_meta(meta: t.Optional[NMRPipeMetaDict]) -> dict:
 
         # Assign the number of points (pts) and number of data points (data_pts)
         if label == 'fdsize':
-            # FDDIZE conttains the number of points (Complex or Real)
+            # FDDIZE contains the number of points (Complex or Real)
             pts.append(value)
             data_pts.append(value * 2 if data_type == DataType.COMPLEX else
                             value)
@@ -279,7 +288,7 @@ def load_nmrpipe_multifile_tensor(filemask: str,
             f"Could not find files that matched the file mask '{filemask}'")
 
     # Concatenate tensors
-    datasets = tuple(load_nmrpipe_tensor(filepath, meta=meta,shared=shared,
+    datasets = tuple(load_nmrpipe_tensor(filepath, meta=meta, shared=shared,
                                          device=device, force_gpu=force_gpu)
                      for filepath in filepaths)
     meta_dicts = [meta for meta, _ in datasets]
