@@ -1,0 +1,109 @@
+version: '3'
+
+vars:
+  PULPROG:
+    sh: grep PULPROG\= acqus|sed 's/.*<//g'|sed 's/>//g'
+
+tasks:
+  build:
+    deps: [convert-tp, process, process-complex, process-complex-tp]
+
+  convert:
+    cmds:
+      - "bruk2pipe -verb -in ./ser \
+         -bad 0.0 -ext -aswap -AMX -decim 2496 -dspfvs 20 -grpdly 67.9842376708984  \
+         -xN              1280  -yN               368  \
+         -xT               640  -yT               184  \
+         -xMODE            DQD  -yMODE  Echo-AntiEcho  \
+         -xSW         8012.821  -ySW         1671.682  \
+         -xOBS         499.872  -yOBS          50.657  \
+         -xCAR           4.773  -yCAR         117.566  \
+         -xLAB              HN  -yLAB             15N  \
+         -ndim               2  -aq2D         Complex  \
+         -out ./spec.fid -ov"
+    sources:
+      - "ser"
+    generates:
+      - "spec.fid"
+
+  convert-tp:
+    deps: [convert]
+    cmds:
+      - "nmrPipe -in spec.fid \
+         | nmrPipe -fn TP \
+          -ov -out spec_tp.fid"
+    sources:
+      - "spec.fid"
+    generates:
+      - "spec_tp.fid"
+
+  process:
+    deps: [convert]
+    cmds:
+      - "nmrPipe -in spec.fid \
+         | nmrPipe -fn SOL \
+         | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
+         | nmrPipe -fn ZF -size 4096 \
+         | nmrPipe -fn FT -auto \
+         | nmrPipe -fn EXT -x1 10.25ppm -xn 6.25ppm -sw \
+         | nmrPipe -fn PS -p0 145.0 -p1 0. -di \
+         | nmrPipe -fn TP \
+         | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
+         | nmrPipe -fn ZF \
+         | nmrPipe -fn FT -auto \
+         | nmrPipe -fn PS -p0 -90. -p1 0. -di \
+         | nmrPipe -fn TP \
+         | nmrPipe -fn POLY -auto \
+         | nmrPipe -fn TP \
+          -ov -out {{.PULPROG}}.ft2"
+    sources:
+      - "spec.fid"
+    generates:
+      - "{{.PULPROG}}.ft2"
+
+  process-complex:
+    deps: [convert]
+    cmds:
+      - "nmrPipe -in spec.fid \
+         | nmrPipe -fn SOL \
+         | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
+         | nmrPipe -fn ZF -size 4096 \
+         | nmrPipe -fn FT -auto \
+         | nmrPipe -fn EXT -x1 10.25ppm -xn 6.25ppm -sw \
+         | nmrPipe -fn PS -p0 145.0 -p1 0. \
+         | nmrPipe -fn TP \
+         | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
+         | nmrPipe -fn ZF \
+         | nmrPipe -fn FT -auto \
+         | nmrPipe -fn PS -p0 -90. -p1 0. \
+         | nmrPipe -fn TP \
+         | nmrPipe -fn POLY -auto \
+          -ov -out {{.PULPROG}}_complex.ft2"
+    sources:
+      - "spec.fid"
+    generates:
+      - "{{.PULPROG}}_complex.ft2"
+
+  process-complex-tp:
+    deps: [convert]
+    cmds:
+      - "nmrPipe -in spec.fid \
+         | nmrPipe -fn SOL \
+         | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
+         | nmrPipe -fn ZF -size 4096 \
+         | nmrPipe -fn FT -auto \
+         | nmrPipe -fn EXT -x1 10.25ppm -xn 6.25ppm -sw \
+         | nmrPipe -fn PS -p0 145.0 -p1 0. \
+         | nmrPipe -fn TP \
+         | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
+         | nmrPipe -fn ZF \
+         | nmrPipe -fn FT -auto \
+         | nmrPipe -fn PS -p0 -90. -p1 0. \
+         | nmrPipe -fn TP \
+         | nmrPipe -fn POLY -auto \
+         | nmrPipe -fn TP \
+          -ov -out {{.PULPROG}}_complex_tp.ft2"
+    sources:
+      - "spec.fid"
+    generates:
+      - "{{.PULPROG}}_complex_tp.ft2"
