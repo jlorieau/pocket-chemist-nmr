@@ -100,26 +100,57 @@ def test_nmrpipe_spectrum_transpose(expected, expected_tp):
     # Load the spectrum and its transpose
     print(f"Loading spectra: '{expected['filepath']}' and "
           f"'{expected_tp['filepath']}'")
-    spectrum1 = NMRPipeSpectrum(expected['filepath'])
-    spectrum1_tp = NMRPipeSpectrum(expected_tp['filepath'])
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+    spectrum_tp = NMRPipeSpectrum(expected_tp['filepath'])
 
     # Try reversing the last 2 axes
-    dims = list(range(spectrum1.ndims))
-    spectrum1.transpose(dims[-1], dims[-2])
+    dims = list(range(spectrum.ndims))
+    spectrum.transpose(dims[-1], dims[-2])
 
     # Check attributes to see if they were transposed correctly
     for attr in ('domain_type', 'data_type', 'sw', 'label'):
-        print(f"spectrum1 attr: '{getattr(spectrum1, attr)}', "
-              f"spectrum1_tp attr: '{getattr(spectrum1_tp, attr)}'")
-        assert getattr(spectrum1, attr) == getattr(spectrum1_tp, attr)
+        print(f"spectrum1 attr: '{getattr(spectrum, attr)}', "
+              f"spectrum1_tp attr: '{getattr(spectrum_tp, attr)}'")
+        assert getattr(spectrum, attr) == getattr(spectrum_tp, attr)
 
     # Check the data shape
-    assert spectrum1.data.size() == spectrum1_tp.data.size()
+    assert spectrum.data.size() == spectrum_tp.data.size()
 
     # Check the values, row-by-row
-    for i, (row1, row2) in enumerate(zip(spectrum1.data, spectrum1_tp.data)):
-        print(f"Row #{i}")
-        assert tuple(row1) == tuple(row2)
+    if spectrum.ndims > 1:
+        for i, (row1, row2) in enumerate(zip(spectrum.data, spectrum_tp.data)):
+            print(f"Row #{i}")
+            assert tuple(row1) == tuple(row2)
+    else:
+        raise NotImplementedError
+
+
+@pytest.mark.parametrize('expected,expected_ps',
+                         ((expected()['1d real spectrum'],
+                           expected()['1d real spectrum (ps)']),))
+def test_nmrpipe_spectrum_phase(expected, expected_ps):
+    """Test the NMRPipeSpectrum phase method"""
+    # Load the spectrum and its transpose
+    print(f"Loading spectra: '{expected['filepath']}' and "
+          f"'{expected_ps['filepath']}'")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+    spectrum_ps = NMRPipeSpectrum(expected_ps['filepath'])
+
+    # Get the phase to use
+    dim = spectrum_ps.order[-1]
+    p0 = spectrum_ps.meta[f'FDF{dim}P0']
+    p1 = spectrum_ps.meta[f'FDF{dim}P1']
+
+    # Phase the spectrum
+    spectrum.phase(p0=p0, p1=p1, discard_imaginaries=True)
+
+    # Check the values, row-by-row
+    if spectrum.ndims == 1:
+        assert tuple(spectrum.data) == tuple(spectrum_ps.data)
+    else:
+        for i, (row1, row2) in enumerate(zip(spectrum.data, spectrum_ps.data)):
+            print(f"Row #{i}")
+            assert tuple(row1) == tuple(row2)
 
 
 @pytest.mark.parametrize('expected', expected(include=(

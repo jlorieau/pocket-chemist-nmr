@@ -106,6 +106,32 @@ def expected(include: t.Optional[t.Tuple[str, ...]] = None,
                                  ((-1,), 594718.70000 - 968423.10000j))},
         },
 
+        '1d real spectrum (ps)': {
+            'filepath': (Path('data') / 'bruker' /
+                         'CD20170124_av500hd_100_ubq_oneone1d' /
+                         'oneone-echo_N-dcpl.jll_ps.ft'),
+            'format': 'nmrpipe',
+            'header': {
+                'ndims': 1,
+                'order': (2,),
+                'data_type': (DataType.REAL,),
+                'data_pts': (8192 * 1,),
+                'pts': (8192,)},
+            'spectrum': {
+                'ndims': 1,
+                'order': (2,),
+                'shape': (8192 * 1,),
+                'domain_type': (DomainType.FREQ,),
+                'data_type': (DataType.REAL,),
+                'data_layout': (DataLayout.CONTIGUOUS,),
+                'sw': (10000.,),
+                'label': ('1H',),
+                'sign_adjustment': (SignAdjustment.NONE,),
+                'plane2dphase': Plane2DPhase.MAGNITUDE,
+                'data_heights': (((0,), -137928.90000),
+                                 ((-1,), -28669.12000))},
+        },
+
         # 2D spectra
         '2d complex fid': {
             'filepath': (Path('data') / 'bruker' /

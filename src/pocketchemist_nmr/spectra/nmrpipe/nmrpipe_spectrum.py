@@ -224,6 +224,8 @@ class NMRPipeSpectrum(NMRSpectrum):
             self.meta[f"FDF{dim}QUADFLAG"] = find_mapping('data_type',
                                                           DataType.REAL,
                                                           reverse=True)
+        self.meta[f"FDF{dim}p0"] = p0
+        self.meta[f"FDF{dim}p1"] = p1
 
         return rv
 

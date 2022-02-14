@@ -227,9 +227,9 @@ class NMRSpectrum(abc.ABC):
         Parameters
         ----------
         p0
-            The zero-order phase correction in degrees
+            The zero-order phase correction (in degrees)
         p1
-            The first-order phase correction in degrees / Hz
+            The first-order phase correction (in degrees / Hz)
         discard_imaginaries
             Only keep the real component of complex numbers after phase
             correction and discard the imaginary component
@@ -237,9 +237,11 @@ class NMRSpectrum(abc.ABC):
         # Get the spectra width and data length for the last dimension
         sw = self.sw[-1]
         npts = self.data.size()[-1]
-        freqs = torch.linspace(-sw / 2., sw / 2., npts )
+        freqs = torch.linspace(-sw / 2., sw / 2., npts)
         phase = p0 + p1*freqs
+        phase *= torch.pi / 180.  # in radians
         self.data *= torch.exp(phase * 1.j)
+
         if discard_imaginaries:
             self.data = self.data.real
 
