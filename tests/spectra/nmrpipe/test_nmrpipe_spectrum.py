@@ -92,16 +92,16 @@ def test_nmrpipe_spectrum_load_save(expected, tmpdir):
 
 
 # Mutators/Processing methods
-
-def test_nmrpipe_spectrum_transpose_2d():
-    """Test the NMRPipeSpectrum transpose method with 2D spectra"""
+@pytest.mark.parametrize('expected,expected_tp',
+                         ((expected()['2d complex fid'],
+                           expected()['2d complex fid (tp)']),))
+def test_nmrpipe_spectrum_transpose(expected, expected_tp):
+    """Test the NMRPipeSpectrum transpose method"""
     # Load the spectrum and its transpose
-    e = expected()
-    spectrum1 = e['2d complex fid']['filepath']
-    spectrum1_tp = e['2d complex fid (tp)']['filepath']
-    print(f"Loading spectrum1: '{spectrum1}' and '{spectrum1_tp}'")
-    spectrum1 = NMRPipeSpectrum(spectrum1)
-    spectrum1_tp = NMRPipeSpectrum(spectrum1_tp)
+    print(f"Loading spectra: '{expected['filepath']}' and "
+          f"'{expected_tp['filepath']}'")
+    spectrum1 = NMRPipeSpectrum(expected['filepath'])
+    spectrum1_tp = NMRPipeSpectrum(expected_tp['filepath'])
 
     # Try reversing the last 2 axes
     dims = list(range(spectrum1.ndims))
