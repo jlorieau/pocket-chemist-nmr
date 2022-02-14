@@ -61,7 +61,7 @@ def test_nmrpipe_spectrum_data_layout(expected):
     spectrum = NMRPipeSpectrum(expected['filepath'])
 
     for dim, data_type in enumerate(spectrum.data_type):
-        data_layout = spectrum.data_layout(data_type, dim)
+        data_layout = spectrum.data_layout(dim=dim, data_type=data_type)
         assert data_layout is expected['spectrum']['data_layout'][dim]
 
 

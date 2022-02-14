@@ -6,7 +6,7 @@ vars:
 
 tasks:
   build:
-    deps: [convert-tp, process, process-complex, process-complex-tp]
+    deps: [convert, convert-tp, process, process-complex, process-complex-tp]
 
   convert:
     cmds:

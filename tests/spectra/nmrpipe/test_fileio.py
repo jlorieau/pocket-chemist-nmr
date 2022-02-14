@@ -35,7 +35,6 @@ def test_parse_nmrpipe_meta(expected):
     assert result['data_type'] == expected['header']['data_type']
     assert result['data_pts'] == expected['header']['data_pts']
     assert result['pts'] == expected['header']['pts']
-    assert result['data_layout'] == expected['header']['data_layout']
 
 
 @pytest.mark.parametrize('expected', expected(multifile=False).values())
