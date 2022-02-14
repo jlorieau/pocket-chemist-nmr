@@ -6,7 +6,7 @@ vars:
 
 tasks:
   build:
-    deps: [convert, process, process-complex]
+    deps: [process, process-complex, process-ps]
 
   convert:
     cmds:
@@ -22,6 +22,7 @@ tasks:
            -ndim               1  \
          | nmrPipe -fn MULT -c 2.44141e-01 \
            -out ./spec.fid -ov"
+      - "sleep 3"
     sources:
       - "fid"
     generates:
@@ -54,3 +55,17 @@ tasks:
       - "spec.fid"
     generates:
       - "{{.PULPROG}}_complex.ft"
+
+  process-ps:
+    deps: [convert,]
+    cmds:
+      - "nmrPipe -in spec.fid \
+         | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
+         | nmrPipe -fn ZF -size 8192 \
+         | nmrPipe -fn FT -auto \
+         | nmrPipe -fn PS -p0 -33.0 -p1 0. -di \
+          -ov -out {{.PULPROG}}_ps.ft"
+    sources:
+      - "spec.fid"
+    generates:
+      - "{{.PULPROG}}_ps.ft"
