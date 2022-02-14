@@ -6,7 +6,7 @@ vars:
 
 tasks:
   build:
-    deps: [convert, convert-tp, process, process-complex, process-complex-tp]
+    deps: [convert-tp, process]
 
   convert:
     cmds:
@@ -21,6 +21,7 @@ tasks:
          -xLAB              HN  -yLAB             15N  \
          -ndim               2  -aq2D         Complex  \
          -out ./spec.fid -ov"
+      - "sleep 3"
     sources:
       - "ser"
     generates:
@@ -56,14 +57,6 @@ tasks:
          | nmrPipe -fn POLY -auto \
          | nmrPipe -fn TP \
           -ov -out {{.PULPROG}}.ft2"
-    sources:
-      - "spec.fid"
-    generates:
-      - "{{.PULPROG}}.ft2"
-
-  process-complex:
-    deps: [convert]
-    cmds:
       - "nmrPipe -in spec.fid \
          | nmrPipe -fn SOL \
          | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
@@ -79,14 +72,6 @@ tasks:
          | nmrPipe -fn TP \
          | nmrPipe -fn POLY -auto \
           -ov -out {{.PULPROG}}_complex.ft2"
-    sources:
-      - "spec.fid"
-    generates:
-      - "{{.PULPROG}}_complex.ft2"
-
-  process-complex-tp:
-    deps: [convert]
-    cmds:
       - "nmrPipe -in spec.fid \
          | nmrPipe -fn SOL \
          | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
@@ -106,4 +91,4 @@ tasks:
     sources:
       - "spec.fid"
     generates:
-      - "{{.PULPROG}}_complex_tp.ft2"
+      - "{{.PULPROG}}.ft2"

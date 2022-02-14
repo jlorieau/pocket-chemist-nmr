@@ -1,0 +1,78 @@
+version: '3'
+
+vars:
+  PULPROG:
+    sh: grep PULPROG\= acqus|sed 's/.*<//g'|sed 's/>//g'
+
+tasks:
+  build:
+    deps: [process3]
+
+  convert:
+    cmds:
+      - "bruk2pipe -verb -in ./ser \
+         -bad 0.0 -ext -aswap -AMX -decim 2858.66666666667 -dspfvs 20 -grpdly 67.9858245849609  \
+         -xN              1280  -yN                78  -zN               102  \
+         -xT               559  -yT                39  -zT                51  \
+         -xMODE            DQD  -yMODE  Echo-AntiEcho  -zMODE        Complex  \
+         -xSW         6996.269  -ySW         1671.682  -zSW         1445.922  \
+         -xOBS         499.872  -yOBS          50.657  -zOBS         125.714  \
+         -xCAR           4.773  -yCAR         117.565  -zCAR         176.943  \
+         -xLAB              HN  -yLAB             15N  -zLAB             13C  \
+         -ndim               3  -aq2D         Complex                         \
+       | nmrPipe -fn MULT -c 9.76562e-01 \
+       | pipe2xyz -x -out ./fid/spec%03d.fid -ov"
+      - "sleep 3"
+    sources:
+      - "ser"
+    generates:
+      - "fid/spec*.fid"
+
+  process1:
+    deps: [convert]
+    cmds:
+      - "rm -rf ft/"
+      - "xyz2pipe -in fid/spec%03d.fid -x -verb \
+         | nmrPipe  -fn SOL \
+         | nmrPipe  -fn FT             \
+         | nmrPipe  -fn EXT -x1 11.5ppm -xn 6.0ppm -sw    \
+         | nmrPipe  -fn PS -p0 0. -p1 0.1 -di \
+         | pipe2xyz -out ft/spec%03d.ft1 -x"
+    sources:
+      - "fid/spec*.fid"
+    generates:
+      - "ft/spec*.ft1"
+
+  process2:
+    deps: [process1]
+    cmds:
+      - "rm -rf ft2/"
+      - "xyz2pipe -in ft/spec%03d.ft1 -y -verb \
+         | nmrPipe  -fn SP -off 0.5 -end 0.90 -pow 1 -c 0.5   \
+         | nmrPipe  -fn ZF -size 256 \
+         | nmrPipe  -fn FT \
+         | nmrPipe  -fn PS -p0 -90.  -p1 0. -di \
+         | pipe2xyz -out ft2/spec%03d.ft2 -y"
+    sources:
+      - "ft/spec*.ft1"
+    generates:
+      - "ft2/spec*.ft2"
+
+  process3:
+    deps: [process2]
+    cmds:
+      - "rm -rf ft3/ {{.PULPROG}}.ft3 *.dat"
+      - "xyz2pipe -in ft2/spec%03d.ft2 -z -verb \
+         | nmrPipe  -fn SP -off 0.45 -end 0.98 -pow 1 -c 0.5 \
+         | nmrPipe  -fn ZF -size 512 \
+         | nmrPipe  -fn FT -alt \
+         | nmrPipe  -fn PS -p0 0.0  -p1 0.0   -di \
+         | nmrPipe -fn TP \
+         | nmrPipe -fn POLY -auto \
+         | nmrPipe -fn TP \
+         | pipe2xyz -out ft3/spec%04d.ft3 -y"
+      - "xyz2pipe -in ft3/spec%04d.ft3 -out ./{{.PULPROG}}.ft3"
+    sources:
+      - "ft2/spec*.ft2"
+    generates:
+      - "ft3/spec*.ft3"

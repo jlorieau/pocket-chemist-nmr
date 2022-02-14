@@ -6,6 +6,16 @@ tasks:
     cmds:
       - task -d data/bruker/CD20170124_av500hd_100_ubq_oneone1d/ build
       - task -d data/bruker/CD20170124_av500hd_101_ubq_hsqcsi2d/ build
+      - task -d data/bruker/CD20170124_av500hd_103_ubq_hnco3d/ build
+
+  clean:
+    desc: Clean (remove) test datasets
+    cmds:
+      - find data/bruker -name "*.fid" -delete
+      - find data/bruker -name "*.ft" -delete
+      - find data/bruker -name "*.ft1" -delete
+      - find data/bruker -name "*.ft2" -delete
+      - find data/bruker -name "*.ft3" -delete
 
   test:
     desc: Run pytests
