@@ -7,7 +7,7 @@ from itertools import zip_longest
 from math import isclose
 from pathlib import Path
 
-from torch import Tensor, FloatStorage, FloatTensor, cuda, stack
+import torch
 
 from .meta import NMRPipeMetaDict, load_nmrpipe_meta, save_nmrpipe_meta
 from .constants import header_size_bytes, data_size_bytes
@@ -122,7 +122,7 @@ def load_nmrpipe_tensor(filename: t.Union[str, Path],
                         meta: t.Optional[NMRPipeMetaDict] = None,
                         shared: bool = True,
                         device: t.Optional[str] = None,
-                        force_gpu=False) -> (dict, Tensor):
+                        force_gpu=False) -> (dict, torch.Tensor):
     """Load NMRPipe data from a single spectrum file (1D or 2D).
 
     .. note:: The 'order' metadata attribute gives the order of dimensions
@@ -196,19 +196,20 @@ def load_nmrpipe_tensor(filename: t.Union[str, Path],
     total_elems = num_elems + header_elems
 
     # Create the storage
-    if cuda.is_available() or force_gpu:
+    if torch.cuda.is_available() or force_gpu:
         # Allocate on the GPU
-        storage = FloatStorage.from_file(str(filename), shared=shared,
-                                         size=total_elems).cuda(device=device)
+        storage = torch.FloatStorage.from_file(str(filename), shared=shared,
+                                               size=total_elems)
+        storage = storage.cuda(device=device)
 
     else:
         # Allocate on CPU
-        storage = FloatStorage.from_file(str(filename), shared=shared,
-                                         size=total_elems)
+        storage = torch.FloatStorage.from_file(str(filename), shared=shared,
+                                               size=total_elems)
 
     # Create the tensor
-    tensor = (FloatTensor(storage) if device is None else
-              FloatStorage(storage, device=device))
+    tensor = (torch.FloatTensor(storage) if device is None else
+              torch.FloatStorage(storage, device=device))
 
     # Strip the header
     tensor = tensor[header_elems:]
@@ -230,7 +231,7 @@ def load_nmrpipe_multifile_tensor(filemask: str,
                                   shared: bool = True,
                                   device: t.Optional[str] = None,
                                   force_gpu: bool = False) \
-        -> (t.List[dict], Tensor):
+        -> (t.List[dict], torch.Tensor):
     """Load NMRPipe data from a spectrum over multiple files.
 
     .. note:: The 'order' metadata attribute gives the order of dimensions
@@ -292,27 +293,32 @@ def load_nmrpipe_multifile_tensor(filemask: str,
                                          device=device, force_gpu=force_gpu)
                      for filepath in filepaths)
     meta_dicts = [meta for meta, _ in datasets]
-    tensor = stack(tuple(data for _, data in datasets))
+    tensor = torch.stack(tuple(data for _, data in datasets))
     return meta_dicts, tensor
 
 
 def save_nmrpipe_tensor(filename: t.Union[str, Path],
                         meta: NMRPipeMetaDict,
-                        tensor: Tensor,
+                        tensor: torch.Tensor,
                         overwrite=True):
     """Save a tensor in a single file in NMRPipe format."""
     if Path(filename).exists() and not overwrite:
         raise FileExistsError
 
+    # Unpack the real/imag components
+    if tensor.is_complex():
+        tensor = combine_block_from_complex(tensor)
+
+    # Update meta dict entries, as needed
+    meta['FDMAX'] = torch.max(tensor)
+    meta['FDDISPMAX'] = meta['FDMAX']
+    meta['FDMIN'] = torch.min(tensor)
+    meta['FDDISPMIN'] = meta['FDMIN']
+
     with open(filename, 'wb') as f:
         # Save the header
         data = save_nmrpipe_meta(meta=meta)
         f.write(data)
-
-        # Unpack the real/imag components
-        complex_tensor = tensor.is_complex()
-        if complex_tensor:
-            tensor = combine_block_from_complex(tensor)
 
         # Create a flattend view of the tensor
         flatten = tensor.flatten()
