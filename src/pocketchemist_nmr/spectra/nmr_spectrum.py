@@ -221,7 +221,8 @@ class NMRSpectrum(abc.ABC):
             else:
                 raise NotImplementedError
 
-    def phase(self, p0: float, p1: float, discard_imaginaries: bool = True):
+    def phase(self, p0: float, p1: float, discard_imaginaries: bool = True,
+              method='unit'):
         """Apply phase correction to the last dimension
 
         Parameters
@@ -233,12 +234,20 @@ class NMRSpectrum(abc.ABC):
         discard_imaginaries
             Only keep the real component of complex numbers after phase
             correction and discard the imaginary component
+        method
+            The method to use for modeling the linear (first order) phase
+            correction:
+
+            - 'unit': (default) The left hand edge of the spectrum is 0.0 and
+              the right hand edge of the spectrum is effectively 1.0. This
+              method matches nmrPipe.
         """
         # Get the spectra width and data length for the last dimension
         sw = self.sw[-1]
         npts = self.data.size()[-1]
-        freqs = torch.linspace(-sw / 2., sw / 2., npts)
-        phase = p0 + p1*freqs
+
+        x = torch.linspace(0., float((npts - 1.) / npts), npts)  # unit
+        phase = p0 + p1*x
         phase *= torch.pi / 180.  # in radians
         self.data *= torch.exp(phase * 1.j)
 

@@ -129,7 +129,7 @@ def expected(include: t.Optional[t.Tuple[str, ...]] = None,
                 'sign_adjustment': (SignAdjustment.NONE,),
                 'plane2dphase': Plane2DPhase.MAGNITUDE,
                 'data_heights': (((0,), -137928.90000),
-                                 ((-1,), -28669.12000))},
+                                 ((-1,), -18755.06000))},
         },
 
         # 2D spectra

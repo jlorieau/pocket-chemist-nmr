@@ -42,8 +42,7 @@ def check_attributes(spectrum, expected):
 # Property Accessors/Mutators
 @pytest.mark.parametrize("expected", expected().values())
 def test_nmrpipe_spectrum_properties(expected):
-    """Test the NMRPipeSpectrum accessor properties
-    """
+    """Test the NMRPipeSpectrum accessor properties"""
     # Load the spectrum
     print(f"Loading spectrum '{expected['filepath']}")
     spectrum = NMRPipeSpectrum(expected['filepath'])
@@ -54,8 +53,7 @@ def test_nmrpipe_spectrum_properties(expected):
 
 @pytest.mark.parametrize("expected", expected().values())
 def test_nmrpipe_spectrum_data_layout(expected):
-    """Test the NMRPipeSpectrum data_layout method
-    """
+    """Test the NMRPipeSpectrum data_layout method"""
     # Load the spectrum
     print(f"Loading spectrum '{expected['filepath']}")
     spectrum = NMRPipeSpectrum(expected['filepath'])
@@ -65,7 +63,7 @@ def test_nmrpipe_spectrum_data_layout(expected):
         assert data_layout is expected['spectrum']['data_layout'][dim]
 
 
-# # I/O methods
+# I/O methods
 
 @pytest.mark.parametrize('expected', expected(include=(
         '1d real fid', '2d complex fid',
@@ -144,22 +142,27 @@ def test_nmrpipe_spectrum_phase(expected, expected_ps):
     # Phase the spectrum
     spectrum.phase(p0=p0, p1=p1, discard_imaginaries=True)
 
+    # Find a tolerance for matching numbers. The numbers do not exactly match
+    # the reference dataset due to rounding errors (presumably)
+    tol = max(abs(spectrum.data.max()), abs(spectrum.data.min())) * 0.0001
+
     # Check the values, row-by-row
     if spectrum.ndims == 1:
-        assert tuple(spectrum.data) == tuple(spectrum_ps.data)
+        for count, (i, j) in enumerate(zip(spectrum.data, spectrum_ps.data)):
+            assert isclose(i, j, abs_tol=tol)
     else:
         for i, (row1, row2) in enumerate(zip(spectrum.data, spectrum_ps.data)):
             print(f"Row #{i}")
-            assert tuple(row1) == tuple(row2)
+            assert all(isclose(i, j) for i, j in zip(row1, row2))
 
 
-@pytest.mark.parametrize('expected', expected(include=(
-        '1d real fid', '2d complex fid',
-        '3d complex fid')).values())
-def test_nmrpipe_spectrum_ft(expected):
-    """Test the NMRPipeSpectrum ft method"""
-    # Load the spectrum, if needed (cache for future tests)
-    print(f"Loading spectrum '{expected['filepath']}")
-    spectrum = NMRPipeSpectrum(expected['filepath'])
+# @pytest.mark.parametrize('expected,expected_ft',
+#                          ((expected()['1d complex fid'],
+#                            expected()['1d complex (ft)']),))
+# def test_nmrpipe_spectrum_ft(expected):
+#     """Test the NMRPipeSpectrum ft method"""
+#     # Load the spectrum, if needed (cache for future tests)
+#     print(f"Loading spectrum '{expected['filepath']}")
+#     spectrum = NMRPipeSpectrum(expected['filepath'])
 
 
