@@ -63,7 +63,7 @@ tasks:
          | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
          | nmrPipe -fn ZF -size 8192 \
          | nmrPipe -fn FT -auto \
-         | nmrPipe -fn PS -p0 -33.0 -p1 0. -di \
+         | nmrPipe -fn PS -p0 -33.0 -p1 0.5 -di \
           -ov -out {{.PULPROG}}_ps.ft"
     sources:
       - "spec.fid"
