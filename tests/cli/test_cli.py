@@ -18,8 +18,11 @@ def test_cli_nmrpipe_in(runner=CliRunner()):
     assert result.exit_code == 0  # Command successfully executed
 
 
-@pytest.mark.parametrize('opt', ('SOL', 'FT'))
-def test_cli_nmrpipe_fn(opt, runner=CliRunner()):
+@pytest.mark.parametrize('opt,has_required_params',
+                         (('SOL', False),
+                          ('FT', False),
+                          ('PS', True)))
+def test_cli_nmrpipe_fn(opt, has_required_params, runner=CliRunner()):
     """Test the nmrpipe plugin '-fn' option."""
     # 1. With '-help'
     result = runner.invoke(main, ['nmrpipe', '-fn', opt, '-help'])
@@ -32,4 +35,7 @@ def test_cli_nmrpipe_fn(opt, runner=CliRunner()):
     # 3. Without '-help' or '--help'. This command expects input from stdin
     #    so it will fail
     result = runner.invoke(main, ['nmrpipe', '-fn', opt])
-    assert result.exit_code == 1  # Command not executed successfully
+    if has_required_params:
+        assert result.exit_code == 2  # Command not executed successfully
+    else:
+        assert result.exit_code == 1  # Command not executed successfully

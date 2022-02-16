@@ -229,13 +229,13 @@ def nmrpipe_fn_tp():
               help="The zeroth order (frequency independent) phase correction")
 @click.option('-p1', required=True, type=float,
               help="The first order (linear frequency) phase correction")
-@click.option('-di', is_flag=True, type=bool, default=True,
+@click.option('-di', is_flag=True, type=bool, default=False, show_default=True,
               help="Discard imaginary component")
 @nmrpipe_out
 def nmrpipe_fn_ps(p0, p1, di):
     """Phase the last dimension of a spectrum"""
     from ..processors.processor import Phase2D
-
+    logger.debug(f"p0={p0}, p1={p1}, di={di}")
     # Unpack the stdin
     group = read_stdin()
 
