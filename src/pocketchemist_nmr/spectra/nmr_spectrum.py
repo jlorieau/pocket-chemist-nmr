@@ -6,6 +6,7 @@ import typing as t
 from pathlib import Path
 
 import torch
+import numpy as np
 from loguru import logger
 
 from .constants import DomainType, DataType, DataLayout
@@ -93,6 +94,10 @@ class NMRSpectrum(abc.ABC):
         """The labels for all dimensions, as ordered in the data."""
         raise NotImplementedError
 
+    @property
+    def npts(self) -> t.Tuple[int, ...]:
+        return tuple(self.data.size())
+
     @abc.abstractmethod
     def data_layout(self, dim: int,
                     data_type: t.Optional[DataType] = None) -> DataLayout:
@@ -169,6 +174,37 @@ class NMRSpectrum(abc.ABC):
             setattr(self, attr, None)
 
     # Manipulator methods
+    def apod_exponential(self,
+                         lb: float,
+                         first_point_scale: float = 1.0,
+                         start: int = 0,
+                         size: t.Optional[int] = None):
+        """Apply exponential apodization to the last dimension
+
+        Parameters
+        ----------
+        lb
+            Exponential decay constant (in Hz)
+        first_point_scale
+            Scale the first point by this number
+        start
+            Apply apodization starting from this point
+        size
+            Apply apodization over this length of points
+        method
+        """
+        # Get the time delays
+        sw = self.sw[-1]  # Spectral width (Hz)
+        npts = self.npts[-1]  # Number of points
+        dw = sw**-1.  # dwell time (sec)
+        size = npts if size is None else npts
+
+        # Calculate the decay rate
+        k = lb * torch.pi * torch.arange(0.0, npts) * dw
+
+        # Calculate the apodization func
+        self.data *= torch.exp(-k)
+
     def transpose(self, dim0: int, dim1: int, update_data_layout: bool = True):
         """Transpose two axes (dim0 <-> dim1)
 
@@ -256,6 +292,8 @@ class NMRSpectrum(abc.ABC):
 
     def ft(self,
            auto: bool = False,
+           center: bool = True,
+           flip: bool = True,
            real: bool = False,
            inv: bool = False,
            alt: bool = False,
@@ -272,6 +310,12 @@ class NMRSpectrum(abc.ABC):
             The Fourier Transform wrapper functions to use.
         auto
             Try to determine the FT flags automatically
+        center
+            If True (default), shift the 0Hz frequency component to the center
+        flip
+            If True (default), flip the ordering of data in reverse order.
+            This function is needed for NMR FT to place positive frequencies
+            before negative frequencies.
         real
             Apply a real Fourier transform (.FFTType.RFFT)
         inv
@@ -300,6 +344,7 @@ class NMRSpectrum(abc.ABC):
         """
         # Setup the arguments
         fft_func = torch.fft.fft
+        fft_shift = torch.fft.fftshift
 
         # Setup the flags
         if auto:
@@ -318,19 +363,33 @@ class NMRSpectrum(abc.ABC):
         if inv:
             # Set the FFT function type to inverse Fourier transformation
             fft_func = torch.fft.ifft
+            fft_shift = torch.fft.ifftshift
         if alt and not inv:
             # Alternate the sign of points
-            self.data[..., 1::2] = self.data[..., 1::2] * -1.
+            self.data[..., 1::2] *= -1.
         if neg:
             # Negate (multiple by -1) the imaginary component
             self.data.imag *= -1.0
 
+        logger.debug(f"auto: {auto}, center: {center}, flip: {flip}, "
+                     f"real: {real}, inv: {inv}, alt: {alt}, neg: {neg}, "
+                     f"bruk: {bruk}")
+
         # Perform the FFT then a frequency shift
-        self.data = fft_func(self.data)
+        if center:
+            # Apply fft_shift on the last dimension, which is the one being
+            # Fourier transformed
+            self.data = fft_shift(fft_func(self.data), dim=-1)
+        else:
+            self.data = fft_func(self.data)
 
         # Post process the data
         if inv and alt:
             self.data[..., 1::2] = self.data[..., 1::2] * -1
+
+        # Flip the last dimension, if needed
+        if flip:
+            self.data = torch.flip(self.data, (-1,))
 
         # Prepare the return value
         return kwargs

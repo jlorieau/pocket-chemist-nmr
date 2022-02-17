@@ -6,7 +6,7 @@ vars:
 
 tasks:
   build:
-    deps: [process, process-complex, process-ps]
+    deps: [process]
 
   convert:
     cmds:
@@ -37,35 +37,32 @@ tasks:
          | nmrPipe -fn FT -auto \
          | nmrPipe -fn PS -p0 0. -p1 0. -di \
           -ov -out {{.PULPROG}}.ft"
-    sources:
-      - "spec.fid"
-    generates:
-      - "{{.PULPROG}}.ft"
-
-  process-complex:
-    deps: [convert,]
-    cmds:
+      - "nmrPipe -in spec.fid \
+         | nmrPipe -fn EM -lb 10.0 \
+          -ov -out spec_em.fid"
+      - "nmrPipe -in spec.fid \
+         | nmrPipe -fn FT -auto \
+          -ov -out spec_ft.fid"
       - "nmrPipe -in spec.fid \
          | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
          | nmrPipe -fn ZF -size 8192 \
          | nmrPipe -fn FT -auto \
          | nmrPipe -fn PS -p0 0. -p1 0. \
           -ov -out {{.PULPROG}}_complex.ft"
-    sources:
-      - "spec.fid"
-    generates:
-      - "{{.PULPROG}}_complex.ft"
-
-  process-ps:
-    deps: [convert,]
-    cmds:
       - "nmrPipe -in spec.fid \
          | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
          | nmrPipe -fn ZF -size 8192 \
          | nmrPipe -fn FT -auto \
          | nmrPipe -fn PS -p0 -33.0 -p1 0.5 -di \
           -ov -out {{.PULPROG}}_ps.ft"
+      - "nmrPipe -in spec.fid \
+         | nmrPipe -fn FT -auto \
+          -ov -out {{.PULPROG}}_ft.ft"
     sources:
       - "spec.fid"
     generates:
+      - "spec_em.fid"
+      - "spec_ft.fid"
+      - "{{.PULPROG}}.ft"
+      - "{{.PULPROG}}_complex.ft"
       - "{{.PULPROG}}_ps.ft"

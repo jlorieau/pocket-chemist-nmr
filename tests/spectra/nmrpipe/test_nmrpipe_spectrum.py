@@ -90,6 +90,39 @@ def test_nmrpipe_spectrum_load_save(expected, tmpdir):
 
 
 # Mutators/Processing methods
+@pytest.mark.parametrize('expected,expected_em',
+                         ((expected()['1d complex fid'],
+                           expected()['1d complex fid (em)']),))
+def test_nmrpipe_spectrum_apod_exponential(expected, expected_em):
+    """Test the NMRPipeSpectrum apod_exponential method"""
+    # Load the spectrum and its transpose
+    print(f"Loading spectra: '{expected['filepath']}' and "
+          f"'{expected_em['filepath']}'")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+    spectrum_em = NMRPipeSpectrum(expected_em['filepath'])
+
+    # Get the apodization parameters
+    dim = spectrum_em.order[0]
+    code = spectrum_em.meta[f'FDF{dim}APODCODE']
+    lb = spectrum_em.meta[f'FDF{dim}APODQ1']
+
+    assert code == 2.0  # apodization code for EM
+
+    # Apodization the original dataset
+    spectrum.apod_exponential(lb=lb)
+
+    # Find the tolerance for float errors
+    tol = spectrum.data.real.max() * 0.0001
+
+    # Check the values
+    if spectrum.ndims == 1:
+        for row, (i, j) in enumerate(zip(spectrum.data, spectrum_em.data)):
+            print(f"Row #{row}: {i}, {j}")
+            assert isclose(i, j, abs_tol=tol)
+    else:
+        raise NotImplementedError
+
+
 @pytest.mark.parametrize('expected,expected_tp',
                          ((expected()['2d complex fid'],
                            expected()['2d complex fid (tp)']),))
@@ -156,13 +189,23 @@ def test_nmrpipe_spectrum_phase(expected, expected_ps):
             assert all(isclose(i, j) for i, j in zip(row1, row2))
 
 
-# @pytest.mark.parametrize('expected,expected_ft',
-#                          ((expected()['1d complex fid'],
-#                            expected()['1d complex (ft)']),))
-# def test_nmrpipe_spectrum_ft(expected):
-#     """Test the NMRPipeSpectrum ft method"""
-#     # Load the spectrum, if needed (cache for future tests)
-#     print(f"Loading spectrum '{expected['filepath']}")
-#     spectrum = NMRPipeSpectrum(expected['filepath'])
+@pytest.mark.parametrize('expected,expected_ft',
+                         ((expected()['1d complex fid'],
+                           expected()['1d complex fid (ft)']),))
+def test_nmrpipe_spectrum_ft(expected, expected_ft):
+    """Test the NMRPipeSpectrum ft method"""
+    # Load the spectrum, if needed (cache for future tests)
+    print(f"Loading spectra: '{expected['filepath']}' and "
+          f"'{expected_ft['filepath']}'")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+    spectrum_ft = NMRPipeSpectrum(expected_ft['filepath'])
+
+    # Conduct the Fourier transform
+    spectrum.ft()
+
+    # Check the values, row-by-row
+    if spectrum.ndims == 1:
+        for count, (i, j) in enumerate(zip(spectrum.data, spectrum_ft.data)):
+            assert isclose(i, j, abs_tol=0.1)
 
 

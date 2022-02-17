@@ -54,6 +54,60 @@ def expected(include: t.Optional[t.Tuple[str, ...]] = None,
                                  ((-1,), -359985.70000 - 16418.97000j))},
             },
 
+        '1d complex fid (em)': {
+            'filepath': (Path('data') / 'bruker' /
+                         'CD20170124_av500hd_100_ubq_oneone1d' / 'spec_em.fid'),
+            'format': 'nmrpipe',
+            # Header (meta values). NMRPipe ordering (inner-outer1-outer2)
+            'header': {
+                'ndims': 1,  # Number of dimensions in spectrum
+                'order': (2,),  # Order of data
+                'data_type': (DataType.COMPLEX,),  # Type of data
+                'data_pts': (799 * 2,),
+                'pts': (799,)},
+            # Spectra accessor values. Torch ordering (outer2-outer1-inner)
+            'spectrum': {
+                'ndims': 1,  # Number of dimensions in spectrum
+                'order': (2,),  # Order of data
+                'shape': (799 * 1,),
+                'domain_type': (DomainType.TIME,),  # Each dim's domain
+                'data_type': (DataType.COMPLEX,),  # Type of data
+                'data_layout': (DataLayout.BLOCK_INTERLEAVE,),  # Data layout
+                'sw': (10000.,),  # The spectra width in Hz
+                'label': ('1H',),  # The labels for each dimension
+                'sign_adjustment': (SignAdjustment.NONE,),  # Sign adjustment
+                'plane2dphase': Plane2DPhase.MAGNITUDE,  # Type of 2d phase
+                'data_heights': (((0,), 0. + 0.j),
+                                 ((-1,), -29343.56000 - 1338.36200j))},
+        },
+
+        '1d complex fid (ft)': {
+            'filepath': (Path('data') / 'bruker' /
+                         'CD20170124_av500hd_100_ubq_oneone1d' / 'spec_ft.fid'),
+            'format': 'nmrpipe',
+            # Header (meta values). NMRPipe ordering (inner-outer1-outer2)
+            'header': {
+                'ndims': 1,  # Number of dimensions in spectrum
+                'order': (2,),  # Order of data
+                'data_type': (DataType.COMPLEX,),  # Type of data
+                'data_pts': (799 * 2,),
+                'pts': (799,)},
+            # Spectra accessor values. Torch ordering (outer2-outer1-inner)
+            'spectrum': {
+                'ndims': 1,  # Number of dimensions in spectrum
+                'order': (2,),  # Order of data
+                'shape': (799 * 1,),
+                'domain_type': (DomainType.FREQ,),  # Each dim's domain
+                'data_type': (DataType.COMPLEX,),  # Type of data
+                'data_layout': (DataLayout.BLOCK_INTERLEAVE,),  # Data layout
+                'sw': (10000.,),  # The spectra width in Hz
+                'label': ('1H',),  # The labels for each dimension
+                'sign_adjustment': (SignAdjustment.NONE,),  # Sign adjustment
+                'plane2dphase': Plane2DPhase.MAGNITUDE,  # Type of 2d phase
+                'data_heights': (((0,), 889948.60000 - 789496.60000j),
+                                 ((-1,), 1106565.00000 - 778211.60000j))},
+        },
+
         '1d real fid': {
             'filepath': (Path('data') / 'bruker' /
                          'CD20170124_av500hd_100_ubq_oneone1d' /
