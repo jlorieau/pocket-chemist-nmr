@@ -142,3 +142,4 @@ test*.ft*
 *.ft1
 *.ft2
 *.ft3
+*.hdr
