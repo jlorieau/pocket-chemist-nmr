@@ -6,10 +6,9 @@ import typing as t
 from pathlib import Path
 
 import torch
-import numpy as np
 from loguru import logger
 
-from .constants import DomainType, DataType, DataLayout
+from .constants import DomainType, DataType, DataLayout, ApodizationType
 from .meta import NMRMetaDict
 from .utils import (split_block_to_complex, combine_block_from_complex,
                     split_single_to_complex, combine_single_from_complex)
@@ -92,6 +91,12 @@ class NMRSpectrum(abc.ABC):
     @abc.abstractmethod
     def label(self) -> t.Tuple[str, ...]:
         """The labels for all dimensions, as ordered in the data."""
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def apodization(self) -> t.Tuple[ApodizationType, ...]:
+        """The type of apodization function applied to each dimension"""
         raise NotImplementedError
 
     @property

@@ -5,19 +5,13 @@ from cmath import isclose
 from pathlib import Path
 
 import pytest
-import torch
-
 from pocketchemist_nmr.spectra.nmrpipe import NMRPipeSpectrum
-from pocketchemist_nmr.spectra.utils import (split_block_to_complex,
-                                             split_single_to_complex,
-                                             combine_single_from_complex,
-                                             combine_block_from_complex)
 
 from ...conftest import expected
 
 #: Attributes to test
 attrs = ('ndims', 'order', 'domain_type', 'data_type', 'sw', 'label',
-         'sign_adjustment', 'plane2dphase')
+         'apodization', 'sign_adjustment', 'plane2dphase')
 
 
 def check_attributes(spectrum, expected):

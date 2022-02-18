@@ -13,7 +13,7 @@ from .fileio import (load_nmrpipe_tensor, load_nmrpipe_multifile_tensor,
                      save_nmrpipe_tensor)
 from .meta import NMRPipeMetaDict
 from ..nmr_spectrum import NMRSpectrum
-from ..constants import DomainType, DataType, DataLayout
+from ..constants import DomainType, DataType, DataLayout, ApodizationType
 
 __all__ = ('NMRPipeSpectrum',)
 
@@ -98,6 +98,15 @@ class NMRPipeSpectrum(NMRSpectrum):
     @property
     def label(self) -> t.Tuple[str, ...]:
         return tuple(self.meta[f"FDF{dim}LABEL"] for dim in self.order)
+
+    @property
+    def apodization(self) -> t.Tuple[ApodizationType, ...]:
+        # Setup mappings between ApodizationType and the meta dict values
+        apodization = []
+        for dim in self.order:
+            value = self.meta[f"FDF{dim}APODCODE"]
+            apodization.append(find_mapping('apodization', value))
+        return tuple(apodization)
 
     def data_layout(self, dim: int,
                     data_type: t.Optional[DataType] = None) -> DataLayout:
@@ -192,6 +201,17 @@ class NMRPipeSpectrum(NMRSpectrum):
                             tensor=self.data, overwrite=overwrite)
 
     # Manipulator methods
+
+    def apod_exponential(self,
+                         lb: float,
+                         first_point_scale: float = 1.0,
+                         start: int = 0,
+                         size: t.Optional[int] = None):
+        super().apod_exponential(lb=lb, first_point_scale=first_point_scale,
+                                 start=start, size=size)
+
+        # Update the header
+        dim = self.order[f'FDF{dim}APODCODE']
 
     def transpose(self, dim0, dim1, interleave_complex=True):
         # Get the mapping between the dimension order (0, 1, .. self.ndims)

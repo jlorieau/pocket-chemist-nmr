@@ -28,3 +28,11 @@ class DataLayout(Enum):
     CONTIGUOUS = 0  # No interleaving
     SINGLE_INTERLEAVE = 10  # Complex real/imag points adjacent to each other
     BLOCK_INTERLEAVE = 20  # Complex real points followed by imag points
+
+
+class ApodizationType(Enum):
+    """The type of apodization applied to a dimension"""
+
+    NONE = 0  # No apodization
+    SINEBELL = 10  # Sine-bell
+    EXPONENTIAL = 20  # Exponential (Lorentzian)

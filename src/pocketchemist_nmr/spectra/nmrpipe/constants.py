@@ -4,7 +4,7 @@ Constants for NMRPipe spectra
 from enum import Enum
 import typing as t
 
-from ..constants import DomainType, DataType
+from ..constants import DomainType, DataType, ApodizationType
 
 __all__ = ('header_size_bytes', 'data_size_bytes', 'Plane2DPhase',
            'SignAdjustment')
@@ -45,6 +45,9 @@ mappings = {
     'data_type': {0.0: DataType.COMPLEX,
                   1.0: DataType.REAL,
                   None: DataType.UNKNOWN},
+    'apodization': {0.0: ApodizationType.NONE,
+                    1.0: ApodizationType.SINEBELL,
+                    2.0: ApodizationType.EXPONENTIAL},
     'sign_adjustment': {1.0: SignAdjustment.REAL,
                         2.0: SignAdjustment.COMPLEX,
                         16.0: SignAdjustment.NEGATE_IMAG,
@@ -61,7 +64,8 @@ mappings = {
 
 
 def find_mapping(name, cnst, reverse=False, round_cnst=True) \
-        -> t.Union[DomainType, SignAdjustment, Plane2DPhase, DataType]:
+        -> t.Union[DomainType, SignAdjustment, Plane2DPhase, DataType,
+                   ApodizationType]:
     """Find the mapping for constant (enum) values.
 
     Parameters
