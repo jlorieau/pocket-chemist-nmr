@@ -200,7 +200,8 @@ class NMRSpectrum(abc.ABC):
         size = npts if size is None else npts
 
         # Calculate the decay rate
-        k = lb * torch.pi * torch.arange(0.0, npts) * dw
+        k = torch.ones(npts)
+        k[start:start + size] = lb * torch.pi * torch.arange(0.0, size) * dw
 
         # Calculate the apodization func
         self.data *= torch.exp(-k)
