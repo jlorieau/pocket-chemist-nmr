@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 from pocketchemist_nmr.spectra.nmrpipe import NMRPipeSpectrum
+from pocketchemist_nmr.spectra.constants import ApodizationType
 
 from ...conftest import expected
 
@@ -87,7 +88,7 @@ def test_nmrpipe_spectrum_load_save(expected, tmpdir):
 @pytest.mark.parametrize('expected,expected_em',
                          ((expected()['1d complex fid'],
                            expected()['1d complex fid (em)']),))
-def test_nmrpipe_spectrum_apod_exponential(expected, expected_em):
+def test_nmrpipe_spectrum_apodization_exp(expected, expected_em):
     """Test the NMRPipeSpectrum apod_exponential method"""
     # Load the spectrum and its transpose
     print(f"Loading spectra: '{expected['filepath']}' and "
@@ -102,8 +103,16 @@ def test_nmrpipe_spectrum_apod_exponential(expected, expected_em):
 
     assert code == 2.0  # apodization code for EM
 
+    # Check that an apodization hasn't been applied yet
+    assert all(apod is ApodizationType.NONE for apod in spectrum.apodization)
+
     # Apodization the original dataset
-    spectrum.apod_exponential(lb=lb)
+    spectrum.apodization_exp(lb=lb)
+
+    # Check the header values
+    assert spectrum.apodization[0] == ApodizationType.EXPONENTIAL
+    assert spectrum.meta[f'FDF{dim}APODCODE'] == 2.0
+    assert isclose(spectrum.meta[f'FDF{dim}APODQ1'], lb)
 
     # Find the tolerance for float errors
     tol = spectrum.data.real.max() * 0.0001

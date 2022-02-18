@@ -179,11 +179,11 @@ class NMRSpectrum(abc.ABC):
             setattr(self, attr, None)
 
     # Manipulator methods
-    def apod_exponential(self,
-                         lb: float,
-                         first_point_scale: float = 1.0,
-                         start: int = 0,
-                         size: t.Optional[int] = None):
+    def apodization_exp(self,
+                        lb: float,
+                        first_point_scale: float = 1.0,
+                        start: int = 0,
+                        size: t.Optional[int] = None):
         """Apply exponential apodization to the last dimension
 
         Parameters

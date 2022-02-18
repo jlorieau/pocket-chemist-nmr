@@ -202,16 +202,20 @@ class NMRPipeSpectrum(NMRSpectrum):
 
     # Manipulator methods
 
-    def apod_exponential(self,
-                         lb: float,
-                         first_point_scale: float = 1.0,
-                         start: int = 0,
-                         size: t.Optional[int] = None):
-        super().apod_exponential(lb=lb, first_point_scale=first_point_scale,
-                                 start=start, size=size)
+    def apodization_exp(self,
+                        lb: float,
+                        first_point_scale: float = 1.0,
+                        start: int = 0,
+                        size: t.Optional[int] = None):
+        super().apodization_exp(lb=lb, first_point_scale=first_point_scale,
+                                start=start, size=size)
 
-        # Update the header
-        dim = self.order[f'FDF{dim}APODCODE']
+        # Update the metadata values
+        dim = self.order[0]
+        new_apod_code = find_mapping('apodization', ApodizationType.EXPONENTIAL,
+                                     reverse=True)
+        self.meta[f"FDF{dim}APODCODE"] = float(new_apod_code)
+        self.meta[f"FDF{dim}APODQ1"] = float(lb)
 
     def transpose(self, dim0, dim1, interleave_complex=True):
         # Get the mapping between the dimension order (0, 1, .. self.ndims)
