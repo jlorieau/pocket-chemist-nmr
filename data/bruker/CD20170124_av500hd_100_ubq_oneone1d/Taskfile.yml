@@ -34,12 +34,6 @@ tasks:
     deps: [convert,]
     cmds:
       - "nmrPipe -in spec.fid \
-         | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
-         | nmrPipe -fn ZF -size 8192 \
-         | nmrPipe -fn FT -auto \
-         | nmrPipe -fn PS -p0 0. -p1 0. -di \
-          -ov -out {{.PULPROG}}.ft"
-      - "nmrPipe -in spec.fid \
          | nmrPipe -fn EM -lb 10.0 \
           -ov -out spec_em.fid"
       - "showhdr -dump spec_em.fid > spec_em.hdr"
@@ -51,17 +45,23 @@ tasks:
          | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
          | nmrPipe -fn ZF -size 8192 \
          | nmrPipe -fn FT -auto \
+         | nmrPipe -fn PS -p0 0. -p1 0. -di \
+          -ov -out {{.PULPROG}}.ft"
+      - "showhdr -dump {{.PULPROG}}.ft > {{.PULPROG}}.hdr"
+      - "nmrPipe -in spec.fid \
+         | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
+         | nmrPipe -fn ZF -size 8192 \
+         | nmrPipe -fn FT -auto \
          | nmrPipe -fn PS -p0 0. -p1 0. \
           -ov -out {{.PULPROG}}_complex.ft"
+      - "showhdr -dump {{.PULPROG}}_complex.ft > {{.PULPROG}}_complex.hdr"
       - "nmrPipe -in spec.fid \
          | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
          | nmrPipe -fn ZF -size 8192 \
          | nmrPipe -fn FT -auto \
          | nmrPipe -fn PS -p0 -33.0 -p1 0.5 -di \
           -ov -out {{.PULPROG}}_ps.ft"
-      - "nmrPipe -in spec.fid \
-         | nmrPipe -fn FT -auto \
-          -ov -out {{.PULPROG}}_ft.ft"
+      - "showhdr -dump {{.PULPROG}}_ps.ft > {{.PULPROG}}_ps.hdr"
     sources:
       - "spec.fid"
     generates:
@@ -70,5 +70,8 @@ tasks:
       - "spec_ft.fid"
       - "spec_ft.hdr"
       - "{{.PULPROG}}.ft"
+      - "{{.PULPROG}}.hdr"
       - "{{.PULPROG}}_complex.ft"
+      - "{{.PULPROG}}_complex.hdr"
       - "{{.PULPROG}}_ps.ft"
+      - "{{.PULPROG}}_ps.hdr"
