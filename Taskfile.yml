@@ -16,6 +16,7 @@ tasks:
       - find data/bruker -name "*.ft1" -delete
       - find data/bruker -name "*.ft2" -delete
       - find data/bruker -name "*.ft3" -delete
+      - find data/bruker -name "*.hdr" -delete
 
   test:
     desc: Run pytests

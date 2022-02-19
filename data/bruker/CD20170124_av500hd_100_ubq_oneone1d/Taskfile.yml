@@ -23,10 +23,12 @@ tasks:
          | nmrPipe -fn MULT -c 2.44141e-01 \
            -out ./spec.fid -ov"
       - "sleep 3"
+      - "showhdr -dump spec.fid > spec.hdr"
     sources:
       - "fid"
     generates:
       - "spec.fid"
+      - "spec.hdr"
 
   process:
     deps: [convert,]
@@ -40,9 +42,11 @@ tasks:
       - "nmrPipe -in spec.fid \
          | nmrPipe -fn EM -lb 10.0 \
           -ov -out spec_em.fid"
+      - "showhdr -dump spec_em.fid > spec_em.hdr"
       - "nmrPipe -in spec.fid \
          | nmrPipe -fn FT -auto \
           -ov -out spec_ft.fid"
+      - "showhdr -dump spec_ft.fid > spec_ft.hdr"
       - "nmrPipe -in spec.fid \
          | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
          | nmrPipe -fn ZF -size 8192 \
@@ -62,7 +66,9 @@ tasks:
       - "spec.fid"
     generates:
       - "spec_em.fid"
+      - "spec_em.hdr"
       - "spec_ft.fid"
+      - "spec_ft.hdr"
       - "{{.PULPROG}}.ft"
       - "{{.PULPROG}}_complex.ft"
       - "{{.PULPROG}}_ps.ft"
