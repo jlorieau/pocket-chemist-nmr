@@ -11,6 +11,7 @@ from loguru import logger
 from .constants import Plane2DPhase, SignAdjustment, find_mapping
 from .fileio import (load_nmrpipe_tensor, load_nmrpipe_multifile_tensor,
                      save_nmrpipe_tensor)
+from ...filters.bruker import bruker_group_delay
 from .meta import NMRPipeMetaDict
 from ..nmr_spectrum import NMRSpectrum
 from ..constants import DomainType, DataType, DataLayout, ApodizationType
@@ -107,6 +108,19 @@ class NMRPipeSpectrum(NMRSpectrum):
             value = self.meta[f"FDF{dim}APODCODE"]
             apodization.append(find_mapping('apodization', value))
         return tuple(apodization)
+
+    @property
+    def group_delay(self) -> (t.Union[None, float], bool):
+        # Try getting Bruker's group delay
+        return bruker_group_delay(grpdly=self.meta.get('FDDMXVAL', None))
+
+    @property
+    def correct_digital_filter(self) -> bool:
+        # Determine if the Bruker digitization hasn't yet been applied
+        dmxflag = round(self.meta.get('FDDMXFLAG', -1.0))
+        return (False if dmxflag == -1.0 or  # DMX ON
+                dmxflag == 1.0 else  # DMX OFF
+                True)  # DMX auto
 
     def data_layout(self, dim: int,
                     data_type: t.Optional[DataType] = None) -> DataLayout:

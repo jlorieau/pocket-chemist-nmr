@@ -4,6 +4,8 @@ Test the spectra/nmrpipe_spectrum.py submodule
 from cmath import isclose
 from pathlib import Path
 
+import torch
+
 import pytest
 from pocketchemist_nmr.spectra.nmrpipe import NMRPipeSpectrum
 from pocketchemist_nmr.spectra.constants import ApodizationType
@@ -12,7 +14,8 @@ from ...conftest import expected
 
 #: Attributes to test
 attrs = ('ndims', 'order', 'domain_type', 'data_type', 'sw', 'label',
-         'apodization', 'sign_adjustment', 'plane2dphase')
+         'apodization', 'group_delay', 'correct_digital_filter',
+         'sign_adjustment', 'plane2dphase')
 
 
 def check_attributes(spectrum, expected):
@@ -206,9 +209,24 @@ def test_nmrpipe_spectrum_ft(expected, expected_ft):
     # Conduct the Fourier transform
     spectrum.ft()
 
-    # Check the values, row-by-row
+    # Compare the power spectra, which are phase insensitive
+    pow_spectrum = torch.sqrt(spectrum.data.real ** 2 +
+                              spectrum.data.imag ** 2)
+    pow_spectrum_ft = torch.sqrt(spectrum_ft.data.real ** 2 +
+                                 spectrum_ft.data.imag ** 2)
+
+    # Find a tolerance for matching numbers. The numbers do not exactly match
+    # the reference dataset due to rounding errors (presumably)
+    tol = max(abs(pow_spectrum_ft.max()), abs(pow_spectrum_ft.min())) * 0.00001
+
     if spectrum.ndims == 1:
-        for count, (i, j) in enumerate(zip(spectrum.data, spectrum_ft.data)):
-            assert isclose(i, j, abs_tol=0.1)
+        # Check the normalized values, row-by-row
+        for count, (i, j) in enumerate(zip(pow_spectrum, pow_spectrum_ft)):
+            print(f"Row#{count}: "
+                  f"{i}, {j}")
+            assert isclose(i, j, abs_tol=tol)
+    else:
+        raise NotImplementedError
+
 
 

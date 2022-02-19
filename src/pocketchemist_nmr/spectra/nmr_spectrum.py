@@ -4,6 +4,7 @@ NMR Spectra in different formats
 import abc
 import typing as t
 from pathlib import Path
+from math import floor
 
 import torch
 from loguru import logger
@@ -102,6 +103,26 @@ class NMRSpectrum(abc.ABC):
     @property
     def npts(self) -> t.Tuple[int, ...]:
         return tuple(self.data.size())
+
+    @property
+    def group_delay(self) -> t.Union[None, float]:
+        """The digital filter group delay for the last dimension, if it was
+        passed through a moving average digital filter.
+
+        Returns
+        -------
+        group_delay
+            The value of the group delay in number of points, if a digital
+            filter was applied in the dimension, or none if there is no
+            digital filter in this dimension.
+        """
+        raise NotImplementedError
+
+    @property
+    def correct_digital_filter(self) -> bool:
+        """Whether a digital correction filter must be corrected (removed)
+        from the last dimension."""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def data_layout(self, dim: int,
@@ -312,8 +333,6 @@ class NMRSpectrum(abc.ABC):
 
         Parameters
         ----------
-        ft_func
-            The Fourier Transform wrapper functions to use.
         auto
             Try to determine the FT flags automatically
         center
@@ -344,9 +363,11 @@ class NMRSpectrum(abc.ABC):
             The kwargs dict with the 'data' entry populated with the Fourier
             Transformed dataset.
 
-        See Also
-        --------
-        - nmrglue.process.proc_base
+        Notes
+        -----
+        The digital correction of this function doesn't give the same results
+        as NMRPipe: The final zeroth order phase is different by 10s of degrees,
+        but the first-order phase appears to match.
         """
         # Setup the arguments
         fft_func = torch.fft.fft
@@ -379,7 +400,13 @@ class NMRSpectrum(abc.ABC):
 
         logger.debug(f"auto: {auto}, center: {center}, flip: {flip}, "
                      f"real: {real}, inv: {inv}, alt: {alt}, neg: {neg}, "
-                     f"bruk: {bruk}")
+                     f"bruk: {bruk}, "
+                     f"correct_digital_filter: {self.correct_digital_filter}")
+
+        # Remove digitization, if needed
+        if self.correct_digital_filter:
+            shift_points = int(floor(self.group_delay))
+            self.data = torch.roll(self.data, (-shift_points))
 
         # Perform the FFT then a frequency shift
         if center:
@@ -392,6 +419,14 @@ class NMRSpectrum(abc.ABC):
         # Post process the data
         if inv and alt:
             self.data[..., 1::2] = self.data[..., 1::2] * -1
+
+        # Apply digitization phase shift, if needed
+        if self.correct_digital_filter is not None and not inv:
+            group_delay = self.group_delay
+            # The p0/p1 selected here more closely matches NMRPipe
+            # The p0=180. likely arises from the flip below.
+            p1 = 1. * (group_delay - floor(group_delay)) * 360.  # degrees
+            self.phase(p0=180.0, p1=p1, discard_imaginaries=False)
 
         # Flip the last dimension, if needed
         if flip:
