@@ -219,10 +219,17 @@ class NMRPipeSpectrum(NMRSpectrum):
     def update_meta(self):
         """Update the meta dict with the current values of the data"""
         # Update the data ranges
-        self.meta['FDMAX'] = float(self.data.max())
-        self.meta['FDMIN'] = float(self.data.min())
+        if self.data.is_complex():
+            self.meta['FDMAX'] = float(self.data.real.max())
+            self.meta['FDMIN'] = float(self.data.real.min())
+        else:
+            self.meta['FDMAX'] = float(self.data.max())
+            self.meta['FDMIN'] = float(self.data.min())
         self.meta['FDDISPMAX'] = self.meta['FDMAX']
         self.meta['FDDISPMIN'] = self.meta['FDMIN']
+
+        # The FDMIN/FDMAX are valid
+        self.meta['FDSCALEFLAG'] = 1.0
 
         # Update the datatype for the current (last) dimension
         self.meta['FDQUADFLAG'] = find_mapping('data_type', self.data_type[-1],
@@ -243,6 +250,9 @@ class NMRPipeSpectrum(NMRSpectrum):
         self.meta[f"FDF{dim}APODCODE"] = float(new_apod_code)
         self.meta[f"FDF{dim}APODQ1"] = float(lb)
 
+        # Update other meta dict values
+        self.update_meta()
+
     def transpose(self, dim0, dim1, interleave_complex=True):
         # Get the mapping between the dimension order (0, 1, .. self.ndims)
         # and the F1/F2/F3/F4 dimensions
@@ -256,14 +266,27 @@ class NMRPipeSpectrum(NMRSpectrum):
 
         # Update the metadata values with the new order
         for i, ord in enumerate(new_order, 1):
-            self.meta[f'FDDIMORDER{i}'] = round(ord, 1)
+            self.meta[f'FDDIMORDER{i}'] = float(ord)
 
-        self.meta['FDSIZE'] = self.data.size()[-1]
-        self.meta['FDSPECNUM'] = reduce(lambda x, y: x * y,
-                                        self.data.size()[:-1])
+        # Update the number of points (size) of the direct (inner) and indirect
+        # (outer) dimensions
+        self.meta['FDSIZE'] = float(self.data.size()[-1])
+        self.meta['FDSPECNUM'] = float(reduce(lambda x, y: x * y,
+                                              self.data.size()[:-1]))
         self.meta['FDSLICECOUNT0'] = self.meta['FDSPECNUM']
+
+        # Set the flag to indicate that the data was transposed
         self.meta['FDTRANSPOSED'] = (0.0 if self.meta['FDTRANSPOSED'] == 1.0
                                      else 1.0)
+
+        # NMRPipe doesn't update FDMIN/FDMAX by default for TP data, but instead
+        # it invalidates the FDMIN/FDMAX values with the FDSCALEFLAG
+        self.meta['FDSCALEFLAG'] = 0.0  # FDMIN/FDMAX not valid
+
+        # Update the current (last) dimension's quadrature flag if it has
+        # switched between complex <-> real
+        self.meta['FDQUADFLAG'] = find_mapping('data_type', self.data_type[-1],
+                                               reverse=True)
 
     def phase(self, p0: float, p1: float, discard_imaginaries: bool = True,
               method='unit'):
@@ -344,7 +367,7 @@ class NMRPipeSpectrum(NMRSpectrum):
         self.meta[f"FDF{dim}FTFLAG"] = new_domain_type
 
         # Update the FTSIZE
-        self.meta[f"FDF{dim}FTSIZE"] = round(self.data.size()[-1])
+        self.meta[f"FDF{dim}FTSIZE"] = float(self.data.size()[-1])
 
         # Switch the DMX ON flag to indicate that the digital filter was
         # corrected
