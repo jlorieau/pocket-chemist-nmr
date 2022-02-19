@@ -404,7 +404,7 @@ class NMRSpectrum(abc.ABC):
                      f"correct_digital_filter: {self.correct_digital_filter}")
 
         # Remove digitization, if needed
-        if self.correct_digital_filter:
+        if self.correct_digital_filter and not inv:
             shift_points = int(floor(self.group_delay))
             self.data = torch.roll(self.data, (-shift_points))
 
@@ -421,7 +421,7 @@ class NMRSpectrum(abc.ABC):
             self.data[..., 1::2] = self.data[..., 1::2] * -1
 
         # Apply digitization phase shift, if needed
-        if self.correct_digital_filter is not None and not inv:
+        if self.correct_digital_filter and not inv:
             group_delay = self.group_delay
             # The p0/p1 selected here more closely matches NMRPipe
             # The p0=180. likely arises from the flip below.
