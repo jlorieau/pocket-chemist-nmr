@@ -216,6 +216,18 @@ class NMRPipeSpectrum(NMRSpectrum):
 
     # Manipulator methods
 
+    def update_meta(self):
+        """Update the meta dict with the current values of the data"""
+        # Update the data ranges
+        self.meta['FDMAX'] = float(self.data.max())
+        self.meta['FDMIN'] = float(self.data.min())
+        self.meta['FDDISPMAX'] = self.meta['FDMAX']
+        self.meta['FDDISPMIN'] = self.meta['FDMIN']
+
+        # Update the datatype for the current (last) dimension
+        self.meta['FDQUADFLAG'] = find_mapping('data_type', self.data_type[-1],
+                                               reverse=True)
+
     def apodization_exp(self,
                         lb: float,
                         first_point_scale: float = 1.0,
@@ -225,7 +237,7 @@ class NMRPipeSpectrum(NMRSpectrum):
                                 start=start, size=size)
 
         # Update the metadata values
-        dim = self.order[0]
+        dim = self.order[-1]
         new_apod_code = find_mapping('apodization', ApodizationType.EXPONENTIAL,
                                      reverse=True)
         self.meta[f"FDF{dim}APODCODE"] = float(new_apod_code)
@@ -253,17 +265,25 @@ class NMRPipeSpectrum(NMRSpectrum):
         self.meta['FDTRANSPOSED'] = (0.0 if self.meta['FDTRANSPOSED'] == 1.0
                                      else 1.0)
 
-    def phase(self, p0: float, p1: float, discard_imaginaries: bool = True):
+    def phase(self, p0: float, p1: float, discard_imaginaries: bool = True,
+              method='unit'):
         rv = super().phase(p0, p1, discard_imaginaries)
 
         # Update the header, as needed
         dim = self.order[-1]
+
+        # Switch the quadrature (data) type from complex to real if imaginaries
+        # are discarded
         if discard_imaginaries and self.data_type[-1] is DataType.COMPLEX:
             self.meta[f"FDF{dim}QUADFLAG"] = find_mapping('data_type',
                                                           DataType.REAL,
                                                           reverse=True)
-        self.meta[f"FDF{dim}p0"] = p0
-        self.meta[f"FDF{dim}p1"] = p1
+        # Update the phase values
+        self.meta[f"FDF{dim}P0"] = p0
+        self.meta[f"FDF{dim}P1"] = p1
+
+        # Update other meta dict values
+        self.update_meta()
 
         return rv
 
@@ -312,15 +332,23 @@ class NMRPipeSpectrum(NMRSpectrum):
                         bruk=bruk)
 
         # Update the self.meta dict as needed
-        last_dim = self.order[-1]
+        dim = self.order[-1]
         new_sign_adjustment = find_mapping('sign_adjustment',
                                            SignAdjustment.NONE, reverse=True)
-        self.meta[f'FDF{last_dim}AQSIGN'] = new_sign_adjustment
+        self.meta[f'FDF{dim}AQSIGN'] = new_sign_adjustment
 
         # Switch the domain type, based on the type of Fourier Transform
         new_domain_type = DomainType.TIME if inv else DomainType.FREQ
         new_domain_type = find_mapping('domain_type', new_domain_type,
                                        reverse=True)
-        self.meta[f"FDF{last_dim}FTFLAG"] = new_domain_type
+        self.meta[f"FDF{dim}FTFLAG"] = new_domain_type
+
+        # Update the FTSIZE
+        self.meta[f"FDF{dim}FTSIZE"] = round(self.data.size()[-1])
+
+        # Switch the DMX ON flag to indicate that the digital filter was
+        # corrected
+        if self.correct_digital_filter:
+            self.meta[f"FDDMXFLAG"] = 1.0  # DMX ON
 
         return rv

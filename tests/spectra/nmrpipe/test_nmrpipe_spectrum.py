@@ -18,7 +18,7 @@ attrs = ('ndims', 'order', 'domain_type', 'data_type', 'sw', 'label',
          'sign_adjustment', 'plane2dphase')
 
 
-def check_attributes(spectrum, expected):
+def match_attributes(spectrum, expected):
     """Check the attributes of a spectrum"""
     for attr in attrs:
         spectrum_value = getattr(spectrum, attr)
@@ -37,6 +37,48 @@ def check_attributes(spectrum, expected):
             assert spectrum_value == expected_value
 
 
+def match_metas(meta1, meta2):
+    """Check that 2 meta dicts match"""
+    # Find keys missing from between the two meta dicts
+    assert len(meta1.keys() - meta2.keys()) == 0, (
+        f"The following keys are in meta1 but not meta2: "
+        f"{meta1.keys() - meta2.keys()}")
+    assert len(meta2.keys() - meta1.keys()) == 0, (
+        f"The following keys are in meta2 but not meta1: "
+        f"{meta2.keys() - meta1.keys()}")
+
+    # Check the values
+    unmatched_values = dict()
+    for k in meta1.keys():
+        value1, value2 = meta1[k], meta2[k]
+
+        # Check that the types match
+        if type(value1) != type(value2):
+            unmatched_values[k] = ('mismatched types', value1, value2)
+
+        if 'MIN' in k or 'MAX' in k:
+            if not isclose(value1, value2, rel_tol=0.0001):
+                # For FDMAX/FDMIN/FDDISPMAX/FDDISPMIN, these should be within
+                # error (or within 0.01%)
+                unmatched_values[k] = ('mismatched values', value1, value2)
+        elif (isinstance(value1, float) and
+              round(value1, 1) != round(value2, 1)):
+            # For other floats, round them to make sure they match within the
+            # first decimal
+            unmatched_values[k] = ('mismatched values', value1, value2)
+        elif value1 != value2:
+            # For other values, just check them directly
+            unmatched_values[k] = ('mismatched values', value1, value2)
+
+    # Assert that there are no unmatched_values
+    if len(unmatched_values) > 0:
+        msg = "The following values do not match:\n"
+        msg += '\n'.join(f'  {k}: {value1} != {value2}  ({reason})'
+                         for k, (reason, value1, value2)
+                         in unmatched_values.items())
+        raise AssertionError(msg)
+
+
 # Property Accessors/Mutators
 @pytest.mark.parametrize("expected", expected().values())
 def test_nmrpipe_spectrum_properties(expected):
@@ -46,7 +88,7 @@ def test_nmrpipe_spectrum_properties(expected):
     spectrum = NMRPipeSpectrum(expected['filepath'])
 
     # Check the attributes
-    check_attributes(spectrum, expected)
+    match_attributes(spectrum, expected)
 
 
 @pytest.mark.parametrize("expected", expected().values())
@@ -84,7 +126,7 @@ def test_nmrpipe_spectrum_load_save(expected, tmpdir):
     spectrum = NMRPipeSpectrum(out_filepath)
 
     # Check the attributes
-    check_attributes(spectrum, expected)
+    match_attributes(spectrum, expected)
 
 
 # Mutators/Processing methods
@@ -111,6 +153,9 @@ def test_nmrpipe_spectrum_apodization_exp(expected, expected_em):
 
     # Apodization the original dataset
     spectrum.apodization_exp(lb=lb)
+
+    # Check the header
+    match_metas(spectrum.meta, spectrum_em.meta)
 
     # Check the header values
     assert spectrum.apodization[0] == ApodizationType.EXPONENTIAL
@@ -143,6 +188,9 @@ def test_nmrpipe_spectrum_transpose(expected, expected_tp):
     # Try reversing the last 2 axes
     dims = list(range(spectrum.ndims))
     spectrum.transpose(dims[-1], dims[-2])
+
+    # Check the header
+    match_metas(spectrum.meta, spectrum_tp.meta)
 
     # Check attributes to see if they were transposed correctly
     for attr in ('domain_type', 'data_type', 'sw', 'label'):
@@ -181,6 +229,9 @@ def test_nmrpipe_spectrum_phase(expected, expected_ps):
     # Phase the spectrum
     spectrum.phase(p0=p0, p1=p1, discard_imaginaries=True)
 
+    # Check the header
+    match_metas(spectrum.meta, spectrum_ps.meta)
+
     # Find a tolerance for matching numbers. The numbers do not exactly match
     # the reference dataset due to rounding errors (presumably)
     tol = max(abs(spectrum.data.max()), abs(spectrum.data.min())) * 0.0001
@@ -208,6 +259,9 @@ def test_nmrpipe_spectrum_ft(expected, expected_ft):
 
     # Conduct the Fourier transform
     spectrum.ft()
+
+    # Check the header
+    match_metas(spectrum.meta, spectrum_ft.meta)
 
     # Compare the power spectra, which are phase insensitive
     pow_spectrum = torch.sqrt(spectrum.data.real ** 2 +
