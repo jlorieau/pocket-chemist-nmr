@@ -25,11 +25,15 @@ A simple transpose would produce (X: block, Y: single):
     1 Y-Real, 1 Y-Imag, ... M Y-Real, M Y-Imag / N Y-Imag
 
 """
+import typing as t
+
 import torch
+from .constants import RangeType
 
 __all__ = ('interleave_block_to_single', 'interleave_single_to_block',
            'split_block_to_complex', 'split_single_to_complex',
-           'combine_block_from_complex', 'combine_single_from_complex')
+           'combine_block_from_complex', 'combine_single_from_complex',
+           'gen_range')
 
 
 def interleave_block_to_single(tensor: torch.Tensor) -> torch.Tensor:
@@ -186,3 +190,70 @@ def combine_single_from_complex(complex_tensor: torch.Tensor) -> torch.Tensor:
                  for i, s in enumerate(complex_tensor.size()))
     return torch.stack((complex_tensor.real, complex_tensor.imag),
                        dim=dim).view(size)
+
+
+def gen_range(npts: int,
+              range_type: RangeType = RangeType.UNIT,
+              sw: t.Optional[float] = None,
+              group_delay: t.Optional[float] = None) \
+        -> torch.Tensor:
+    """Generate a range of values based on spectral parameters
+
+    Parameters
+    ----------
+    npts
+        The number of points for the range
+    range_type
+        The type of range to generate
+    sw
+        The spectral width (in Hz) for the spectrum
+    group_delay
+        The optional group delay (in pts) to apply in offsetting time ranges
+
+    Returns
+    -------
+    range
+        A tensor with the range values
+    """
+    # Find the endpoints for the range
+    if RangeType.UNIT in range_type:
+        # Unit range from [0,1[
+        start, end = 0., 1.0
+    elif RangeType.FREQ in range_type:
+        assert sw is not None, "Frequency mode requires a spectral width (sw)"
+        # Frequency range from [0, sw[
+        start, end = 0., sw
+    elif RangeType.TIME in range_type:
+        assert sw is not None, "Time mode requires a spectral width (sw)"
+        # Time range from [0, sw[
+        dw = sw ** -1
+        group_delay = (0.0 if group_delay is None else group_delay) * dw
+        tmax = dw * npts
+
+        if RangeType.GROUP_DELAY in range_type:
+            # Appli group delay, if specified
+            start, end = 0. - group_delay, tmax - group_delay
+        else:
+            start, end = 0., tmax
+    else:
+        raise NotImplementedError
+
+    # Center the range, if needed
+    if RangeType.CENTER in range_type:
+        middle = (end + start) / 2.
+        start -= middle
+        end -= middle
+
+    # Invert, if needed
+    if RangeType.INVERT in range_type:
+        start, end = end, start
+        delta = +1. * (max(start, end) - min(start, end)) / float(npts)
+    else:
+        delta = -1. * (max(start, end) - min(start, end)) / float(npts)
+
+    # Generate the range
+    if RangeType.ENDPOINT in range_type:
+        return torch.linspace(start=start, end=end, steps=npts)
+    else:
+
+        return torch.linspace(start=start, end=end + delta, steps=npts)

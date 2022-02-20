@@ -9,10 +9,12 @@ from math import floor
 import torch
 from loguru import logger
 
-from .constants import DomainType, DataType, DataLayout, ApodizationType
+from .constants import (DomainType, DataType, DataLayout, ApodizationType,
+                        RangeType)
 from .meta import NMRMetaDict
 from .utils import (split_block_to_complex, combine_block_from_complex,
-                    split_single_to_complex, combine_single_from_complex)
+                    split_single_to_complex, combine_single_from_complex,
+                    gen_range)
 
 __all__ = ('NMRSpectrum',)
 
@@ -202,6 +204,7 @@ class NMRSpectrum(abc.ABC):
     # Manipulator methods
     def apodization_exp(self, lb: float, first_point_scale: float = 1.0,
                         start: int = 0, size: t.Optional[int] = None,
+                        range_type: RangeType = RangeType.TIME,
                         update_meta: bool = True):
         """Apply exponential apodization to the last dimension
 
@@ -215,18 +218,24 @@ class NMRSpectrum(abc.ABC):
             Apply apodization starting from this point
         size
             Apply apodization over this length of points
+        range_type
+            The type of range to use for the x-axis data points
         update_meta
             Update the meta dict. This functionality is handled by sub-classes.
         """
         # Get the time delays
         sw = self.sw[-1]  # Spectral width (Hz)
         npts = self.npts[-1]  # Number of points
-        dw = sw**-1.  # dwell time (sec)
+        size = npts if size is None else size
+        scaled_sw = sw * float(size - start) / float(npts)
         size = npts if size is None else npts
+        group_delay = self.group_delay if self.correct_digital_filter else 0.0
 
         # Calculate the decay rate
         k = torch.ones(npts)
-        k[start:start + size] = lb * torch.pi * torch.arange(0.0, size) * dw
+        t = gen_range(npts=size, range_type=range_type, sw=scaled_sw,
+                      group_delay=group_delay)
+        k[start:start + size] = torch.abs(lb * torch.pi * t)
 
         # Calculate the apodization func
         self.data *= torch.exp(-k)
@@ -287,7 +296,7 @@ class NMRSpectrum(abc.ABC):
                 raise NotImplementedError
 
     def phase(self, p0: float, p1: float, discard_imaginaries: bool = True,
-              method='unit', update_meta: bool = True):
+              range_type: RangeType = RangeType.UNIT, update_meta: bool = True):
         """Apply phase correction to the last dimension
 
         Parameters
@@ -299,22 +308,19 @@ class NMRSpectrum(abc.ABC):
         discard_imaginaries
             Only keep the real component of complex numbers after phase
             correction and discard the imaginary component
-        method
-            The method to use for modeling the linear (first order) phase
-            correction:
-
-            - 'unit': (default) The left hand edge of the spectrum is 0.0 and
-              the right hand edge of the spectrum is effectively 1.0. This
-              method matches nmrPipe.
+        range_type
+            The type of range to use for the x-axis data points
         update_meta
             Update the meta dict. This functionality is handled by sub-classes.
         """
         # Get the spectra width and data length for the last dimension
         sw = self.sw[-1]
         npts = self.data.size()[-1]
+        group_delay = self.group_delay if self.correct_digital_filter else 0.0
 
-        x = torch.linspace(0., float((npts - 1.) / npts), npts)  # unit
-        phase = p0 + p1*x
+        x = gen_range(npts, range_type=range_type, sw=sw,
+                      group_delay=group_delay)
+        phase = p0 + p1 * x
         phase *= torch.pi / 180.  # in radians
         self.data *= torch.exp(phase * 1.j)
 

@@ -1,9 +1,10 @@
 """
 Constants and enum types for NMRSpectra
 """
-from enum import Enum
+from enum import Enum, Flag, auto
 
-__all__ = ('DomainType', 'DataType', 'DataLayout')
+__all__ = ('DomainType', 'DataType', 'DataLayout', 'ApodizationType',
+           'RangeType')
 
 
 # Enumeration types
@@ -36,3 +37,20 @@ class ApodizationType(Enum):
     NONE = 0  # No apodization
     SINEBELL = 10  # Sine-bell
     EXPONENTIAL = 20  # Exponential (Lorentzian)
+
+
+class RangeType(Flag):
+    """The type of range to use for the x-axis of data."""
+
+    UNIT = auto()  # Series as [0., 1.0] in npts
+    TIME = auto()  # Time series as [0, t_max] in npts
+    FREQ = auto()  # Frequency series [0, F_max] in pts
+
+    CENTER = auto()  # Series from [-min/2, max/2] with 0 at the center
+    INVERT = auto()  # Series starting with largest numbers to smallest.
+    # Series includes endpoint. eg [0, 1] vs [0, 1[. This should not be enabled
+    # to get a range in which dx is equal to the dwell
+    ENDPOINT = auto()
+
+    GROUP_DELAY = auto()  # Account for the group delay in creating the series
+    

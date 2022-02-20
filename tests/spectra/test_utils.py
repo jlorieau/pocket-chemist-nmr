@@ -1,14 +1,18 @@
 """
 Test spectrum utilities
 """
+from math import isclose
+
 import torch
+import pytest
 
 from pocketchemist_nmr.spectra.utils import (combine_block_from_complex,
                                              combine_single_from_complex,
                                              split_block_to_complex,
                                              split_single_to_complex,
                                              interleave_block_to_single,
-                                             interleave_single_to_block)
+                                             interleave_single_to_block,
+                                             gen_range, RangeType)
 
 
 def test_interleave_block_to_single():
@@ -192,3 +196,48 @@ def test_combine_split_single_complex_hypercomplex_2d():
     combined = combine_single_from_complex(cmplx)
     assert torch.all(torch.eq(combined, data))
 
+
+@pytest.mark.parametrize('params', (
+    {'kwargs': {'npts': 100},
+     'expected': {'dx': 0.01, 'start': 0.0, 'end': 99. / 100.}},
+    {'kwargs': {'npts': 100, 'range_type': RangeType.UNIT | RangeType.CENTER},
+     'expected': {'dx': 0.01, 'start': -0.5, 'end': 0.5 - 1./100.}},
+    {'kwargs': {'npts': 100, 'range_type': RangeType.UNIT | RangeType.INVERT},
+     'expected': {'dx': -0.01, 'start': 1.0, 'end': 1./100.}},
+    {'kwargs': {'npts': 100, 'range_type': RangeType.UNIT | RangeType.ENDPOINT},
+     'expected': {'dx': 1.0/99., 'start': 0.0, 'end': 1.00}},
+    {'kwargs': {'npts': 100, 'range_type': RangeType.UNIT | RangeType.CENTER |
+                RangeType.INVERT},
+     'expected': {'dx': -0.01, 'start': 0.5, 'end': -0.5 + 1./100.}},
+
+    {'kwargs': {'npts': 100, 'range_type': RangeType.FREQ, 'sw': 9000.},
+     'expected': {'dx': 90., 'start': 0., 'end': 9000. - 90.}},
+    {'kwargs': {'npts': 100, 'range_type': RangeType.FREQ | RangeType.CENTER,
+                'sw': 9000.},
+     'expected': {'dx': 90., 'start': -9000. / 2., 'end': 9000. / 2. - 90.}},
+    {'kwargs': {'npts': 100, 'range_type': RangeType.FREQ | RangeType.INVERT,
+                'sw': 9000.},
+     'expected': {'dx': -90., 'start': 9000., 'end': 90.}},
+    {'kwargs': {'npts': 100, 'range_type': RangeType.FREQ | RangeType.ENDPOINT,
+                'sw': 9000.},
+     'expected': {'dx': 9000./99., 'start': 0, 'end': 9000.}},
+    {'kwargs': {'npts': 100, 'range_type': RangeType.FREQ | RangeType.CENTER |
+                RangeType.INVERT, 'sw': 9000.},
+     'expected': {'dx': -90., 'start': 9000. / 2., 'end': -9000. / 2. + 90.}},
+
+    {'kwargs': {'npts': 100, 'range_type': RangeType.TIME, 'sw': 9000.},
+     'expected': {'dx': 9000.**-1, 'start': 0., 'end': 9000.**-1 * 99.}},
+    {'kwargs': {'npts': 100, 'range_type': RangeType.TIME |
+                RangeType.GROUP_DELAY, 'sw': 9000., 'group_delay': 10},
+     'expected': {'dx': 9000.**-1, 'start': 0. - 10. * 9000. ** -1,
+                  'end': 9000.**-1 * 99. - 10. * 9000. **-1}}
+))
+def test_gen_range(params):
+    """Test the gen_range utility function"""
+    kwargs, expected = params['kwargs'], params['expected']
+    rng = gen_range(**kwargs)
+    print(rng)
+    assert len(rng) == kwargs['npts']
+    assert rng[1] - rng[0] == pytest.approx(expected['dx'])
+    assert rng[0] == pytest.approx(expected['start'])
+    assert rng[-1] == pytest.approx(expected['end'])
