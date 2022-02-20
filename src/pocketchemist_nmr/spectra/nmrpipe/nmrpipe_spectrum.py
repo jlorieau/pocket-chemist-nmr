@@ -14,7 +14,8 @@ from .fileio import (load_nmrpipe_tensor, load_nmrpipe_multifile_tensor,
 from ...filters.bruker import bruker_group_delay
 from .meta import NMRPipeMetaDict
 from ..nmr_spectrum import NMRSpectrum
-from ..constants import DomainType, DataType, DataLayout, ApodizationType
+from ..constants import (DomainType, DataType, DataLayout, ApodizationType,
+                         RangeType)
 
 __all__ = ('NMRPipeSpectrum',)
 
@@ -237,6 +238,7 @@ class NMRPipeSpectrum(NMRSpectrum):
 
     def apodization_exp(self, lb: float, first_point_scale: float = 1.0,
                         start: int = 0, size: t.Optional[int] = None,
+                        range_type: RangeType = RangeType.TIME,
                         update_meta: bool = True):
         super().apodization_exp(lb=lb, first_point_scale=first_point_scale,
                                 start=start, size=size)
@@ -292,7 +294,7 @@ class NMRPipeSpectrum(NMRSpectrum):
                                                    reverse=True)
 
     def phase(self, p0: float, p1: float, discard_imaginaries: bool = True,
-              method='unit', update_meta: bool = True):
+              range_type=RangeType.UNIT, update_meta: bool = True):
         rv = super().phase(p0, p1, discard_imaginaries)
 
         # Update the metadata, as needed

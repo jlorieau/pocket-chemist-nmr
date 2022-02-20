@@ -9,7 +9,7 @@ import torch
 
 import pytest
 from pocketchemist_nmr.spectra.nmrpipe import NMRPipeSpectrum
-from pocketchemist_nmr.spectra.constants import ApodizationType
+from pocketchemist_nmr.spectra.constants import ApodizationType, RangeType
 
 from ...conftest import expected
 
@@ -168,7 +168,7 @@ def test_nmrpipe_spectrum_apodization_exp(expected, expected_em):
     assert all(apod is ApodizationType.NONE for apod in spectrum.apodization)
 
     # Apodization the original dataset
-    spectrum.apodization_exp(lb=lb)
+    spectrum.apodization_exp(lb=lb, range_type=RangeType.TIME)
 
     # Check the header
     match_metas(spectrum.meta, spectrum_em.meta)
@@ -243,7 +243,8 @@ def test_nmrpipe_spectrum_phase(expected, expected_ps):
     p1 = spectrum_ps.meta[f'FDF{dim}P1']
 
     # Phase the spectrum
-    spectrum.phase(p0=p0, p1=p1, discard_imaginaries=True)
+    spectrum.phase(p0=p0, p1=p1, range_type=RangeType.UNIT,
+                   discard_imaginaries=True)
 
     # Check the header
     match_metas(spectrum.meta, spectrum_ps.meta)
