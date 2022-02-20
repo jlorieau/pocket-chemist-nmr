@@ -3,6 +3,7 @@ Test the spectra/nmrpipe_spectrum.py submodule
 """
 from cmath import isclose
 from pathlib import Path
+import typing as t
 
 import torch
 
@@ -37,8 +38,19 @@ def match_attributes(spectrum, expected):
             assert spectrum_value == expected_value
 
 
-def match_metas(meta1, meta2):
-    """Check that 2 meta dicts match"""
+def match_metas(meta1: dict, meta2: dict,
+                skip: t.Optional[t.Tuple[str, ...]] = None):
+    """Check that 2 meta dicts match
+
+    Parameters
+    ----------
+    meta1
+        The first meta dict to match
+    meta2
+        The second meta dict to match
+    skip
+        An optional list of keys to skip over when doing the comparison match
+    """
     # Find keys missing from between the two meta dicts
     assert len(meta1.keys() - meta2.keys()) == 0, (
         f"The following keys are in meta1 but not meta2: "
@@ -50,6 +62,10 @@ def match_metas(meta1, meta2):
     # Check the values
     unmatched_values = dict()
     for k in meta1.keys():
+        # Skip entry, if specified
+        if skip is not None and k in skip:
+            continue
+
         value1, value2 = meta1[k], meta2[k]
 
         # Check that the types match
@@ -260,8 +276,12 @@ def test_nmrpipe_spectrum_ft(expected, expected_ft):
     # Conduct the Fourier transform
     spectrum.ft()
 
-    # Check the header
-    match_metas(spectrum.meta, spectrum_ft.meta)
+    # Check the header. The FT spectrum does not exactly match the reference
+    # spectrum (spectrum_ft), so the following values are skipped. The
+    # intensities without phasing differences are compared by the power spectrum
+    # below
+    match_metas(spectrum.meta, spectrum_ft.meta,
+                skip=('FDMAX', 'FDMIN', 'FDDISPMAX', 'FDDISPMIN'))
 
     # Compare the power spectra, which are phase insensitive
     pow_spectrum = torch.sqrt(spectrum.data.real ** 2 +
