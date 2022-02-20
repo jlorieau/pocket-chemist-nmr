@@ -200,11 +200,9 @@ class NMRSpectrum(abc.ABC):
             setattr(self, attr, None)
 
     # Manipulator methods
-    def apodization_exp(self,
-                        lb: float,
-                        first_point_scale: float = 1.0,
-                        start: int = 0,
-                        size: t.Optional[int] = None):
+    def apodization_exp(self, lb: float, first_point_scale: float = 1.0,
+                        start: int = 0, size: t.Optional[int] = None,
+                        update_meta: bool = True):
         """Apply exponential apodization to the last dimension
 
         Parameters
@@ -217,7 +215,8 @@ class NMRSpectrum(abc.ABC):
             Apply apodization starting from this point
         size
             Apply apodization over this length of points
-        method
+        update_meta
+            Update the meta dict. This functionality is handled by sub-classes.
         """
         # Get the time delays
         sw = self.sw[-1]  # Spectral width (Hz)
@@ -232,7 +231,8 @@ class NMRSpectrum(abc.ABC):
         # Calculate the apodization func
         self.data *= torch.exp(-k)
 
-    def transpose(self, dim0: int, dim1: int, update_data_layout: bool = True):
+    def transpose(self, dim0: int, dim1: int, update_data_layout: bool = True,
+                  update_meta: bool = True):
         """Transpose two axes (dim0 <-> dim1)
 
         Parameters
@@ -245,6 +245,8 @@ class NMRSpectrum(abc.ABC):
             If True (default), automatically convert conplex numbers and handle
             changes in data layout according to the
             :meth:`.NMRSpectrum.data_layout` method.
+        update_meta
+            Update the meta dict. This functionality is handled by sub-classes.
         """
         # Only works if there is more than 1 dimension
         assert self.ndims > 1, (
@@ -285,7 +287,7 @@ class NMRSpectrum(abc.ABC):
                 raise NotImplementedError
 
     def phase(self, p0: float, p1: float, discard_imaginaries: bool = True,
-              method='unit'):
+              method='unit', update_meta: bool = True):
         """Apply phase correction to the last dimension
 
         Parameters
@@ -304,6 +306,8 @@ class NMRSpectrum(abc.ABC):
             - 'unit': (default) The left hand edge of the spectrum is 0.0 and
               the right hand edge of the spectrum is effectively 1.0. This
               method matches nmrPipe.
+        update_meta
+            Update the meta dict. This functionality is handled by sub-classes.
         """
         # Get the spectra width and data length for the last dimension
         sw = self.sw[-1]
@@ -326,7 +330,7 @@ class NMRSpectrum(abc.ABC):
            alt: bool = False,
            neg: bool = False,
            bruk: bool = False,
-           **kwargs):
+           update_meta: bool = True):
         """Perform a Fourier Transform to the last dimension
 
         This method is designed to be used on instances and as a class method.
@@ -352,10 +356,8 @@ class NMRSpectrum(abc.ABC):
             transform
         bruk
             Process Redfield sequential data, which is alt and real.
-        meta
-            Metadata on the spectrum
-        data
-            The data to Fourier Transform
+        update_meta
+            Update the meta dict. This functionality is handled by sub-classes.
 
         Returns
         -------
@@ -426,11 +428,9 @@ class NMRSpectrum(abc.ABC):
             # The p0/p1 selected here more closely matches NMRPipe
             # The p0=180. likely arises from the flip below.
             p1 = 1. * (group_delay - floor(group_delay)) * 360.  # degrees
-            self.phase(p0=180.0, p1=p1, discard_imaginaries=False)
+            self.phase(p0=180.0, p1=p1, discard_imaginaries=False,
+                       update_meta=False)
 
         # Flip the last dimension, if needed
         if flip:
             self.data = torch.flip(self.data, (-1,))
-
-        # Prepare the return value
-        return kwargs

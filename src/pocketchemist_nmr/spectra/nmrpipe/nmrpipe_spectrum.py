@@ -235,25 +235,26 @@ class NMRPipeSpectrum(NMRSpectrum):
         self.meta['FDQUADFLAG'] = find_mapping('data_type', self.data_type[-1],
                                                reverse=True)
 
-    def apodization_exp(self,
-                        lb: float,
-                        first_point_scale: float = 1.0,
-                        start: int = 0,
-                        size: t.Optional[int] = None):
+    def apodization_exp(self, lb: float, first_point_scale: float = 1.0,
+                        start: int = 0, size: t.Optional[int] = None,
+                        update_meta: bool = True):
         super().apodization_exp(lb=lb, first_point_scale=first_point_scale,
                                 start=start, size=size)
 
         # Update the metadata values
-        dim = self.order[-1]
-        new_apod_code = find_mapping('apodization', ApodizationType.EXPONENTIAL,
-                                     reverse=True)
-        self.meta[f"FDF{dim}APODCODE"] = float(new_apod_code)
-        self.meta[f"FDF{dim}APODQ1"] = float(lb)
+        if update_meta:
+            dim = self.order[-1]
+            new_apod_code = find_mapping('apodization',
+                                         ApodizationType.EXPONENTIAL,
+                                         reverse=True)
+            self.meta[f"FDF{dim}APODCODE"] = float(new_apod_code)
+            self.meta[f"FDF{dim}APODQ1"] = float(lb)
 
-        # Update other meta dict values
-        self.update_meta()
+            # Update other meta dict values
+            self.update_meta()
 
-    def transpose(self, dim0, dim1, interleave_complex=True):
+    def transpose(self, dim0, dim1, interleave_complex=True,
+                  update_meta: bool = True):
         # Get the mapping between the dimension order (0, 1, .. self.ndims)
         # and the F1/F2/F3/F4 dimensions
         # The order must be reversed because tensors are stored
@@ -265,59 +266,64 @@ class NMRPipeSpectrum(NMRSpectrum):
         super().transpose(dim0, dim1, interleave_complex)
 
         # Update the metadata values with the new order
-        for i, ord in enumerate(new_order, 1):
-            self.meta[f'FDDIMORDER{i}'] = float(ord)
+        if update_meta:
+            for i, ord in enumerate(new_order, 1):
+                self.meta[f'FDDIMORDER{i}'] = float(ord)
 
-        # Update the number of points (size) of the direct (inner) and indirect
-        # (outer) dimensions
-        self.meta['FDSIZE'] = float(self.data.size()[-1])
-        self.meta['FDSPECNUM'] = float(reduce(lambda x, y: x * y,
-                                              self.data.size()[:-1]))
-        self.meta['FDSLICECOUNT0'] = self.meta['FDSPECNUM']
+            # Update the number of points (size) of the direct (inner) and
+            # indirect (outer) dimensions
+            self.meta['FDSIZE'] = float(self.data.size()[-1])
+            self.meta['FDSPECNUM'] = float(reduce(lambda x, y: x * y,
+                                                  self.data.size()[:-1]))
+            self.meta['FDSLICECOUNT0'] = self.meta['FDSPECNUM']
 
-        # Set the flag to indicate that the data was transposed
-        self.meta['FDTRANSPOSED'] = (0.0 if self.meta['FDTRANSPOSED'] == 1.0
-                                     else 1.0)
+            # Set the flag to indicate that the data was transposed
+            self.meta['FDTRANSPOSED'] = (0.0 if self.meta['FDTRANSPOSED'] == 1.0
+                                         else 1.0)
 
-        # NMRPipe doesn't update FDMIN/FDMAX by default for TP data, but instead
-        # it invalidates the FDMIN/FDMAX values with the FDSCALEFLAG
-        self.meta['FDSCALEFLAG'] = 0.0  # FDMIN/FDMAX not valid
+            # NMRPipe doesn't update FDMIN/FDMAX by default for TP data, but
+            # instead it invalidates the FDMIN/FDMAX values with the FDSCALEFLAG
+            self.meta['FDSCALEFLAG'] = 0.0  # FDMIN/FDMAX not valid
 
-        # Update the current (last) dimension's quadrature flag if it has
-        # switched between complex <-> real
-        self.meta['FDQUADFLAG'] = find_mapping('data_type', self.data_type[-1],
-                                               reverse=True)
+            # Update the current (last) dimension's quadrature flag if it has
+            # switched between complex <-> real
+            self.meta['FDQUADFLAG'] = find_mapping('data_type',
+                                                   self.data_type[-1],
+                                                   reverse=True)
 
     def phase(self, p0: float, p1: float, discard_imaginaries: bool = True,
-              method='unit'):
+              method='unit', update_meta: bool = True):
         rv = super().phase(p0, p1, discard_imaginaries)
 
-        # Update the header, as needed
-        dim = self.order[-1]
+        # Update the metadata, as needed
+        if update_meta:
+            dim = self.order[-1]
 
-        # Switch the quadrature (data) type from complex to real if imaginaries
-        # are discarded
-        if discard_imaginaries and self.data_type[-1] is DataType.COMPLEX:
-            self.meta[f"FDF{dim}QUADFLAG"] = find_mapping('data_type',
-                                                          DataType.REAL,
-                                                          reverse=True)
-        # Update the phase values
-        self.meta[f"FDF{dim}P0"] = p0
-        self.meta[f"FDF{dim}P1"] = p1
+            # Switch the quadrature (data) type from complex to real if
+            # imaginaries are discarded
+            if discard_imaginaries and self.data_type[-1] is DataType.COMPLEX:
+                self.meta[f"FDF{dim}QUADFLAG"] = find_mapping('data_type',
+                                                              DataType.REAL,
+                                                              reverse=True)
+            # Update the phase values
+            self.meta[f"FDF{dim}P0"] = p0
+            self.meta[f"FDF{dim}P1"] = p1
 
-        # Update other meta dict values
-        self.update_meta()
+            # Update other meta dict values
+            self.update_meta()
 
         return rv
 
     def ft(self,
            auto: bool = False,
+           center: bool = True,
+           flip: bool = True,
            real: bool = False,
            inv: bool = False,
            alt: bool = False,
            neg: bool = False,
            bruk: bool = False,
-           **kwargs):
+           update_meta: bool = True):
         # Setup the arguments
         if auto:
             if self.domain_type[-1] == DomainType.FREQ:
@@ -354,24 +360,26 @@ class NMRPipeSpectrum(NMRSpectrum):
         rv = super().ft(auto=False, real=real, inv=inv, alt=alt, neg=neg,
                         bruk=bruk)
 
-        # Update the self.meta dict as needed
-        dim = self.order[-1]
-        new_sign_adjustment = find_mapping('sign_adjustment',
-                                           SignAdjustment.NONE, reverse=True)
-        self.meta[f'FDF{dim}AQSIGN'] = new_sign_adjustment
+        # Update the metadata dict as needed
+        if update_meta:
+            dim = self.order[-1]
+            new_sign_adjustment = find_mapping('sign_adjustment',
+                                               SignAdjustment.NONE,
+                                               reverse=True)
+            self.meta[f'FDF{dim}AQSIGN'] = new_sign_adjustment
 
-        # Switch the domain type, based on the type of Fourier Transform
-        new_domain_type = DomainType.TIME if inv else DomainType.FREQ
-        new_domain_type = find_mapping('domain_type', new_domain_type,
-                                       reverse=True)
-        self.meta[f"FDF{dim}FTFLAG"] = new_domain_type
+            # Switch the domain type, based on the type of Fourier Transform
+            new_domain_type = DomainType.TIME if inv else DomainType.FREQ
+            new_domain_type = find_mapping('domain_type', new_domain_type,
+                                           reverse=True)
+            self.meta[f"FDF{dim}FTFLAG"] = new_domain_type
 
-        # Update the FTSIZE
-        self.meta[f"FDF{dim}FTSIZE"] = float(self.data.size()[-1])
+            # Update the FTSIZE
+            self.meta[f"FDF{dim}FTSIZE"] = float(self.data.size()[-1])
 
-        # Switch the DMX ON flag to indicate that the digital filter was
-        # corrected
-        if self.correct_digital_filter:
-            self.meta[f"FDDMXFLAG"] = 1.0  # DMX ON
+            # Switch the DMX ON flag to indicate that the digital filter was
+            # corrected
+            if self.correct_digital_filter and not inv:
+                self.meta[f"FDDMXFLAG"] = 1.0  # DMX ON
 
         return rv
