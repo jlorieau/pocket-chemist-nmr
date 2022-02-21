@@ -38,6 +38,10 @@ tasks:
           -ov -out spec_em.fid"
       - "showhdr -dump spec_em.fid > spec_em.hdr"
       - "nmrPipe -in spec.fid \
+         | nmrPipe -fn EM -lb 10.0 -start 100 -size 200 \
+          -ov -out spec_em2.fid"
+      - "showhdr -dump spec_em2.fid > spec_em2.hdr"
+      - "nmrPipe -in spec.fid \
          | nmrPipe -fn FT -auto \
           -ov -out spec_ft.fid"
       - "showhdr -dump spec_ft.fid > spec_ft.hdr"
@@ -67,6 +71,8 @@ tasks:
     generates:
       - "spec_em.fid"
       - "spec_em.hdr"
+      - "spec_em2.fid"
+      - "spec_em2.hdr"
       - "spec_ft.fid"
       - "spec_ft.hdr"
       - "{{.PULPROG}}.ft"
