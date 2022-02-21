@@ -154,25 +154,6 @@ def nmrpipe_fn():
     pass
 
 
-@nmrpipe_fn.command(name='SOL', context_settings=CONTEXT_SETTINGS)
-@click.option('-mode', type=click.Choice(('1', '2', '3')),
-              default='1', show_default=True,
-              help="Filter Mode: 1 = Low Pass, 2 = Spline, 3 = Polynomial")
-@click.option('-fl', type=int, default=16, show_default=True,
-              help="Filter length (low pass filter)")
-@click.option('-fs', type=int, default=1, show_default=True,
-              help="Filter shape: 1 = Boxcar, 2 = Sine, 3 = Sine^2 "
-                   "(low pass filter)")
-@nmrpipe_out
-def nmrpipe_fn_sol(mode, fl, fs):
-    """Solvent suppression"""
-    # Unpack the stdin
-    group = read_stdin()
-
-    # Write the objects to stdout
-    write_stdout(group)
-
-
 @nmrpipe_fn.command(name='FT', context_settings=CONTEXT_SETTINGS)
 @optgroup.group("Fourier Transform mode",
                 help="The type of Fourier Transformation to conduct",
@@ -191,56 +172,78 @@ def nmrpipe_fn_sol(mode, fl, fs):
 #                  help="Apply sign alternation")
 # @optgroup.option('-neg', is_flag=True,
 #                  help="Negate the imaginary component(s)")
-
-#@click.argument('stdin', default=sys.stdin)
 def nmrpipe_fn_ft(mode):
     """Complex Fourier Transform"""
     from ..processors.processor import FTSpectra
     logger.debug(f"mode={mode}")
 
-    # Unpack the stdin
-    group = read_stdin()
-
-    # Add the FT processor
-    group += FTSpectra(mode=mode)
-
-    # Write the objects to stdout
-    write_stdout(group)
+    group = read_stdin()  # Unpack the stdin
+    group += FTSpectra(mode=mode)  # Add the FT processor
+    write_stdout(group)  # Write the objects to stdout
 
 
 @nmrpipe_fn.command(name='TP', context_settings=CONTEXT_SETTINGS)
 @nmrpipe_out
 def nmrpipe_fn_tp():
-    """Transpose the last 2 dimensions of the spectrum (X/Y -> Y/X)"""
+    """Transpose the last 2 dimensions of the spectrum (XY -> YX)"""
     from ..processors.processor import Transpose2D
 
-    # Unpack the stdin
-    group = read_stdin()
-
-    # Add the FT processor
-    group += Transpose2D()
-
-    # Write the objects to stdout
-    write_stdout(group)
+    group = read_stdin()  # Unpack the stdin
+    group += Transpose2D()  # Add the FT processor
+    write_stdout(group)  # Write the objects to stdout
 
 
 @nmrpipe_fn.command(name='PS', context_settings=CONTEXT_SETTINGS)
-@click.option('-p0', required=True, type=float,
+@click.option('-p0', required=False, type=float, default=0.0,
               help="The zeroth order (frequency independent) phase correction")
-@click.option('-p1', required=True, type=float,
+@click.option('-p1', required=False, type=float, default=0.0,
               help="The first order (linear frequency) phase correction")
 @click.option('-di', is_flag=True, type=bool, default=False, show_default=True,
               help="Discard imaginary component")
 @nmrpipe_out
 def nmrpipe_fn_ps(p0, p1, di):
     """Phase the last dimension of a spectrum"""
-    from ..processors.processor import Phase2D
+    from ..processors.processor import PhaseSpectra
     logger.debug(f"p0={p0}, p1={p1}, di={di}")
-    # Unpack the stdin
+
+    group = read_stdin()  # Unpack the stdin
+    group += PhaseSpectra(p0=p0, p1=p1, discard_imaginaries=di)  # Add processor
+    write_stdout(group)  # Write the objects to stdout
+
+
+@nmrpipe_fn.command(name='EM', context_settings=CONTEXT_SETTINGS)
+@click.option('-lb', required=True, type=float,
+              help="Exponential broadening rate (Hz")
+@click.option('-start', required=False, type=int, default=0,
+              help="First point to start apodization")
+@click.option('-size', required=False, type=int, default=None,
+              help="Number of points to apodize")
+@nmrpipe_out
+def nmrpipe_fn_em(lb, start, size):
+    """Apodize the last dimension with exponential multiplication (Lorentzian)
+    """
+    from ..processors.processor import ApodizationExpSpectra
+    logger.debug(f"lb={lb}, start={start}, size={size}")
+
     group = read_stdin()
-
-    # Add the FT processor
-    group += Phase2D(p0=p0, p1=p1, discard_imaginaries=di)
-
-    # Write the objects to stdout
+    group += ApodizationExpSpectra(lb=lb, start=start, size=size)
     write_stdout(group)
+
+
+# @nmrpipe_fn.command(name='SOL', context_settings=CONTEXT_SETTINGS)
+# @click.option('-mode', type=click.Choice(('1', '2', '3')),
+#               default='1', show_default=True,
+#               help="Filter Mode: 1 = Low Pass, 2 = Spline, 3 = Polynomial")
+# @click.option('-fl', type=int, default=16, show_default=True,
+#               help="Filter length (low pass filter)")
+# @click.option('-fs', type=int, default=1, show_default=True,
+#               help="Filter shape: 1 = Boxcar, 2 = Sine, 3 = Sine^2 "
+#                    "(low pass filter)")
+# @nmrpipe_out
+# def nmrpipe_fn_sol(mode, fl, fs):
+#     """Solvent suppression"""
+#     # Unpack the stdin
+#     group = read_stdin()
+#
+#     # Write the objects to stdout
+#     write_stdout(group)
