@@ -362,7 +362,33 @@ class NMRSpectrum(abc.ABC):
            update_meta: bool = True):
         """Perform a Fourier Transform to the last dimension.
 
+        The discrete fast Fourier transformation (fft) in the forward
+        (time -> frequency) direction is as follows:
 
+        .. math::
+            X_k = \sum_0^{N-1} x_n \cdot e^{- i 2 \pi k n / N}
+
+        And the inverse discrete Fourier transformation (ifft) in the backward
+        (frequency -> time) direction is as follows:
+
+        .. math::
+            x_n = \\frac{1}{N} \sum_0^{N-1} X_k \cdot e^{i 2 \pi k n / N}
+
+        The time series 'n' or frequency series 'k' start at 0 and increase to
+        the largest positive value 'N'. NMR data typically places
+        the 0 Hz frequency component in the middle with positive frequencies
+        on the left and negative frequencies on the right.
+
+        .. math::
+            k = \\Big[ \\frac{sw}{2}, ..., 0Hz, ..., -\\frac{sw}{2} \\Big]
+
+        The centering of frequencies is achieved with the 'center' option.
+
+        Flipping the sign of the frequencies can be achieved by using ifft
+        instead of fft. However, to more closely match the FT behavior of
+        processing software with digital filter correction, like NMRPipe, the
+        default uses fft as usual for time-domain data, and the FT data are
+        'flipped' with the 'flip' option.
 
         Parameters
         ----------
