@@ -10,7 +10,8 @@ from pocketchemist.processors.fft import FFTProcessor
 
 from ..spectra import NMRSpectrum
 
-__all__ = ('NMRProcessor', 'NMRGroupProcessor', 'FTSpectra')
+__all__ = ('NMRProcessor', 'NMRGroupProcessor', 'FTSpectra', 'Transpose2D',
+           'PhaseSpectra', 'ApodizationExpSpectra')
 
 
 def set_logger(logger_):
@@ -21,6 +22,25 @@ def set_logger(logger_):
 
 class NMRProcessor(Processor):
     """A processing step for NMR spectra"""
+
+    method = None
+
+    def process(self, spectra: t.Iterable[NMRSpectrum], **kwargs):
+        for spectrum in spectra:
+            if self.method is None:
+                continue
+
+            # Get the method to run and run with the required_params/
+            # optional_params
+            meth = getattr(spectrum, self.method)
+            req_params = {k: getattr(self, k) for k in self.required_params}
+            opt_params = {k: getattr(self, k) for k in self.optional_params}
+            opt_params.update(req_params)
+            meth(**opt_params)
+
+        # Setup the arguments that are passed to future processors
+        kwargs['spectra'] = spectra
+        return kwargs
 
 
 class NMRGroupProcessor(GroupProcessor):
@@ -96,15 +116,15 @@ class Transpose2D(NMRProcessor):
         return kwargs
 
 
-class Phase2D(NMRProcessor):
+class PhaseSpectra(NMRProcessor):
     """Phase the last dimension of a dataset"""
+    method = 'phase'
+    optional_params = ('p0', 'p1', 'discard_imaginaries')
 
-    required_params = ('p0', 'p1', 'discard_imaginaries')
 
-    def process(self, spectra: t.Iterable[NMRSpectrum], **kwargs):
-        for spectrum in spectra:
-            spectrum.phase(p0=self.p0, p1=self.p1,
-                           discard_imaginaries=self.discard_imaginaries)
-        # Setup the arguments that are passed to future processors
-        kwargs['spectra'] = spectra
-        return kwargs
+class ApodizationExpSpectra(NMRProcessor):
+    """Apodization with exponential multiply (Lorentzian) in the last dimension
+    """
+    method = 'apodization_exp'
+    required_params = ('lb',)
+    optional_params = ('start', 'size')
