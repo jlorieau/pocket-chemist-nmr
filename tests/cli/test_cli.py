@@ -19,9 +19,8 @@ def test_cli_nmrpipe_in(runner=CliRunner()):
 
 
 @pytest.mark.parametrize('opt,has_required_params',
-                         (('SOL', False),
-                          ('FT', False),
-                          ('PS', True)))
+                         (('FT', False),
+                          ('PS', False)))
 def test_cli_nmrpipe_fn(opt, has_required_params, runner=CliRunner()):
     """Test the nmrpipe plugin '-fn' option."""
     # 1. With '-help'
