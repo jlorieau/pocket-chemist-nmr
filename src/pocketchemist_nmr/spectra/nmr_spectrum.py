@@ -207,8 +207,16 @@ class NMRSpectrum(abc.ABC):
     def apodization_exp(self, lb: float, first_point_scale: float = 1.0,
                         start: int = 0, size: t.Optional[int] = None,
                         range_type: RangeType = RangeType.TIME,
-                        update_meta: bool = True):
-        """Apply exponential apodization to the last dimension
+                        update_meta: bool = True) -> None:
+        """Apply exponential apodization to the last dimension.
+
+        The apodization function scales the time-domain signal, or free
+        induction decay (:math:`f(t)`), by an exponential decay:
+
+        .. math::
+            g(t) = e^{-\pi lb \cdot t} f(t)
+
+        The Fourier transform is convolved with a Lorentzian function's shape.
 
         Parameters
         ----------
@@ -244,7 +252,7 @@ class NMRSpectrum(abc.ABC):
 
     def transpose(self, dim0: int, dim1: int, update_data_layout: bool = True,
                   update_meta: bool = True):
-        """Transpose two axes (dim0 <-> dim1)
+        """Transpose two axes (dim0 <-> dim1).
 
         Parameters
         ----------
@@ -299,7 +307,20 @@ class NMRSpectrum(abc.ABC):
 
     def phase(self, p0: float, p1: float, discard_imaginaries: bool = True,
               range_type: RangeType = RangeType.UNIT, update_meta: bool = True):
-        """Apply phase correction to the last dimension
+        """Apply phase correction to the last dimension.
+
+        Phasing rotates the real and imaginary components of complex numbers
+        by a specified phase. This function may apply frequency-independent
+        phase angle corrections (p0) as well as linear freqency-dependent
+        phase angle corrections (p1).
+
+        .. math::
+            g(t) = e^{i(p0 + p1 \cdot x)} g(t)
+        .. math::
+            G(\omega) = e^{i(p0 + p1 \cdot x)} f(\omega)
+
+        Where the x-axis range type may be changed from unit_type ([0, 1[),
+        time or some other unit.
 
         Parameters
         ----------
@@ -339,9 +360,9 @@ class NMRSpectrum(abc.ABC):
            neg: bool = False,
            bruk: bool = False,
            update_meta: bool = True):
-        """Perform a Fourier Transform to the last dimension
+        """Perform a Fourier Transform to the last dimension.
 
-        This method is designed to be used on instances and as a class method.
+
 
         Parameters
         ----------
