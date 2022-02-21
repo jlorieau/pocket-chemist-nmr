@@ -381,7 +381,7 @@ class NMRPipeSpectrum(NMRSpectrum):
 
             # Switch the DMX ON flag to indicate that the digital filter was
             # corrected
-            if self.correct_digital_filter and not inv:
+            if self.correct_digital_filter:
                 self.meta[f"FDDMXFLAG"] = 1.0  # DMX ON
 
         return rv
