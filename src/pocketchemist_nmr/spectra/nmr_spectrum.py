@@ -23,15 +23,14 @@ __all__ = ('NMRSpectrum',)
 class NMRSpectrum(abc.ABC):
     """An NMR spectrum base class.
 
-    .. note::
-          The base class handles the generic processing methodology.
-          Subclasses should override methods that are specific to their
-          implementation--specifically when interating with the self.meta
-          dict, which is implementation specific.
+    The base class handles the generic processing methodology. Subclasses
+    should override methods that are specific to their
+    implementation--specifically when interating with the self.meta dict, which
+    is implementation specific.
     """
 
-    #: metadata on the spectrum.
-    #: All methods should maintain the correct integrity of the metadata
+    #: Metadata on the spectrum.
+    #: All methods should maintain the correct integrity of the metadata.
     meta: NMRMetaDict
 
     #: The data for the spectrum, either an array or an iterator
@@ -104,27 +103,8 @@ class NMRSpectrum(abc.ABC):
 
     @property
     def npts(self) -> t.Tuple[int, ...]:
+        """The number of complex, real or imaginary points in each dimension"""
         return tuple(self.data.size())
-
-    @property
-    def group_delay(self) -> t.Union[None, float]:
-        """The digital filter group delay for the last dimension, if it was
-        passed through a moving average digital filter.
-
-        Returns
-        -------
-        group_delay
-            The value of the group delay in number of points, if a digital
-            filter was applied in the dimension, or none if there is no
-            digital filter in this dimension.
-        """
-        raise NotImplementedError
-
-    @property
-    def correct_digital_filter(self) -> bool:
-        """Whether a digital correction filter must be corrected (removed)
-        from the last dimension."""
-        raise NotImplementedError
 
     @abc.abstractmethod
     def data_layout(self, dim: int,
@@ -144,6 +124,28 @@ class NMRSpectrum(abc.ABC):
         data_layout
             The data layout for the given data type and dimension
         """
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def group_delay(self) -> t.Union[None, float]:
+        """The digital filter group delay for the last dimension, if it was
+        passed through a moving average digital filter.
+
+        Returns
+        -------
+        group_delay
+            The value of the group delay in number of points, if a digital
+            filter was applied in the dimension, or none if there is no
+            digital filter in this dimension.
+        """
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def correct_digital_filter(self) -> bool:
+        """Whether a digital correction filter must be corrected (removed)
+        from the last dimension."""
         raise NotImplementedError
 
     # I/O methods

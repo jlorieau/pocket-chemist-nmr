@@ -1,0 +1,22 @@
+version: '3'
+
+vars:
+  SPHINXBUILD: sphinx-build
+  SPHINXOPTS:
+  SOURCEDIR: .
+  BUILDIR: _build
+
+tasks:
+  build:
+    desc: Build documentation
+    cmds:
+      - "{{.SPHINXBUILD}} -M {{.CLI_ARGS}} '{{.SOURCEDIR}}' '{{.BUILDIR}}' {{.SPHINXOPTS}}"
+    vars:
+      CLI_ARGS:
+        sh: "if ['{{.CLI_ARGS}}' = '']; then \
+             echo 'html'; fi"
+
+  clean:
+    desc: Clean documentation directories
+    cmds:
+      - "{{.SPHINXBUILD}} -M clean '{{.SOURCEDIR}}' '{{.BUILDIR}}' {{.SPHINXOPTS}}"
