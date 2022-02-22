@@ -254,7 +254,7 @@ class NMRSpectrum(abc.ABC):
         t = gen_range(npts=size, range_type=range_type, sw=scaled_sw,
                       group_delay=group_delay)
         k[start:start + size] = torch.abs(lb * torch.pi * t)
-        print(range_type, t)
+
         # Calculate the apodization func
         self.data *= torch.exp(-k)
 
