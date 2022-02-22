@@ -21,6 +21,7 @@ pytest-benchmark = "^3.4.1"
 pytest-profiling = "^1.7.0"
 Sphinx = "^4.4.0"
 furo = "^2022.2.14"
+sphinx-click = "^3.1.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
