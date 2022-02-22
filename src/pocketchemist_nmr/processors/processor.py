@@ -128,3 +128,11 @@ class ApodizationExpSpectra(NMRProcessor):
     method = 'apodization_exp'
     required_params = ('lb',)
     optional_params = ('start', 'size')
+
+
+class ApodizationSinebellSpectra(NMRProcessor):
+    """Apodization with sinebell power (SP) in the last dimension
+    """
+    method = 'apodization_sine'
+    required_params = ('off', 'end', 'power')
+    optional_params = ('start', 'size')

@@ -214,11 +214,11 @@ class NMRSpectrum(abc.ABC):
         induction decay (:math:`f(t)`), by an exponential decay:
 
         .. math::
-            g(t) = e^{-\\pi lb \\cdot x} f(t)
+            g(t) = e^{-\\pi \\mathtt{lb} \\cdot x} f(t)
 
         The Fourier transform is convolved with a Lorentzian function's shape.
-        The range for the 'x' axis can be unit, [0,1[, time or some other
-        range type.
+        By default, the 'x' axis range is in time units, [0, tmax[, but may
+        optionally be in other unit types.
 
         Parameters
         ----------
@@ -264,7 +264,7 @@ class NMRSpectrum(abc.ABC):
                          power: float = 1.0,
                          first_point_scale: float = 1.0,
                          start: int = 0, size: t.Optional[int] = None,
-                         range_type: RangeType = RangeType.TIME,
+                         range_type: RangeType = RangeType.UNIT,
                          update_meta: bool = True) -> None:
         """Apply sine-bell apodization to the last dimension.
 
@@ -272,11 +272,12 @@ class NMRSpectrum(abc.ABC):
         induction decay (:math:`f(t)`), by a sine function:
 
         .. math::
-            g(t) = \\cos(-\\pi lb \\cdot x) f(t)
+            g(t) = \\sin(-\\pi (\\mathtt{off} + (\\mathtt{end} - \\mathtt{off})
+            \\cdot x))^{\\mathtt{power}} f(t)
 
         The Fourier transform is convolved with a cosine function's shape.
-        The range for the 'x' axis can be unit, [0,1[, time or some other
-        range type.
+        By default, the range for the 'x' axis is a unit range, [0,1[, but
+        other types are available.
 
         Parameters
         ----------
@@ -388,9 +389,9 @@ class NMRSpectrum(abc.ABC):
         phase angle corrections (p1).
 
         .. math::
-            g(t) = e^{i(p0 + p1 \\cdot x)} g(t)
+            g(t) = e^{i(\\mathtt{p0} + \\mathtt{p1} \\cdot x)} g(t)
         .. math::
-            G(\\omega) = e^{i(p0 + p1 \\cdot x)} f(\\omega)
+            G(\\omega) = e^{i(\\mathtt{p0} + \\mathtt{p1} \\cdot x)} f(\\omega)
 
         Where the x-axis range type may be changed from unit_type ([0, 1[),
         time or some other unit.

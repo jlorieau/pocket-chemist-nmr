@@ -213,7 +213,7 @@ def nmrpipe_fn_ps(p0, p1, di):
 
 @nmrpipe_fn.command(name='EM', context_settings=CONTEXT_SETTINGS)
 @click.option('-lb', required=True, type=float,
-              help="Exponential broadening rate (Hz")
+              help="Exponential broadening rate (Hz)")
 @click.option('-start', required=False, type=int, default=0,
               help="First point to start apodization")
 @click.option('-size', required=False, type=int, default=None,
@@ -230,20 +230,24 @@ def nmrpipe_fn_em(lb, start, size):
     write_stdout(group)
 
 
-# @nmrpipe_fn.command(name='SOL', context_settings=CONTEXT_SETTINGS)
-# @click.option('-mode', type=click.Choice(('1', '2', '3')),
-#               default='1', show_default=True,
-#               help="Filter Mode: 1 = Low Pass, 2 = Spline, 3 = Polynomial")
-# @click.option('-fl', type=int, default=16, show_default=True,
-#               help="Filter length (low pass filter)")
-# @click.option('-fs', type=int, default=1, show_default=True,
-#               help="Filter shape: 1 = Boxcar, 2 = Sine, 3 = Sine^2 "
-#                    "(low pass filter)")
-# @nmrpipe_out
-# def nmrpipe_fn_sol(mode, fl, fs):
-#     """Solvent suppression"""
-#     # Unpack the stdin
-#     group = read_stdin()
-#
-#     # Write the objects to stdout
-#     write_stdout(group)
+@nmrpipe_fn.command(name='SP', context_settings=CONTEXT_SETTINGS)
+@click.option('-off', required=False, type=float, default=0.5,
+              help="Offset of the sine-bell in units of pi")
+@click.option('-end', required=False, type=float, default=1.0,
+              help="The end of the sine-bell in units of pi")
+@click.option('-pow', required=False, type=float, default=1.0,
+              help="Exponent of the sine-bell")
+@click.option('-start', required=False, type=int, default=0,
+              help="First point to start apodization")
+@click.option('-size', required=False, type=int, default=None,
+              help="Number of points to apodize")
+@nmrpipe_out
+def nmrpipe_fn_sp(off, end, pow, start, size):
+    """Apodize the last dimension with a sinebell power function"""
+    from ..processors.processor import ApodizationSinebellSpectra
+    logger.debug(f"off={off}, end={end}, pow={pow}, start={start}, size={size}")
+
+    group = read_stdin()
+    group += ApodizationSinebellSpectra(off=off, end=end, power=pow,
+                                        start=start, size=size)
+    write_stdout(group)

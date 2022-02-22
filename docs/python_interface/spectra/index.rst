@@ -43,6 +43,7 @@ Processing
     :nosignatures:
 
     NMRSpectrum.apodization_exp
+    NMRSpectrum.apodization_sine
     NMRSpectrum.ft
     NMRSpectrum.transpose
     NMRSpectrum.phase
