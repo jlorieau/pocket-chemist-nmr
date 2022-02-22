@@ -214,9 +214,11 @@ class NMRSpectrum(abc.ABC):
         induction decay (:math:`f(t)`), by an exponential decay:
 
         .. math::
-            g(t) = e^{-\pi lb \cdot t} f(t)
+            g(t) = e^{-\\pi lb \\cdot x} f(t)
 
         The Fourier transform is convolved with a Lorentzian function's shape.
+        The range for the 'x' axis can be unit, [0,1[, time or some other
+        range type.
 
         Parameters
         ----------
@@ -232,6 +234,12 @@ class NMRSpectrum(abc.ABC):
             The type of range to use for the x-axis data points
         update_meta
             Update the meta dict. This functionality is handled by sub-classes.
+
+        Notes
+        -----
+        - NMRPipe implements start/size before zeroing points outside this
+          range. This function, instead, copies these points (scale 1.0) and
+          apodizes points within the range.
         """
         # Get the time delays
         sw = self.sw[-1]  # Spectral width (Hz)
@@ -246,9 +254,74 @@ class NMRSpectrum(abc.ABC):
         t = gen_range(npts=size, range_type=range_type, sw=scaled_sw,
                       group_delay=group_delay)
         k[start:start + size] = torch.abs(lb * torch.pi * t)
-
+        print(range_type, t)
         # Calculate the apodization func
         self.data *= torch.exp(-k)
+
+    def apodization_sine(self,
+                         off: float = 0.5,
+                         end: float = 1.0,
+                         power: float = 1.0,
+                         first_point_scale: float = 1.0,
+                         start: int = 0, size: t.Optional[int] = None,
+                         range_type: RangeType = RangeType.TIME,
+                         update_meta: bool = True) -> None:
+        """Apply sine-bell apodization to the last dimension.
+
+        The apodization function scales the time-domain signal, or free
+        induction decay (:math:`f(t)`), by a sine function:
+
+        .. math::
+            g(t) = \\cos(-\\pi lb \\cdot x) f(t)
+
+        The Fourier transform is convolved with a cosine function's shape.
+        The range for the 'x' axis can be unit, [0,1[, time or some other
+        range type.
+
+        Parameters
+        ----------
+        off
+            Offset to start of the sine-bell function as a factor of pi.
+        end
+            End of the sine-bell function as a factor of pi.
+        power
+            The exponent of the sine-belle.
+        first_point_scale
+            Scale the first point by this number
+        start
+            Apply apodization starting from this point
+        size
+            Apply apodization over this length of points
+        range_type
+            The type of range to use for the x-axis data points
+        update_meta
+            Update the meta dict. This functionality is handled by sub-classes.
+
+        Notes
+        -----
+        - NMRPipe implements start/size before zeroing points outside this
+          range. This function, instead, copies these points (scale 1.0) and
+          apodizes points within the range.
+        """
+        # Get the time delays
+        sw = self.sw[-1]  # Spectral width (Hz)
+        npts = self.npts[-1]  # Number of points
+        size = npts if size is None else size
+        scaled_sw = sw * float(size - start) / float(npts)
+        size = npts if size is None else npts
+        group_delay = self.group_delay if self.correct_digital_filter else 0.0
+
+        # Calculate the sine-belle function
+        off *= torch.pi
+        end *= torch.pi
+        k = torch.ones(npts)
+        t = gen_range(npts=size, range_type=range_type, sw=scaled_sw,
+                      group_delay=group_delay)
+
+        k[start:start + size] = torch.sin(off + (end - off) * t) ** power
+
+        # Calculate the apodization func
+        self.data *= k
 
     def transpose(self, dim0: int, dim1: int, update_data_layout: bool = True,
                   update_meta: bool = True):
@@ -315,9 +388,9 @@ class NMRSpectrum(abc.ABC):
         phase angle corrections (p1).
 
         .. math::
-            g(t) = e^{i(p0 + p1 \cdot x)} g(t)
+            g(t) = e^{i(p0 + p1 \\cdot x)} g(t)
         .. math::
-            G(\omega) = e^{i(p0 + p1 \cdot x)} f(\omega)
+            G(\\omega) = e^{i(p0 + p1 \\cdot x)} f(\\omega)
 
         Where the x-axis range type may be changed from unit_type ([0, 1[),
         time or some other unit.
@@ -366,13 +439,13 @@ class NMRSpectrum(abc.ABC):
         (time -> frequency) direction is as follows:
 
         .. math::
-            X_k = \sum_0^{N-1} x_n \cdot e^{- i 2 \pi k n / N}
+            X_k = \\sum_0^{N-1} x_n \\cdot e^{- i 2 \\pi k n / N}
 
         And the inverse discrete Fourier transformation (ifft) in the backward
         (frequency -> time) direction is as follows:
 
         .. math::
-            x_n = \\frac{1}{N} \sum_0^{N-1} X_k \cdot e^{i 2 \pi k n / N}
+            x_n = \\frac{1}{N} \\sum_0^{N-1} X_k \\cdot e^{i 2 \\pi k n / N}
 
         The time series 'n' or frequency series 'k' start at 0 and increase to
         the largest positive value 'N'. NMR data typically places

@@ -241,7 +241,8 @@ class NMRPipeSpectrum(NMRSpectrum):
                         range_type: RangeType = RangeType.TIME,
                         update_meta: bool = True):
         super().apodization_exp(lb=lb, first_point_scale=first_point_scale,
-                                start=start, size=size)
+                                start=start, size=size, range_type=range_type,
+                                update_meta=update_meta)
 
         # Update the metadata values
         if update_meta:
@@ -251,6 +252,33 @@ class NMRPipeSpectrum(NMRSpectrum):
                                          reverse=True)
             self.meta[f"FDF{dim}APODCODE"] = float(new_apod_code)
             self.meta[f"FDF{dim}APODQ1"] = float(lb)
+
+            # Update other meta dict values
+            self.update_meta()
+
+    def apodization_sine(self,
+                         off: float = 0.5,
+                         end: float = 1.0,
+                         power: float = 1.0,
+                         first_point_scale: float = 1.0,
+                         start: int = 0, size: t.Optional[int] = None,
+                         range_type: RangeType = RangeType.TIME,
+                         update_meta: bool = True) -> None:
+        super().apodization_sine(off=off, end=end, power=power,
+                                 first_point_scale=first_point_scale,
+                                 start=start, size=size, range_type=range_type,
+                                 update_meta=update_meta)
+
+        # Update the metadata values
+        if update_meta:
+            dim = self.order[-1]
+            new_apod_code = find_mapping('apodization',
+                                         ApodizationType.SINEBELL,
+                                         reverse=True)
+            self.meta[f"FDF{dim}APODCODE"] = float(new_apod_code)
+            self.meta[f"FDF{dim}APODQ1"] = float(off)
+            self.meta[f"FDF{dim}APODQ2"] = float(end)
+            self.meta[f"FDF{dim}APODQ3"] = float(power)
 
             # Update other meta dict values
             self.update_meta()

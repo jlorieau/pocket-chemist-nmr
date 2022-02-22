@@ -150,7 +150,7 @@ def test_nmrpipe_spectrum_load_save(expected, tmpdir):
                          ((expected()['1d complex fid'],
                            expected()['1d complex fid (em)']),))
 def test_nmrpipe_spectrum_apodization_exp(expected, expected_em):
-    """Test the NMRPipeSpectrum apod_exponential method"""
+    """Test the NMRPipeSpectrum apodization_exp method"""
     # Load the spectrum and its transpose
     print(f"Loading spectra: '{expected['filepath']}' and "
           f"'{expected_em['filepath']}'")
@@ -172,11 +172,7 @@ def test_nmrpipe_spectrum_apodization_exp(expected, expected_em):
 
     # Check the header
     match_metas(spectrum.meta, spectrum_em.meta)
-
-    # Check the header values
     assert spectrum.apodization[0] == ApodizationType.EXPONENTIAL
-    assert spectrum.meta[f'FDF{dim}APODCODE'] == 2.0
-    assert isclose(spectrum.meta[f'FDF{dim}APODQ1'], lb)
 
     # Find the tolerance for float errors
     tol = spectrum.data.real.max() * 0.0001
@@ -185,6 +181,48 @@ def test_nmrpipe_spectrum_apodization_exp(expected, expected_em):
     if spectrum.ndims == 1:
         for row, (i, j) in enumerate(zip(spectrum.data, spectrum_em.data)):
             print(f"Row #{row}: {i}, {j}")
+            assert isclose(i, j, abs_tol=tol)
+    else:
+        raise NotImplementedError
+
+
+@pytest.mark.parametrize('expected,expected_sp',
+                         ((expected()['1d complex fid'],
+                           expected()['1d complex fid (sp)']),))
+def test_nmrpipe_spectrum_apodization_sine(expected, expected_sp):
+    """Test the NMRPipeSpectrum apodization_size method"""
+    # Load the spectrum and its transpose
+    print(f"Loading spectra: '{expected['filepath']}' and "
+          f"'{expected_sp['filepath']}'")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+    spectrum_sp = NMRPipeSpectrum(expected_sp['filepath'])
+
+    # Get the apodization parameters
+    dim = spectrum_sp.order[0]
+    code = spectrum_sp.meta[f'FDF{dim}APODCODE']
+    off = spectrum_sp.meta[f'FDF{dim}APODQ1']
+    end = spectrum_sp.meta[f'FDF{dim}APODQ2']
+    power = spectrum_sp.meta[f'FDF{dim}APODQ3']
+
+    assert code == 1.0  # apodization code for SP
+
+    # Check that an apodization hasn't been applied yet
+    assert all(apod is ApodizationType.NONE for apod in spectrum.apodization)
+
+    # Apodization the original dataset
+    spectrum.apodization_sine(off=off, end=end, power=power,
+                              range_type=RangeType.UNIT)
+
+    # Check the header
+    match_metas(spectrum.meta, spectrum_sp.meta)
+    assert spectrum.apodization[0] == ApodizationType.SINEBELL
+
+    # Find the tolerance for float errors
+    tol = spectrum.data.real.max() * 0.0002
+
+    # Check the values
+    if spectrum.ndims == 1:
+        for row, (i, j) in enumerate(zip(spectrum.data, spectrum_sp.data)):
             assert isclose(i, j, abs_tol=tol)
     else:
         raise NotImplementedError
