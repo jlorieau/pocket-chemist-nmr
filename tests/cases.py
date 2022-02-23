@@ -613,6 +613,8 @@ def data_nmrpipe_real_spectrum_3d():
 
 
 # Specialized test cases
+# TODO: Move these to another file within the directory of their corresponding
+#       tests
 
 @parametrize('func', (data_nmrpipe_complex_spectrum_1d,
                       data_nmrpipe_complex_fid_2d,
