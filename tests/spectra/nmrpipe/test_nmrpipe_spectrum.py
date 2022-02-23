@@ -6,12 +6,10 @@ from pathlib import Path
 import typing as t
 
 import torch
-
 import pytest
+from pytest_cases import parametrize_with_cases
 from pocketchemist_nmr.spectra.nmrpipe import NMRPipeSpectrum
 from pocketchemist_nmr.spectra.constants import ApodizationType, RangeType
-
-from ...conftest import expected
 
 #: Attributes to test
 attrs = ('ndims', 'order', 'domain_type', 'data_type', 'sw', 'label',
@@ -96,7 +94,8 @@ def match_metas(meta1: dict, meta2: dict,
 
 
 # Property Accessors/Mutators
-@pytest.mark.parametrize("expected", expected().values())
+@parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
+                        cases='...cases')
 def test_nmrpipe_spectrum_properties(expected):
     """Test the NMRPipeSpectrum accessor properties"""
     # Load the spectrum
@@ -107,7 +106,8 @@ def test_nmrpipe_spectrum_properties(expected):
     match_attributes(spectrum, expected)
 
 
-@pytest.mark.parametrize("expected", expected().values())
+@parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
+                        cases='...cases')
 def test_nmrpipe_spectrum_data_layout(expected):
     """Test the NMRPipeSpectrum data_layout method"""
     # Load the spectrum
@@ -121,9 +121,8 @@ def test_nmrpipe_spectrum_data_layout(expected):
 
 # I/O methods
 
-@pytest.mark.parametrize('expected', expected(include=(
-        '1d real fid', '2d complex fid',
-        '3d real spectrum')).values())
+@parametrize_with_cases('expected', glob='*nmrpipe_io',
+                        prefix='case_', cases='...cases')
 def test_nmrpipe_spectrum_load_save(expected, tmpdir):
     """Test the NMRPipeSpectrum load/save methods"""
     # Load the spectrum
@@ -146,9 +145,8 @@ def test_nmrpipe_spectrum_load_save(expected, tmpdir):
 
 
 # Mutators/Processing methods
-@pytest.mark.parametrize('expected,expected_em',
-                         ((expected()['1d complex fid'],
-                           expected()['1d complex fid (em)']),))
+@parametrize_with_cases('expected, expected_em', glob='*nmrpipe_compare_em',
+                        prefix='case_', cases='...cases')
 def test_nmrpipe_spectrum_apodization_exp(expected, expected_em):
     """Test the NMRPipeSpectrum apodization_exp method"""
     # Load the spectrum and its transpose
@@ -186,9 +184,8 @@ def test_nmrpipe_spectrum_apodization_exp(expected, expected_em):
         raise NotImplementedError
 
 
-@pytest.mark.parametrize('expected,expected_sp',
-                         ((expected()['1d complex fid'],
-                           expected()['1d complex fid (sp)']),))
+@parametrize_with_cases('expected, expected_sp', glob='*nmrpipe_compare_sp',
+                        prefix='case_', cases='...cases')
 def test_nmrpipe_spectrum_apodization_sine(expected, expected_sp):
     """Test the NMRPipeSpectrum apodization_size method"""
     # Load the spectrum and its transpose
@@ -228,9 +225,8 @@ def test_nmrpipe_spectrum_apodization_sine(expected, expected_sp):
         raise NotImplementedError
 
 
-@pytest.mark.parametrize('expected,expected_tp',
-                         ((expected()['2d complex fid'],
-                           expected()['2d complex fid (tp)']),))
+@parametrize_with_cases('expected, expected_tp', glob='*nmrpipe_compare_tp',
+                        prefix='case_', cases='...cases')
 def test_nmrpipe_spectrum_transpose(expected, expected_tp):
     """Test the NMRPipeSpectrum transpose method"""
     # Load the spectrum and its transpose
@@ -264,9 +260,8 @@ def test_nmrpipe_spectrum_transpose(expected, expected_tp):
         raise NotImplementedError
 
 
-@pytest.mark.parametrize('expected,expected_ps',
-                         ((expected()['1d real spectrum'],
-                           expected()['1d real spectrum (ps)']),))
+@parametrize_with_cases('expected, expected_ps', glob='*nmrpipe_compare_ps',
+                        prefix='case_', cases='...cases')
 def test_nmrpipe_spectrum_phase(expected, expected_ps):
     """Test the NMRPipeSpectrum phase method"""
     # Load the spectrum and its transpose
@@ -301,9 +296,8 @@ def test_nmrpipe_spectrum_phase(expected, expected_ps):
             assert all(isclose(i, j) for i, j in zip(row1, row2))
 
 
-@pytest.mark.parametrize('expected,expected_ft',
-                         ((expected()['1d complex fid'],
-                           expected()['1d complex fid (ft)']),))
+@parametrize_with_cases('expected, expected_ft', glob='*nmrpipe_compare_ft',
+                        prefix='case_', cases='...cases')
 def test_nmrpipe_spectrum_ft(expected, expected_ft):
     """Test the NMRPipeSpectrum ft method"""
     # Load the spectrum, if needed (cache for future tests)

@@ -4,16 +4,15 @@ Test the NMRPipe fileio functions
 from cmath import isclose
 from pathlib import Path
 
-import pytest
+from pytest_cases import parametrize_with_cases
 from pocketchemist_nmr.spectra.nmrpipe.fileio import (
     parse_nmrpipe_meta, load_nmrpipe_tensor, load_nmrpipe_multifile_tensor,
     save_nmrpipe_tensor)
 from pocketchemist_nmr.spectra.nmrpipe.meta import load_nmrpipe_meta
 
-from ...conftest import expected
 
-
-@pytest.mark.parametrize('expected', expected().values())
+@parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
+                        cases='...cases')
 def test_parse_nmrpipe_meta(expected):
     """Test the parse_nmrpipe_meta function"""
     # Load the meta dict
@@ -37,7 +36,8 @@ def test_parse_nmrpipe_meta(expected):
     assert result['pts'] == expected['header']['pts']
 
 
-@pytest.mark.parametrize('expected', expected(multifile=False).values())
+@parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
+                        has_tag='singlefile', cases='...cases')
 def test_load_nmrpipe_tensor(expected, benchmark):
     """Test the load_nmrpipe_tensor function."""
     # Load the tensor
@@ -54,7 +54,8 @@ def test_load_nmrpipe_tensor(expected, benchmark):
         assert isclose(tensor[loc], data_height, rel_tol=0.001)
 
 
-@pytest.mark.parametrize('expected', expected(multifile=True).values())
+@parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
+                        has_tag='multifile', cases='...cases')
 def test_load_nmrpipe_multifile_tensor(expected, benchmark):
     """Test the load_nmrpipe_multifile_tensor function."""
     # Load the tensor
@@ -77,7 +78,8 @@ def test_load_nmrpipe_multifile_tensor(expected, benchmark):
         assert isclose(tensor[loc], data_height, rel_tol=0.001)
 
 
-@pytest.mark.parametrize('expected', expected(multifile=False).values())
+@parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
+                        has_tag='singlefile', cases='...cases')
 def test_save_nmrpipe_tensor(expected, tmpdir, benchmark):
     """Test the save_nmrpipe_tensor function."""
     # Load the tensor

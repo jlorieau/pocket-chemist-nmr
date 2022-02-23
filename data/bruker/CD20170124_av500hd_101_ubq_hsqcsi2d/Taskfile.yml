@@ -6,7 +6,7 @@ vars:
 
 tasks:
   build:
-    deps: [convert-tp, process]
+    deps: [process]
 
   convert:
     cmds:
@@ -27,20 +27,12 @@ tasks:
     generates:
       - "spec.fid"
 
-  convert-tp:
+  process:
     deps: [convert]
     cmds:
       - "nmrPipe -in spec.fid \
          | nmrPipe -fn TP \
           -ov -out spec_tp.fid"
-    sources:
-      - "spec.fid"
-    generates:
-      - "spec_tp.fid"
-
-  process:
-    deps: [convert]
-    cmds:
       - "nmrPipe -in spec.fid \
          | nmrPipe -fn SOL \
          | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
@@ -91,4 +83,5 @@ tasks:
     sources:
       - "spec.fid"
     generates:
+      -  "spec_tp.fid"
       - "{{.PULPROG}}.ft2"
