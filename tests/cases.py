@@ -145,6 +145,39 @@ def data_nmrpipe_complex_fid_ft_1d():
 
 
 @case(tags='singlefile')
+def data_nmrpipe_complex_fid_zf_1d():
+    """A complex 1d Free-Induction Decay (FID) after zero-filling"""
+    return {
+        'filepath': (Path('data') / 'bruker' /
+                     'CD20170124_av500hd_100_ubq_oneone1d' / 'spec_zf.fid'),
+        # Header (meta values). NMRPipe ordering (inner-outer1-outer2)
+        'header': {
+            'ndims': 1,  # Number of dimensions in spectrum
+            'order': (2,),  # Order of data
+            'data_type': (DataType.COMPLEX,),  # Type of data
+            'data_pts': (799 * 2 * 2,),
+            'pts': (799 * 2,)},
+        # Spectra accessor values. Torch ordering (outer2-outer1-inner)
+        'spectrum': {
+            'ndims': 1,  # Number of dimensions in spectrum
+            'order': (2,),  # Order of data
+            'shape': (799 * 1 * 2,),
+            'domain_type': (DomainType.TIME,),  # Each dim's domain
+            'data_type': (DataType.COMPLEX,),  # Type of data
+            'data_layout': (DataLayout.BLOCK_INTERLEAVE,),  # Data layout
+            'sw': (10000.,),  # The spectra width in Hz
+            'label': ('1H',),  # The labels for each dimension
+            'apodization': (ApodizationType.NONE,),
+            'group_delay': 67.98625183105469,
+            'correct_digital_filter': True,
+            'sign_adjustment': (SignAdjustment.NONE,),  # Sign adjustment
+            'plane2dphase': Plane2DPhase.MAGNITUDE,  # Type of 2d phase
+            'data_heights': (((0,), 0 + 0j),
+                             ((-1,), 0 + 0j))},
+    }
+
+
+@case(tags='singlefile')
 def data_nmrpipe_real_spectrum_1d():
     """A real 1d spectrum after SP apodization, zero-filling (ZF), Fourier
     transformation"""
@@ -316,6 +349,80 @@ def data_nmrpipe_complex_fid_tp_2d():
                              ((-1, -1), 290.00000 - 510.00000j))},
     }
 
+
+@case(tags='singlefile')
+def data_nmrpipe_complex_fid_zf_2d():
+    """A complex 2d Free-Induction Decay (FID) after zero-filling"""
+    return {
+        'filepath': (Path('data') / 'bruker' /
+                     'CD20170124_av500hd_101_ubq_hsqcsi2d' / 'spec_zf.fid'),
+        'header': {
+            'ndims': 2,  # Number of dimensions in spectrum
+            # Data ordering of data. (direct, indirect) e.g. F1, F2
+            'order': (2, 1),
+            # Type of data (Complex/Real/Imag)
+            'data_type': (DataType.COMPLEX, DataType.COMPLEX),
+            'data_pts': (640 * 4, 184 * 2),  # Num of real + imag pts
+            'pts': (640 * 2, 184)},  # Num of complex or real pts, data ordered
+        'spectrum': {
+            'ndims': 2,
+            'order': (2, 1),
+            # Shape of returned tensor (indirect, direct), reverse of pts
+            'shape': (640 * 2, 184 * 1),
+            'domain_type': (DomainType.TIME, DomainType.TIME),
+            'data_type': (DataType.COMPLEX, DataType.COMPLEX),
+            'data_layout': (DataLayout.SINGLE_INTERLEAVE,
+                            DataLayout.BLOCK_INTERLEAVE,),
+            'sw': (8012.820801, 1671.682007),
+            'label': ('HN', '15N'),
+            'apodization': (ApodizationType.NONE, ApodizationType.NONE),
+            'group_delay': 67.98423767089844,
+            'correct_digital_filter': True,
+            'sign_adjustment': (SignAdjustment.NONE, SignAdjustment.NONE),
+            'plane2dphase': Plane2DPhase.STATES,
+            'data_heights': (((0, 0), 0. + 0.j),
+                             ((0, -1), 0. + 0.j),
+                             ((1, 0), 0. + 0.j),
+                             ((-1, -1), 290.00000 - 510.00000j))},
+    }
+
+
+@case(tags='singlefile')
+def data_nmrpipe_complex_fid_tp_zf_2d():
+    """A complex 2d Free-Induction Decay (FID) with transpose (TP) and
+    zero-filling"""
+    return {
+        'filepath': (Path('data') / 'bruker' /
+                     'CD20170124_av500hd_101_ubq_hsqcsi2d' / 'spec_tp_zf.fid'),
+        'header': {
+            'ndims': 2,  # Number of dimensions in spectrum
+            # Data ordering of data. (direct, indirect) e.g. F1, F2
+            'order': (1, 2),
+            # Type of data (Complex/Real/Imag)
+            'data_type': (DataType.COMPLEX, DataType.COMPLEX),
+            'data_pts': (184 * 4, 640 * 2),  # Num of real + imag pts
+            'pts': (184 * 2, 640)},  # Num of complex or real pts, data ordered
+        'spectrum': {
+            'ndims': 2,
+            'order': (2, 1),
+            # Shape of returned tensor (indirect, direct), reverse of pts
+            'shape': (640 * 2, 184 * 1),
+            'domain_type': (DomainType.TIME, DomainType.TIME),
+            'data_type': (DataType.COMPLEX, DataType.COMPLEX),
+            'data_layout': (DataLayout.SINGLE_INTERLEAVE,
+                            DataLayout.BLOCK_INTERLEAVE,),
+            'sw': (8012.820801, 1671.682007),
+            'label': ('HN', '15N'),
+            'apodization': (ApodizationType.NONE, ApodizationType.NONE),
+            'group_delay': 67.98423767089844,
+            'correct_digital_filter': True,
+            'sign_adjustment': (SignAdjustment.NONE, SignAdjustment.NONE),
+            'plane2dphase': Plane2DPhase.STATES,
+            'data_heights': (((0, 0), 0. + 0.j),
+                             ((0, -1), 0. + 0.j),
+                             ((1, 0), 0. + 0.j),
+                             ((-1, -1), 290.00000 - 510.00000j))},
+    }
 
 @case(tags='singlefile')
 def data_nmrpipe_real_spectrum_2d():
@@ -631,6 +738,20 @@ def case_nmrpipe_compare_em():
             data_nmrpipe_complex_fid_em_1d())
 
 
+def case_nmrpipe_compare_ft():
+    """A test case to compare a reference dataset and a dataset after
+    Fourier transformation"""
+    return (data_nmrpipe_complex_fid_1d(),
+            data_nmrpipe_complex_fid_ft_1d())
+
+
+def case_nmrpipe_compare_ps():
+    """A test case to compare a reference dataset and a dataset after
+    phasing"""
+    return (data_nmrpipe_complex_spectrum_1d(),
+            data_nmrpipe_complex_spectrum_ps_1d())
+
+
 def case_nmrpipe_compare_sp():
     """A test case to compare a reference dataset and a dataset with SP
     apodization"""
@@ -645,15 +766,8 @@ def case_nmrpipe_compare_tp():
             data_nmrpipe_complex_fid_tp_2d())
 
 
-def case_nmrpipe_compare_ps():
+def case_nmrpipe_compare_1d_zf():
     """A test case to compare a reference dataset and a dataset after
-    phasing"""
-    return (data_nmrpipe_complex_spectrum_1d(),
-            data_nmrpipe_complex_spectrum_ps_1d())
-
-
-def case_nmrpipe_compare_ft():
-    """A test case to compare a reference dataset and a dataset after
-    Fourier transformation"""
+    zero-filling"""
     return (data_nmrpipe_complex_fid_1d(),
-            data_nmrpipe_complex_fid_ft_1d())
+            data_nmrpipe_complex_fid_zf_1d())

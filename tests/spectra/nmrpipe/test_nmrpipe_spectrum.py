@@ -225,77 +225,6 @@ def test_nmrpipe_spectrum_apodization_sine(expected, expected_sp):
         raise NotImplementedError
 
 
-@parametrize_with_cases('expected, expected_tp', glob='*nmrpipe_compare_tp',
-                        prefix='case_', cases='...cases')
-def test_nmrpipe_spectrum_transpose(expected, expected_tp):
-    """Test the NMRPipeSpectrum transpose method"""
-    # Load the spectrum and its transpose
-    print(f"Loading spectra: '{expected['filepath']}' and "
-          f"'{expected_tp['filepath']}'")
-    spectrum = NMRPipeSpectrum(expected['filepath'])
-    spectrum_tp = NMRPipeSpectrum(expected_tp['filepath'])
-
-    # Try reversing the last 2 axes
-    dims = list(range(spectrum.ndims))
-    spectrum.transpose(dims[-1], dims[-2])
-
-    # Check the header
-    match_metas(spectrum.meta, spectrum_tp.meta)
-
-    # Check attributes to see if they were transposed correctly
-    for attr in ('domain_type', 'data_type', 'sw', 'label'):
-        print(f"spectrum1 attr: '{getattr(spectrum, attr)}', "
-              f"spectrum1_tp attr: '{getattr(spectrum_tp, attr)}'")
-        assert getattr(spectrum, attr) == getattr(spectrum_tp, attr)
-
-    # Check the data shape
-    assert spectrum.data.size() == spectrum_tp.data.size()
-
-    # Check the values, row-by-row
-    if spectrum.ndims > 1:
-        for i, (row1, row2) in enumerate(zip(spectrum.data, spectrum_tp.data)):
-            print(f"Row #{i}")
-            assert tuple(row1) == tuple(row2)
-    else:
-        raise NotImplementedError
-
-
-@parametrize_with_cases('expected, expected_ps', glob='*nmrpipe_compare_ps',
-                        prefix='case_', cases='...cases')
-def test_nmrpipe_spectrum_phase(expected, expected_ps):
-    """Test the NMRPipeSpectrum phase method"""
-    # Load the spectrum and its transpose
-    print(f"Loading spectra: '{expected['filepath']}' and "
-          f"'{expected_ps['filepath']}'")
-    spectrum = NMRPipeSpectrum(expected['filepath'])
-    spectrum_ps = NMRPipeSpectrum(expected_ps['filepath'])
-
-    # Get the phase to use
-    dim = spectrum_ps.order[-1]
-    p0 = spectrum_ps.meta[f'FDF{dim}P0']
-    p1 = spectrum_ps.meta[f'FDF{dim}P1']
-
-    # Phase the spectrum
-    spectrum.phase(p0=p0, p1=p1, range_type=RangeType.UNIT,
-                   discard_imaginaries=True)
-
-    # Check the header
-    match_metas(spectrum.meta, spectrum_ps.meta)
-
-    # Find a tolerance for matching numbers. The numbers do not exactly match
-    # the reference dataset due to rounding errors (presumably)
-    tol = max(abs(spectrum.data.max()), abs(spectrum.data.min())) * 0.0001
-
-    # Check the values, row-by-row
-    if spectrum.ndims == 1:
-        for count, (i, j) in enumerate(zip(spectrum.data, spectrum_ps.data)):
-            assert isclose(i, j, abs_tol=tol)
-    else:
-        for i, (row1, row2) in enumerate(zip(spectrum.data, spectrum_ps.data)):
-            print(f"Row #{i}")
-            assert all(isclose(i, j) for i, j in zip(row1, row2))
-
-
 @parametrize_with_cases('expected, expected_ft', glob='*nmrpipe_compare_ft',
                         prefix='case_', cases='...cases')
 def test_nmrpipe_spectrum_ft(expected, expected_ft):
@@ -336,4 +265,107 @@ def test_nmrpipe_spectrum_ft(expected, expected_ft):
         raise NotImplementedError
 
 
+@parametrize_with_cases('expected, expected_ps', glob='*nmrpipe_compare_ps',
+                        prefix='case_', cases='...cases')
+def test_nmrpipe_spectrum_phase(expected, expected_ps):
+    """Test the NMRPipeSpectrum phase method"""
+    # Load the spectrum and its transpose
+    print(f"Loading spectra: '{expected['filepath']}' and "
+          f"'{expected_ps['filepath']}'")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+    spectrum_ps = NMRPipeSpectrum(expected_ps['filepath'])
+
+    # Get the phase to use
+    dim = spectrum_ps.order[-1]
+    p0 = spectrum_ps.meta[f'FDF{dim}P0']
+    p1 = spectrum_ps.meta[f'FDF{dim}P1']
+
+    # Phase the spectrum
+    spectrum.phase(p0=p0, p1=p1, range_type=RangeType.UNIT,
+                   discard_imaginaries=True)
+
+    # Check the header
+    match_metas(spectrum.meta, spectrum_ps.meta)
+
+    # Find a tolerance for matching numbers. The numbers do not exactly match
+    # the reference dataset due to rounding errors (presumably)
+    tol = max(abs(spectrum.data.max()), abs(spectrum.data.min())) * 0.0001
+
+    # Check the values, row-by-row
+    if spectrum.ndims == 1:
+        for count, (i, j) in enumerate(zip(spectrum.data, spectrum_ps.data)):
+            assert isclose(i, j, abs_tol=tol)
+    else:
+        for i, (row1, row2) in enumerate(zip(spectrum.data, spectrum_ps.data)):
+            print(f"Row #{i}")
+            assert all(isclose(i, j) for i, j in zip(row1, row2))
+
+
+@parametrize_with_cases('expected, expected_tp', glob='*nmrpipe_compare_tp',
+                        prefix='case_', cases='...cases')
+def test_nmrpipe_spectrum_transpose(expected, expected_tp):
+    """Test the NMRPipeSpectrum transpose method"""
+    # Load the spectrum and its transpose
+    print(f"Loading spectra: '{expected['filepath']}' and "
+          f"'{expected_tp['filepath']}'")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+    spectrum_tp = NMRPipeSpectrum(expected_tp['filepath'])
+
+    # Try reversing the last 2 axes
+    dims = list(range(spectrum.ndims))
+    spectrum.transpose(dims[-1], dims[-2])
+
+    # Check the header
+    match_metas(spectrum.meta, spectrum_tp.meta)
+
+    # Check attributes to see if they were transposed correctly
+    for attr in ('domain_type', 'data_type', 'sw', 'label'):
+        print(f"spectrum1 attr: '{getattr(spectrum, attr)}', "
+              f"spectrum1_tp attr: '{getattr(spectrum_tp, attr)}'")
+        assert getattr(spectrum, attr) == getattr(spectrum_tp, attr)
+
+    # Check the data shape
+    assert spectrum.data.size() == spectrum_tp.data.size()
+
+    # Check the values, row-by-row
+    if spectrum.ndims > 1:
+        for i, (row1, row2) in enumerate(zip(spectrum.data, spectrum_tp.data)):
+            print(f"Row #{i}")
+            assert tuple(row1) == tuple(row2)
+    else:
+        raise NotImplementedError
+
+
+@parametrize_with_cases('expected, expected_zf', glob='*nmrpipe_compare_zf',
+                        prefix='case_', cases='...cases')
+def test_nmrpipe_spectrum_zerofill(expected, expected_zf):
+    """Test the NMRPipeSpectrum zerofill method"""
+    # Load the spectrum and its transpose
+    print(f"Loading spectra: '{expected['filepath']}' and "
+          f"'{expected_zf['filepath']}'")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+    spectrum_ps = NMRPipeSpectrum(expected_zf['filepath'])
+
+    # Get the phase to use
+    dim = spectrum_ps.order[-1]
+    new_size = -1 * int(spectrum_ps.meta[f'FDF{dim}ZF'])
+
+    # Phase the spectrum
+    spectrum.zerofill(size=new_size)
+
+    # Check the header
+    match_metas(spectrum.meta, spectrum_ps.meta)
+
+    # Find a tolerance for matching numbers. The numbers do not exactly match
+    # the reference dataset due to rounding errors (presumably)
+    tol = max(abs(spectrum.data.max()), abs(spectrum.data.min())) * 0.0001
+
+    # Check the values, row-by-row
+    if spectrum.ndims == 1:
+        for count, (i, j) in enumerate(zip(spectrum.data, spectrum_ps.data)):
+            assert isclose(i, j, abs_tol=tol)
+    else:
+        for i, (row1, row2) in enumerate(zip(spectrum.data, spectrum_ps.data)):
+            print(f"Row #{i}")
+            assert all(isclose(i, j) for i, j in zip(row1, row2))
 

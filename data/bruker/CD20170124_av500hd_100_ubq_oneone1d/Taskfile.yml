@@ -46,6 +46,10 @@ tasks:
           -ov -out spec_ft.fid"
       - "showhdr -dump spec_ft.fid > spec_ft.hdr"
       - "nmrPipe -in spec.fid \
+         | nmrPipe -fn ZF \
+          -ov -out spec_zf.fid"
+      - "showhdr -dump spec_zf.fid > spec_zf.hdr"
+      - "nmrPipe -in spec.fid \
          | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
          | nmrPipe -fn ZF -size 8192 \
          | nmrPipe -fn FT -auto \
@@ -75,6 +79,8 @@ tasks:
       - "spec_sp.hdr"
       - "spec_ft.fid"
       - "spec_ft.hdr"
+      - "spec_zf.fid"
+      - "spec_zf.hdr"
       - "{{.PULPROG}}.ft"
       - "{{.PULPROG}}.hdr"
       - "{{.PULPROG}}_complex.ft"

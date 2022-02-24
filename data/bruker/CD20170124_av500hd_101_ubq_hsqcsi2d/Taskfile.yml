@@ -33,6 +33,16 @@ tasks:
       - "nmrPipe -in spec.fid \
          | nmrPipe -fn TP \
           -ov -out spec_tp.fid"
+      - "showhdr -dump spec_tp.fid > spec_tp.hdr"
+      - "nmrPipe -in spec.fid \
+         | nmrPipe -fn ZF \
+          -ov -out spec_zf.fid"
+      - "showhdr -dump spec_zf.fid > spec_zf.hdr"
+      - "nmrPipe -in spec.fid \
+         | nmrPipe -fn TP \
+         | nmrPipe -fn ZF \
+          -ov -out spec_tp_zf.fid"
+      - "showhdr -dump spec_tp_zf.fid > spec_tp_zf.hdr"
       - "nmrPipe -in spec.fid \
          | nmrPipe -fn SOL \
          | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
@@ -83,5 +93,10 @@ tasks:
     sources:
       - "spec.fid"
     generates:
-      -  "spec_tp.fid"
+      - "spec_tp.fid"
+      - "spec_tp.hdr"
+      - "spec_zf.fid"
+      - "spec_zf.hdr"
+      - "spec_tp_zg.fid"
+      - "spec_tp_zg.hdr"
       - "{{.PULPROG}}.ft2"
