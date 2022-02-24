@@ -366,15 +366,15 @@ def data_nmrpipe_complex_fid_zf_2d():
             'pts': (640 * 2, 184)},  # Num of complex or real pts, data ordered
         'spectrum': {
             'ndims': 2,
-            'order': (2, 1),
+            'order': (1, 2),
             # Shape of returned tensor (indirect, direct), reverse of pts
-            'shape': (640 * 2, 184 * 1),
+            'shape': (184 * 1, 640 * 2),
             'domain_type': (DomainType.TIME, DomainType.TIME),
             'data_type': (DataType.COMPLEX, DataType.COMPLEX),
             'data_layout': (DataLayout.SINGLE_INTERLEAVE,
                             DataLayout.BLOCK_INTERLEAVE,),
-            'sw': (8012.820801, 1671.682007),
-            'label': ('HN', '15N'),
+            'sw': (1671.682007, 8012.820801),
+            'label': ('15N', 'HN'),
             'apodization': (ApodizationType.NONE, ApodizationType.NONE),
             'group_delay': 67.98423767089844,
             'correct_digital_filter': True,
