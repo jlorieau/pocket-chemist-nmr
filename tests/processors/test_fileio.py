@@ -26,7 +26,7 @@ def test_load_spectra_nmrpipe(expected):
 
 
 @parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
-                        cases='..cases')
+                        cases='..cases.nmrpipe')
 def test_load_spectra_nmrpipe(expected, tmpdir):
     """Test the LoadSpectra processor"""
     # Run the processor

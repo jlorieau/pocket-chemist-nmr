@@ -12,7 +12,7 @@ from pocketchemist_nmr.spectra.nmrpipe.meta import load_nmrpipe_meta
 
 
 @parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
-                        cases='...cases')
+                        cases='...cases.nmrpipe')
 def test_parse_nmrpipe_meta(expected):
     """Test the parse_nmrpipe_meta function"""
     # Load the meta dict
@@ -37,7 +37,7 @@ def test_parse_nmrpipe_meta(expected):
 
 
 @parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
-                        has_tag='singlefile', cases='...cases')
+                        has_tag='singlefile', cases='...cases.nmrpipe')
 def test_load_nmrpipe_tensor(expected, benchmark):
     """Test the load_nmrpipe_tensor function."""
     # Load the tensor
@@ -55,7 +55,7 @@ def test_load_nmrpipe_tensor(expected, benchmark):
 
 
 @parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
-                        has_tag='multifile', cases='...cases')
+                        has_tag='multifile', cases='...cases.nmrpipe')
 def test_load_nmrpipe_multifile_tensor(expected, benchmark):
     """Test the load_nmrpipe_multifile_tensor function."""
     # Load the tensor
@@ -79,7 +79,7 @@ def test_load_nmrpipe_multifile_tensor(expected, benchmark):
 
 
 @parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
-                        has_tag='singlefile', cases='...cases')
+                        has_tag='singlefile', cases='...cases.nmrpipe')
 def test_save_nmrpipe_tensor(expected, tmpdir, benchmark):
     """Test the save_nmrpipe_tensor function."""
     # Load the tensor

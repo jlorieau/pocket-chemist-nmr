@@ -368,7 +368,7 @@ def data_nmrpipe_complex_fid_zf_2d():
             'ndims': 2,
             'order': (1, 2),
             # Shape of returned tensor (indirect, direct), reverse of pts
-            'shape': (184 * 1, 640 * 2),
+            'shape': (184 * 2, 640 * 2),
             'domain_type': (DomainType.TIME, DomainType.TIME),
             'data_type': (DataType.COMPLEX, DataType.COMPLEX),
             'data_layout': (DataLayout.SINGLE_INTERLEAVE,
@@ -383,7 +383,7 @@ def data_nmrpipe_complex_fid_zf_2d():
             'data_heights': (((0, 0), 0. + 0.j),
                              ((0, -1), 0. + 0.j),
                              ((1, 0), 0. + 0.j),
-                             ((-1, -1), 290.00000 - 510.00000j))},
+                             ((-1, -1), 0. + 0.j))},
     }
 
 
@@ -406,7 +406,7 @@ def data_nmrpipe_complex_fid_tp_zf_2d():
             'ndims': 2,
             'order': (2, 1),
             # Shape of returned tensor (indirect, direct), reverse of pts
-            'shape': (640 * 2, 184 * 1),
+            'shape': (640 * 2, 184 * 2),
             'domain_type': (DomainType.TIME, DomainType.TIME),
             'data_type': (DataType.COMPLEX, DataType.COMPLEX),
             'data_layout': (DataLayout.SINGLE_INTERLEAVE,
@@ -421,7 +421,7 @@ def data_nmrpipe_complex_fid_tp_zf_2d():
             'data_heights': (((0, 0), 0. + 0.j),
                              ((0, -1), 0. + 0.j),
                              ((1, 0), 0. + 0.j),
-                             ((-1, -1), 290.00000 - 510.00000j))},
+                             ((-1, -1), 0. + 0.j))},
     }
 
 @case(tags='singlefile')
@@ -717,57 +717,3 @@ def data_nmrpipe_real_spectrum_3d():
                              ((-1, 0, 0), -872241.80000),
                              ((-1, -1, -1), -2219091.00000))},
     }
-
-
-# Specialized test cases
-# TODO: Move these to another file within the directory of their corresponding
-#       tests
-
-@parametrize('func', (data_nmrpipe_complex_spectrum_1d,
-                      data_nmrpipe_complex_fid_2d,
-                      data_nmrpipe_real_spectrum_singlefile_3d))
-def case_nmrpipe_io(func):
-    """A series of test cases for testing IO (saving, loading) functions"""
-    return func()
-
-
-def case_nmrpipe_compare_em():
-    """A test case to compare a reference dataset and a dataset with EM
-    apodization"""
-    return (data_nmrpipe_complex_fid_1d(),
-            data_nmrpipe_complex_fid_em_1d())
-
-
-def case_nmrpipe_compare_ft():
-    """A test case to compare a reference dataset and a dataset after
-    Fourier transformation"""
-    return (data_nmrpipe_complex_fid_1d(),
-            data_nmrpipe_complex_fid_ft_1d())
-
-
-def case_nmrpipe_compare_ps():
-    """A test case to compare a reference dataset and a dataset after
-    phasing"""
-    return (data_nmrpipe_complex_spectrum_1d(),
-            data_nmrpipe_complex_spectrum_ps_1d())
-
-
-def case_nmrpipe_compare_sp():
-    """A test case to compare a reference dataset and a dataset with SP
-    apodization"""
-    return (data_nmrpipe_complex_fid_1d(),
-            data_nmrpipe_complex_fid_sp_1d())
-
-
-def case_nmrpipe_compare_tp():
-    """A test case to compare a reference dataset and a dataset after
-    transposition"""
-    return (data_nmrpipe_complex_fid_2d(),
-            data_nmrpipe_complex_fid_tp_2d())
-
-
-def case_nmrpipe_compare_1d_zf():
-    """A test case to compare a reference dataset and a dataset after
-    zero-filling"""
-    return (data_nmrpipe_complex_fid_1d(),
-            data_nmrpipe_complex_fid_zf_1d())
