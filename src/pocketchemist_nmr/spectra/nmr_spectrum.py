@@ -66,59 +66,91 @@ class NMRSpectrum(abc.ABC):
     @property
     @abc.abstractmethod
     def domain_type(self) -> t.Tuple[DomainType, ...]:
-        """The data domain type (freq, time) for all dimensions."""
+        """The data domain type (freq, time) for all dimensions
+
+        The current dimension is the last dimension."""
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
     def data_type(self) -> t.Tuple[DataType, ...]:
-        """The type data (real, imag, complex) of all dimensions"""
+        """The type data (real, imag, complex) of all dimensions
+
+        The current dimension is the last dimension.
+        """
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
     def sw_hz(self) -> t.Tuple[float, ...]:
-        """Spectral widths in Hz of all dimensions"""
+        """Spectral widths in Hz of all dimensions
+
+        The current dimension is the last dimension.
+        """
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
     def sw_ppm(self) -> t.Tuple[float, ...]:
-        """Spectra widths in ppm of all dimensions"""
-        return NotImplementedError
+        """Spectra widths in ppm of all dimensions
+
+        The current dimension is the last dimension.
+        """
+        raise NotImplementedError
 
     @property
     @abc.abstractmethod
     def car_hz(self) -> t.Tuple[float, ...]:
-        """The carrier (center) frequencies (in Hz) of all dimensions"""
+        """The carrier frequencies (in Hz) of all dimensions--i.e. the
+        frequency at which the dimension's channel was pulse at.
+
+        The current dimension is the last dimension.
+        """
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
     def car_ppm(self) -> t.Tuple[float, ...]:
-        """The carrier (center) frequencies (in ppm) of all dimensions"""
+        """The carrier frequencies (in ppm) of all dimensions--i.e. the
+        frequency at which the dimension's channel was pulse at.
+
+        The current dimension is the last dimension.
+        """
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
     def obs_mhz(self) -> t.Tuple[float, ...]:
-        """The observed (Zeeman) frequency in MHz of all dimensions"""
+        """The observed (Zeeman) frequency in MHz of all dimensions
+
+        The current dimension is the last dimension.
+        """
+        raise NotImplementedError
 
     @property
     @abc.abstractmethod
     def label(self) -> t.Tuple[str, ...]:
-        """The labels for all dimensions, as ordered in the data."""
+        """The labels for all dimensions, as ordered in the data.
+
+        The current dimension is the last dimension.
+        """
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
     def apodization(self) -> t.Tuple[ApodizationType, ...]:
-        """The type of apodization function applied to each dimension"""
+        """The type of apodization function applied to each dimension
+
+        The current dimension is the last dimension.
+        """
         raise NotImplementedError
 
     @property
     def npts(self) -> t.Tuple[int, ...]:
-        """The number of complex, real or imaginary points in each dimension"""
+        """The number of complex, real or imaginary points in each dimension
+
+        The current dimension is the last dimension.
+        """
         return tuple(self.data.size())
 
     @abc.abstractmethod
