@@ -219,7 +219,7 @@ class NMRPipeSpectrum(NMRSpectrum):
 
     def update_meta(self):
         """Update the meta dict with the current values of the data"""
-        # Update the data ranges
+        # Update the data intensity ranges
         if self.data.is_complex():
             self.meta['FDMAX'] = float(self.data.real.max())
             self.meta['FDMIN'] = float(self.data.real.min())
@@ -235,6 +235,9 @@ class NMRPipeSpectrum(NMRSpectrum):
         # Update the datatype for the current (last) dimension
         self.meta['FDQUADFLAG'] = find_mapping('data_type', self.data_type[-1],
                                                reverse=True)
+
+        # Update the number of points for the last (inner) dimension
+        self.meta['FDSIZE'] = float(self.data.size()[-1])
 
     def apodization_exp(self, lb: float, first_point_scale: float = 1.0,
                         start: int = 0, size: t.Optional[int] = None,
@@ -282,67 +285,6 @@ class NMRPipeSpectrum(NMRSpectrum):
 
             # Update other meta dict values
             self.update_meta()
-
-    def transpose(self, dim0, dim1, interleave_complex=True,
-                  update_meta: bool = True):
-        # Get the mapping between the dimension order (0, 1, .. self.ndims)
-        # and the F1/F2/F3/F4 dimensions
-        # The order must be reversed because tensors are stored
-        # outer2-outer1-inner whereas NMRPipe orders them as inner-outer1-outer2
-        new_order = list(self.order)[::-1]
-        new_order[dim0], new_order[dim1] = new_order[dim1], new_order[dim0]
-
-        # Conduct the permute operation
-        super().transpose(dim0, dim1, interleave_complex)
-
-        # Update the metadata values with the new order
-        if update_meta:
-            for i, ord in enumerate(new_order, 1):
-                self.meta[f'FDDIMORDER{i}'] = float(ord)
-
-            # Update the number of points (size) of the direct (inner) and
-            # indirect (outer) dimensions
-            self.meta['FDSIZE'] = float(self.data.size()[-1])
-            self.meta['FDSPECNUM'] = float(reduce(lambda x, y: x * y,
-                                                  self.data.size()[:-1]))
-            self.meta['FDSLICECOUNT0'] = self.meta['FDSPECNUM']
-
-            # Set the flag to indicate that the data was transposed
-            self.meta['FDTRANSPOSED'] = (0.0 if self.meta['FDTRANSPOSED'] == 1.0
-                                         else 1.0)
-
-            # NMRPipe doesn't update FDMIN/FDMAX by default for TP data, but
-            # instead it invalidates the FDMIN/FDMAX values with the FDSCALEFLAG
-            self.meta['FDSCALEFLAG'] = 0.0  # FDMIN/FDMAX not valid
-
-            # Update the current (last) dimension's quadrature flag if it has
-            # switched between complex <-> real
-            self.meta['FDQUADFLAG'] = find_mapping('data_type',
-                                                   self.data_type[-1],
-                                                   reverse=True)
-
-    def phase(self, p0: float, p1: float, discard_imaginaries: bool = True,
-              range_type=RangeType.UNIT, update_meta: bool = True):
-        rv = super().phase(p0, p1, discard_imaginaries)
-
-        # Update the metadata, as needed
-        if update_meta:
-            dim = self.order[-1]
-
-            # Switch the quadrature (data) type from complex to real if
-            # imaginaries are discarded
-            if discard_imaginaries and self.data_type[-1] is DataType.COMPLEX:
-                self.meta[f"FDF{dim}QUADFLAG"] = find_mapping('data_type',
-                                                              DataType.REAL,
-                                                              reverse=True)
-            # Update the phase values
-            self.meta[f"FDF{dim}P0"] = p0
-            self.meta[f"FDF{dim}P1"] = p1
-
-            # Update other meta dict values
-            self.update_meta()
-
-        return rv
 
     def ft(self,
            auto: bool = False,
@@ -413,3 +355,100 @@ class NMRPipeSpectrum(NMRSpectrum):
                 self.meta[f"FDDMXFLAG"] = 1.0  # DMX ON
 
         return rv
+
+    def phase(self, p0: float, p1: float, discard_imaginaries: bool = True,
+              range_type=RangeType.UNIT, update_meta: bool = True):
+        rv = super().phase(p0, p1, discard_imaginaries)
+
+        # Update the metadata, as needed
+        if update_meta:
+            dim = self.order[-1]
+
+            # Switch the quadrature (data) type from complex to real if
+            # imaginaries are discarded
+            if discard_imaginaries and self.data_type[-1] is DataType.COMPLEX:
+                self.meta[f"FDF{dim}QUADFLAG"] = find_mapping('data_type',
+                                                              DataType.REAL,
+                                                              reverse=True)
+            # Update the phase values
+            self.meta[f"FDF{dim}P0"] = p0
+            self.meta[f"FDF{dim}P1"] = p1
+
+            # Update other meta dict values
+            self.update_meta()
+
+        return rv
+
+    def transpose(self, dim0, dim1, interleave_complex=True,
+                  update_meta: bool = True):
+        # Get the mapping between the dimension order (0, 1, .. self.ndims)
+        # and the F1/F2/F3/F4 dimensions
+        # The order must be reversed because tensors are stored
+        # outer2-outer1-inner whereas NMRPipe orders them as inner-outer1-outer2
+        new_order = list(self.order)[::-1]
+        new_order[dim0], new_order[dim1] = new_order[dim1], new_order[dim0]
+
+        # Conduct the permute operation
+        super().transpose(dim0, dim1, interleave_complex)
+
+        # Update the metadata values with the new order
+        if update_meta:
+            for i, ord in enumerate(new_order, 1):
+                self.meta[f'FDDIMORDER{i}'] = float(ord)
+
+            # Update the number of points (size) of the direct (inner) and
+            # indirect (outer) dimensions
+            self.meta['FDSIZE'] = float(self.data.size()[-1])
+            self.meta['FDSPECNUM'] = float(reduce(lambda x, y: x * y,
+                                                  self.data.size()[:-1]))
+            self.meta['FDSLICECOUNT0'] = self.meta['FDSPECNUM']
+
+            # Set the flag to indicate that the data was transposed
+            self.meta['FDTRANSPOSED'] = (0.0 if self.meta['FDTRANSPOSED'] == 1.0
+                                         else 1.0)
+
+            # NMRPipe doesn't update FDMIN/FDMAX by default for TP data, but
+            # instead it invalidates the FDMIN/FDMAX values with the FDSCALEFLAG
+            self.meta['FDSCALEFLAG'] = 0.0  # FDMIN/FDMAX not valid
+
+            # Update the current (last) dimension's quadrature flag if it has
+            # switched between complex <-> real
+            self.meta['FDQUADFLAG'] = find_mapping('data_type',
+                                                   self.data_type[-1],
+                                                   reverse=True)
+
+    def zerofill(self,
+                 double: t.Optional[int] = 1,
+                 double_base2: t.Optional[int] = None,
+                 size: t.Optional[int] = None,
+                 pad: t.Optional[int] = None,
+                 update_meta: bool = True) -> None:
+        # Conduct the zero fill
+        super().zerofill(double=double, double_base2=double_base2, size=size,
+                         pad=pad)
+
+        # Update the metadata values with the new order
+        if update_meta:
+            # Get the last dimension, for which values must be updated
+            dim = self.order[-1]
+            new_size = self.data.size()[-1]  # New size of dim
+
+            # Set the number of ZF points, this number is -ve for zero-fill
+            self.meta[f"FDF{dim}ZF"] = -1. * float(new_size)
+
+            # The point position for the center point. Setting this value
+            # comes from method used from nmrglue:
+            # https://github.com/jjhelmus/nmrglue/blob/master/nmrglue/
+            # process/pipe_proc.py
+            if self.plane2dphase is Plane2DPhase.TPPI:
+                self.meta[f"FDF{dim}CENTER"] = float(round(new_size / 2. +
+                                                           0.001))
+            else:
+                self.meta[f"FDF{dim}CENTER"] = float(round(new_size / 2. + 1.))
+
+            # Update the ORIG frequency, which the frequency of the center
+            # position
+
+
+            # Update other meta dict values
+            self.update_meta()

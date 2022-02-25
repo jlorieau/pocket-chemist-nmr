@@ -4,9 +4,10 @@ NMR Spectra in different formats
 import abc
 import typing as t
 from pathlib import Path
-from math import floor
+from math import floor, ceil, log2
 
 import torch
+from torch.nn.functional import pad as pad_tensor
 from loguru import logger
 
 from .constants import (DomainType, DataType, DataLayout, ApodizationType,
@@ -324,106 +325,6 @@ class NMRSpectrum(abc.ABC):
         # Calculate the apodization func
         self.data *= k
 
-    def transpose(self, dim0: int, dim1: int, update_data_layout: bool = True,
-                  update_meta: bool = True):
-        """Transpose two axes (dim0 <-> dim1).
-
-        Parameters
-        ----------
-        dim0
-            The first dimension to transpose, starting from 0 to self.ndims - 1
-        dim1
-            The second dimension to transpose, starting from 0 to self.ndims - 1
-        update_data_layout
-            If True (default), automatically convert conplex numbers and handle
-            changes in data layout according to the
-            :meth:`.NMRSpectrum.data_layout` method.
-        update_meta
-            Update the meta dict. This functionality is handled by sub-classes.
-        """
-        # Only works if there is more than 1 dimension
-        assert self.ndims > 1, (
-            "Can only transpose spectrum with more than 1 dimension")
-
-        # Sort the order of the dimensions
-        dim0, dim1 = min(dim0, dim1), max(dim0, dim1)
-
-        # # Unpack complex numbers in the last dimension, if needed
-        if (update_data_layout and dim1 == self.ndims - 1 and
-           self.data_type[dim1] is DataType.COMPLEX):
-            # Determine the data layout the new dimension will need
-            new_data_layout = self.data_layout(dim0, data_type=DataType.COMPLEX)
-            logger.debug(f"new_data_layout: {new_data_layout}")
-
-            if new_data_layout is DataLayout.BLOCK_INTERLEAVE:
-                self.data = combine_block_from_complex(self.data)
-            elif new_data_layout is DataLayout.SINGLE_INTERLEAVE:
-                self.data = combine_single_from_complex(self.data)
-            else:
-                raise NotImplementedError
-
-        # Conduct the transpose
-        self.data = torch.transpose(self.data, dim0, dim1)
-
-        # Determine if the new last dimension should be converted to complex
-        if (update_data_layout and dim1 == self.ndims - 1 and
-           self.data_type[dim0] is DataType.COMPLEX):
-            # Determine the data layout for the old dimension
-            old_data_layout = self.data_layout(dim0, data_type=DataType.COMPLEX)
-            logger.debug(f"old_data_layout: {old_data_layout}")
-
-            if old_data_layout is DataLayout.BLOCK_INTERLEAVE:
-                self.data = split_block_to_complex(self.data)
-            elif old_data_layout is DataLayout.SINGLE_INTERLEAVE:
-                self.data = split_single_to_complex(self.data)
-            else:
-                raise NotImplementedError
-
-    def phase(self, p0: float, p1: float, discard_imaginaries: bool = True,
-              range_type: RangeType = RangeType.UNIT, update_meta: bool = True):
-        """Apply phase correction to the last dimension.
-
-        Phasing rotates the real and imaginary components of complex numbers
-        by a specified phase. This function may apply frequency-independent
-        phase angle corrections (p0) as well as linear freqency-dependent
-        phase angle corrections (p1).
-
-        .. math::
-            g(t) = e^{i(\\mathtt{p0} + \\mathtt{p1} \\cdot x)} g(t)
-        .. math::
-            G(\\omega) = e^{i(\\mathtt{p0} + \\mathtt{p1} \\cdot x)} f(\\omega)
-
-        Where the x-axis range type may be changed from unit_type ([0, 1[),
-        time or some other unit.
-
-        Parameters
-        ----------
-        p0
-            The zero-order phase correction (in degrees)
-        p1
-            The first-order phase correction (in degrees / Hz)
-        discard_imaginaries
-            Only keep the real component of complex numbers after phase
-            correction and discard the imaginary component
-        range_type
-            The type of range to use for the x-axis data points
-        update_meta
-            Update the meta dict. This functionality is handled by sub-classes.
-        """
-        # Get the spectra width and data length for the last dimension
-        sw = self.sw[-1]
-        npts = self.data.size()[-1]
-        group_delay = self.group_delay if self.correct_digital_filter else 0.0
-
-        x = gen_range(npts, range_type=range_type, sw=sw,
-                      group_delay=group_delay)
-        phase = p0 + p1 * x
-        phase *= torch.pi / 180.  # in radians
-        self.data *= torch.exp(phase * 1.j)
-
-        if discard_imaginaries:
-            self.data = self.data.real
-
     def ft(self,
            auto: bool = False,
            center: bool = True,
@@ -563,3 +464,145 @@ class NMRSpectrum(abc.ABC):
         # Flip the last dimension, if needed
         if flip:
             self.data = torch.flip(self.data, (-1,))
+
+    def phase(self, p0: float, p1: float, discard_imaginaries: bool = True,
+              range_type: RangeType = RangeType.UNIT, update_meta: bool = True):
+        """Apply phase correction to the last dimension.
+
+        Phasing rotates the real and imaginary components of complex numbers
+        by a specified phase. This function may apply frequency-independent
+        phase angle corrections (p0) as well as linear freqency-dependent
+        phase angle corrections (p1).
+
+        .. math::
+            g(t) = e^{i(\\mathtt{p0} + \\mathtt{p1} \\cdot x)} g(t)
+        .. math::
+            G(\\omega) = e^{i(\\mathtt{p0} + \\mathtt{p1} \\cdot x)} f(\\omega)
+
+        Where the x-axis range type may be changed from unit_type ([0, 1[),
+        time or some other unit.
+
+        Parameters
+        ----------
+        p0
+            The zero-order phase correction (in degrees)
+        p1
+            The first-order phase correction (in degrees / Hz)
+        discard_imaginaries
+            Only keep the real component of complex numbers after phase
+            correction and discard the imaginary component
+        range_type
+            The type of range to use for the x-axis data points
+        update_meta
+            Update the meta dict. This functionality is handled by sub-classes.
+        """
+        # Get the spectra width and data length for the last dimension
+        sw = self.sw[-1]
+        npts = self.data.size()[-1]
+        group_delay = self.group_delay if self.correct_digital_filter else 0.0
+
+        x = gen_range(npts, range_type=range_type, sw=sw,
+                      group_delay=group_delay)
+        phase = p0 + p1 * x
+        phase *= torch.pi / 180.  # in radians
+        self.data *= torch.exp(phase * 1.j)
+
+        if discard_imaginaries:
+            self.data = self.data.real
+
+    def transpose(self, dim0: int, dim1: int, update_data_layout: bool = True,
+                  update_meta: bool = True):
+        """Transpose two axes (dim0 <-> dim1).
+
+        Parameters
+        ----------
+        dim0
+            The first dimension to transpose, starting from 0 to self.ndims - 1
+        dim1
+            The second dimension to transpose, starting from 0 to self.ndims - 1
+        update_data_layout
+            If True (default), automatically convert conplex numbers and handle
+            changes in data layout according to the
+            :meth:`.NMRSpectrum.data_layout` method.
+        update_meta
+            Update the meta dict. This functionality is handled by sub-classes.
+        """
+        # Only works if there is more than 1 dimension
+        assert self.ndims > 1, (
+            "Can only transpose spectrum with more than 1 dimension")
+
+        # Sort the order of the dimensions
+        dim0, dim1 = min(dim0, dim1), max(dim0, dim1)
+
+        # # Unpack complex numbers in the last dimension, if needed
+        if (update_data_layout and dim1 == self.ndims - 1 and
+           self.data_type[dim1] is DataType.COMPLEX):
+            # Determine the data layout the new dimension will need
+            new_data_layout = self.data_layout(dim0, data_type=DataType.COMPLEX)
+            logger.debug(f"new_data_layout: {new_data_layout}")
+
+            if new_data_layout is DataLayout.BLOCK_INTERLEAVE:
+                self.data = combine_block_from_complex(self.data)
+            elif new_data_layout is DataLayout.SINGLE_INTERLEAVE:
+                self.data = combine_single_from_complex(self.data)
+            else:
+                raise NotImplementedError
+
+        # Conduct the transpose
+        self.data = torch.transpose(self.data, dim0, dim1)
+
+        # Determine if the new last dimension should be converted to complex
+        if (update_data_layout and dim1 == self.ndims - 1 and
+           self.data_type[dim0] is DataType.COMPLEX):
+            # Determine the data layout for the old dimension
+            old_data_layout = self.data_layout(dim0, data_type=DataType.COMPLEX)
+            logger.debug(f"old_data_layout: {old_data_layout}")
+
+            if old_data_layout is DataLayout.BLOCK_INTERLEAVE:
+                self.data = split_block_to_complex(self.data)
+            elif old_data_layout is DataLayout.SINGLE_INTERLEAVE:
+                self.data = split_single_to_complex(self.data)
+            else:
+                raise NotImplementedError
+
+    def zerofill(self,
+                 double: t.Optional[int] = 1,
+                 double_base2: t.Optional[int] = None,
+                 size: t.Optional[int] = None,
+                 pad: t.Optional[int] = None,
+                 update_meta: bool = True) -> None:
+        """Zero-fill the last dimension
+
+        Parameters
+        ----------
+        double
+            The number of times to double the size of the last dimension with
+            zero-filling
+        double_base2
+            The number of times to double the size of the last dimension to
+            match the next 2^N size
+        size
+            The final size after zero-filling
+        pad
+            The number of points to add with zero-filling
+        update_meta
+            Update the meta dict. This functionality is handled by sub-classes.
+        """
+        # Determine the number of points to zero-fill to
+        npts = int(self.data.size()[-1])
+        if size is not None:
+            pass
+        elif pad is not None:
+            size = npts + pad
+        elif double_base2 is not None:
+            size = 2**(ceil(log2(npts)) + float(double_base2) - 1.0)
+        else:
+            size = npts * 2 * double
+
+        # Zero-fill (pad) the last dimension with zeroes
+        delta = size - npts  # Number of points to pad
+        assert delta > 0, (f"Zero-filling only works if the final number of "
+                           f"points {size} is larger than the current number "
+                           f"of points {size}")
+        self.data = pad_tensor(self.data, pad=(0, delta),  # pad_left, pad_right
+                               mode='constant', value=0.0)
