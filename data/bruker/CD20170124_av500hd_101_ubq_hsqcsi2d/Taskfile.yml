@@ -22,10 +22,12 @@ tasks:
          -ndim               2  -aq2D         Complex  \
          -out ./spec.fid -ov"
       - "sleep 3"
+      - "showhdr -dump spec.fid > spec.hdr"
     sources:
       - "ser"
     generates:
       - "spec.fid"
+      - "spec.hdr"
 
   process:
     deps: [convert]
