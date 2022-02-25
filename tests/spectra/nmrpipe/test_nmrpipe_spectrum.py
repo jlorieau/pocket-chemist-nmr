@@ -13,9 +13,9 @@ from pocketchemist_nmr.spectra.nmrpipe import NMRPipeSpectrum
 from pocketchemist_nmr.spectra.constants import ApodizationType, RangeType
 
 #: Attributes to test
-attrs = ('ndims', 'order', 'domain_type', 'data_type', 'sw', 'label',
-         'apodization', 'group_delay', 'correct_digital_filter',
-         'sign_adjustment', 'plane2dphase')
+attrs = ('ndims', 'order', 'domain_type', 'data_type', 'sw_hz', 'sw_ppm',
+         'car_hz', 'car_ppm', 'obs_mhz', 'label', 'apodization', 'group_delay',
+         'correct_digital_filter', 'sign_adjustment', 'plane2dphase')
 
 
 def parametrize_casesets(*globs, cases=None, prefix='data_') -> tuple:
@@ -361,7 +361,8 @@ def test_nmrpipe_spectrum_transpose(expected, expected_tp):
     match_metas(spectrum.meta, spectrum_tp.meta)
 
     # Check attributes to see if they were transposed correctly
-    for attr in ('domain_type', 'data_type', 'sw', 'label'):
+    for attr in ('domain_type', 'data_type', 'sw_hz', 'sw_ppm', 'car_hz',
+                 'car_ppm', 'obs_mhz', 'label'):
         print(f"spectrum1 attr: '{getattr(spectrum, attr)}', "
               f"spectrum1_tp attr: '{getattr(spectrum_tp, attr)}'")
         assert getattr(spectrum, attr) == getattr(spectrum_tp, attr)
@@ -384,7 +385,11 @@ def test_nmrpipe_spectrum_transpose(expected, expected_tp):
                                               '*nmrpipe_complex_fid_zf_1d',
                                               cases='...cases.nmrpipe',
                                               prefix='data_') +
-                         parametrize_casesets('*nmrpipe_complex_fid_2d',
+                         parametrize_casesets('*nmrpipe_real_fid_1d',
+                                              '*nmrpipe_real_fid_zf_1d',
+                                              cases='...cases.nmrpipe',
+                                              prefix='data_') +
+parametrize_casesets('*nmrpipe_complex_fid_2d',
                                               '*nmrpipe_complex_fid_zf_2d',
                                               cases='...cases.nmrpipe',
                                               prefix='data_'))
