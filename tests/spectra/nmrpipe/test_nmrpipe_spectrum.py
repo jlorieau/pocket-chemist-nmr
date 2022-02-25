@@ -3,12 +3,12 @@ Test the spectra/nmrpipe_spectrum.py submodule
 """
 from cmath import isclose
 from pathlib import Path
-from itertools import product
+from itertools import product, chain
 import typing as t
 
 import torch
 import pytest
-from pytest_cases import parametrize_with_cases
+from pytest_cases import parametrize_with_cases, get_all_cases
 from pocketchemist_nmr.spectra.nmrpipe import NMRPipeSpectrum
 from pocketchemist_nmr.spectra.constants import ApodizationType, RangeType
 
@@ -16,6 +16,24 @@ from pocketchemist_nmr.spectra.constants import ApodizationType, RangeType
 attrs = ('ndims', 'order', 'domain_type', 'data_type', 'sw', 'label',
          'apodization', 'group_delay', 'correct_digital_filter',
          'sign_adjustment', 'plane2dphase')
+
+
+def parametrize_casesets(*globs, cases=None, prefix='data_') -> tuple:
+    """Convert a serirs of case globs into a set of cases for parametrization.
+    """
+    # Convert globs to functions
+    funcs = []
+    dummy = lambda: None
+    for glob in globs:
+        glob_funcs = map(lambda glob: get_all_cases(dummy, cases=cases,
+                                                    prefix=prefix, glob=glob),
+                         glob if not isinstance(glob, str) else (glob,))
+        glob_funcs = chain.from_iterable(glob_funcs)
+        funcs.append(glob_funcs)
+
+    # Create a generator for the product of these
+    return tuple(tuple(f() for f in prod) if len(prod) > 1 else prod[0]()
+                 for prod in product(*funcs))
 
 
 def match_attributes(spectrum, expected):
@@ -123,7 +141,10 @@ def test_nmrpipe_spectrum_data_layout(expected):
 # I/O methods
 
 # See cases_nmrpipe_spectrum.py for a listing of test cases
-@parametrize_with_cases('expected', glob='*nmrpipe_io*')
+@pytest.mark.parametrize('expected', parametrize_casesets(
+    ('*nmrpipe_complex_spectrum_1d', '*nmrpipe_complex_fid_2d',
+     '*nmrpipe_real_spectrum_singlefile_3d'), cases='...cases.nmrpipe',
+    prefix='data_'))
 def test_nmrpipe_spectrum_load_save(expected, tmpdir):
     """Test the NMRPipeSpectrum load/save methods"""
     # Load the spectrum
@@ -147,7 +168,11 @@ def test_nmrpipe_spectrum_load_save(expected, tmpdir):
 
 # Mutators/Processing methods
 # See cases_nmrpipe_spectrum.py for a listing of test cases
-@parametrize_with_cases('expected, expected_em', glob='*nmrpipe_compare_em*')
+@pytest.mark.parametrize('expected, expected_em',
+                         parametrize_casesets('*nmrpipe_complex_fid_1d',
+                                              '*nmrpipe_complex_fid_em_1d',
+                                              cases='...cases.nmrpipe',
+                                              prefix='data_'))
 def test_nmrpipe_spectrum_apodization_exp(expected, expected_em):
     """Test the NMRPipeSpectrum apodization_exp method"""
     # Load the spectrum and its transpose
@@ -186,7 +211,11 @@ def test_nmrpipe_spectrum_apodization_exp(expected, expected_em):
 
 
 # See cases_nmrpipe_spectrum.py for a listing of test cases
-@parametrize_with_cases('expected, expected_sp', glob='*nmrpipe_compare_sp*')
+@pytest.mark.parametrize('expected, expected_sp',
+                         parametrize_casesets('*nmrpipe_complex_fid_1d',
+                                              '*nmrpipe_complex_fid_sp_1d',
+                                              cases='...cases.nmrpipe',
+                                              prefix='data_'))
 def test_nmrpipe_spectrum_apodization_sine(expected, expected_sp):
     """Test the NMRPipeSpectrum apodization_size method"""
     # Load the spectrum and its transpose
@@ -227,7 +256,11 @@ def test_nmrpipe_spectrum_apodization_sine(expected, expected_sp):
 
 
 # See cases_nmrpipe_spectrum.py for a listing of test cases
-@parametrize_with_cases('expected, expected_ft', glob='*nmrpipe_compare_ft*')
+@pytest.mark.parametrize('expected, expected_ft',
+                         parametrize_casesets('*nmrpipe_complex_fid_1d',
+                                              '*nmrpipe_complex_fid_ft_1d',
+                                              cases='...cases.nmrpipe',
+                                              prefix='data_'))
 def test_nmrpipe_spectrum_ft(expected, expected_ft):
     """Test the NMRPipeSpectrum ft method"""
     # Load the spectrum, if needed (cache for future tests)
@@ -267,7 +300,11 @@ def test_nmrpipe_spectrum_ft(expected, expected_ft):
 
 
 # See cases_nmrpipe_spectrum.py for a listing of test cases
-@parametrize_with_cases('expected, expected_ps', glob='*nmrpipe_compare_ps*')
+@pytest.mark.parametrize('expected, expected_ps',
+                         parametrize_casesets('*nmrpipe_complex_spectrum_1d',
+                                              '*nmrpipe_complex_spectrum_ps_1d',
+                                              cases='...cases.nmrpipe',
+                                              prefix='data_'))
 def test_nmrpipe_spectrum_phase(expected, expected_ps):
     """Test the NMRPipeSpectrum phase method"""
     # Load the spectrum and its transpose
@@ -303,7 +340,11 @@ def test_nmrpipe_spectrum_phase(expected, expected_ps):
 
 
 # See cases_nmrpipe_spectrum.py for a listing of test cases
-@parametrize_with_cases('expected, expected_tp', glob='*nmrpipe_compare_tp*')
+@pytest.mark.parametrize('expected, expected_tp',
+                         parametrize_casesets('*nmrpipe_complex_fid_2d',
+                                              '*nmrpipe_complex_fid_tp_2d',
+                                              cases='...cases.nmrpipe',
+                                              prefix='data_'))
 def test_nmrpipe_spectrum_transpose(expected, expected_tp):
     """Test the NMRPipeSpectrum transpose method"""
     # Load the spectrum and its transpose
@@ -338,7 +379,15 @@ def test_nmrpipe_spectrum_transpose(expected, expected_tp):
 
 
 # See cases_nmrpipe_spectrum.py for a listing of test cases
-@parametrize_with_cases('expected, expected_zf', glob='*nmrpipe_compare_zf*')
+@pytest.mark.parametrize('expected, expected_zf',
+                         parametrize_casesets('*nmrpipe_complex_fid_1d',
+                                              '*nmrpipe_complex_fid_zf_1d',
+                                              cases='...cases.nmrpipe',
+                                              prefix='data_') +
+                         parametrize_casesets('*nmrpipe_complex_fid_2d',
+                                              '*nmrpipe_complex_fid_zf_2d',
+                                              cases='...cases.nmrpipe',
+                                              prefix='data_'))
 def test_nmrpipe_spectrum_zerofill(expected, expected_zf):
     """Test the NMRPipeSpectrum zerofill method"""
     # Load the spectrum and its transpose
