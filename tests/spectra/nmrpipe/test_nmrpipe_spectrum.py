@@ -93,12 +93,14 @@ def match_metas(meta1: dict, meta2: dict,
             if not isclose(value1, value2, rel_tol=0.0001):
                 # For FDMAX/FDMIN/FDDISPMAX/FDDISPMIN, these should be within
                 # error (or within 0.01%)
-                unmatched_values[k] = ('mismatched values', value1, value2)
-        elif (isinstance(value1, float) and
-              round(value1, 1) != round(value2, 1)):
-            # For other floats, round them to make sure they match within the
-            # first decimal
-            unmatched_values[k] = ('mismatched values', value1, value2)
+                unmatched_values[k] = ('mismatched min/max values', value1,
+                                       value2)
+        elif isinstance(value1, float):
+            if round(value1, 2) != round(value2, 2):
+                # For other floats, round them to make sure they match within
+                # the first decimal
+                unmatched_values[k] = ('mismatched float values',
+                                       value1, value2)
         elif value1 != value2:
             # For other values, just check them directly
             unmatched_values[k] = ('mismatched values', value1, value2)
@@ -389,7 +391,7 @@ def test_nmrpipe_spectrum_transpose(expected, expected_tp):
                                               '*nmrpipe_real_fid_zf_1d',
                                               cases='...cases.nmrpipe',
                                               prefix='data_') +
-parametrize_casesets('*nmrpipe_complex_fid_2d',
+                         parametrize_casesets('*nmrpipe_complex_fid_2d',
                                               '*nmrpipe_complex_fid_zf_2d',
                                               cases='...cases.nmrpipe',
                                               prefix='data_'))
@@ -413,7 +415,11 @@ def test_nmrpipe_spectrum_zerofill(expected, expected_zf):
 
     # Find a tolerance for matching numbers. The numbers do not exactly match
     # the reference dataset due to rounding errors (presumably)
-    tol = max(abs(spectrum.data.max()), abs(spectrum.data.min())) * 0.0001
+    if spectrum.data.is_complex():
+        tol = (max(abs(spectrum.data.real.max()),
+                   abs(spectrum.data.real.min())) * 0.0001)
+    else:
+        tol = max(abs(spectrum.data.max()), abs(spectrum.data.min())) * 0.0001
 
     # Check the values, row-by-row
     if spectrum.ndims == 1:

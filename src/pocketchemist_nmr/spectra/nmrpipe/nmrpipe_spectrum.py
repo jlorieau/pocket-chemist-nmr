@@ -450,19 +450,26 @@ class NMRPipeSpectrum(NMRSpectrum):
             # Set the number of ZF points, this number is -ve for zero-fill
             self.meta[f"FDF{dim}ZF"] = -1. * float(new_size)
 
-            # The point position for the center point. Setting this value
-            # comes from method used from nmrglue:
-            # https://github.com/jjhelmus/nmrglue/blob/master/nmrglue/
-            # process/pipe_proc.py
-            if self.plane2dphase is Plane2DPhase.TPPI:
-                self.meta[f"FDF{dim}CENTER"] = float(round(new_size / 2. +
-                                                           0.001))
+            # The point position for the center point.
+            # TODO: It's possible this doesn't catch all circumstances
+            # (From bruk2pipe.c)
+            if self.data_type[-1] is DataType.COMPLEX:
+                center_pt = float(round(1. + new_size / 2.))
+                freq_size = float(new_size)
+            elif self.data_type[-1] is  DataType.REAL:
+                center_pt = float(round(1. + new_size / 4.))
+                freq_size = float(new_size / 2.)
             else:
-                self.meta[f"FDF{dim}CENTER"] = float(round(new_size / 2. + 1.))
+                raise NotImplementedError
+
+            self.meta[f"FDF{dim}CENTER"] = center_pt
 
             # Update the ORIG frequency, which the frequency of the center
-            # position
-
+            # position. According to bruk2pipe.c:
+            # xOrig = xObs*xCar - xSW*(xFreqSize - xMid)/xFreqSize;
+            orig = (self.obs_mhz[-1] * self.car_ppm[-1] -  # carrier in Hz
+                    self.sw_hz[-1] * (freq_size - center_pt) / freq_size)
+            self.meta[f"FDF{dim}ORIG"] = orig
 
             # Update other meta dict values
             self.update_meta()
