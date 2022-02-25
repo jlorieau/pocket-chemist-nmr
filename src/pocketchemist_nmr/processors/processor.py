@@ -76,6 +76,22 @@ class NMRGroupProcessor(GroupProcessor):
             [result.get() for result in results]
 
 
+class ApodizationExpSpectra(NMRProcessor):
+    """Apodization with exponential multiply (Lorentzian) in the last dimension
+    """
+    method = 'apodization_exp'
+    required_params = ('lb',)
+    optional_params = ('start', 'size')
+
+
+class ApodizationSinebellSpectra(NMRProcessor):
+    """Apodization with sinebell power (SP) in the last dimension
+    """
+    method = 'apodization_sine'
+    required_params = ('off', 'end', 'power')
+    optional_params = ('start', 'size')
+
+
 class FTSpectra(FFTProcessor, NMRProcessor):
     """Fourier Transform spectra (one or more)"""
 
@@ -99,6 +115,12 @@ class FTSpectra(FFTProcessor, NMRProcessor):
         return kwargs
 
 
+class PhaseSpectra(NMRProcessor):
+    """Phase the last dimension of a dataset"""
+    method = 'phase'
+    optional_params = ('p0', 'p1', 'discard_imaginaries')
+
+
 class Transpose2D(NMRProcessor):
     """Transpose the last 2 dimension (outer1-inner) of a dataset"""
 
@@ -114,25 +136,3 @@ class Transpose2D(NMRProcessor):
         # Setup the arguments that are passed to future processors
         kwargs['spectra'] = spectra
         return kwargs
-
-
-class PhaseSpectra(NMRProcessor):
-    """Phase the last dimension of a dataset"""
-    method = 'phase'
-    optional_params = ('p0', 'p1', 'discard_imaginaries')
-
-
-class ApodizationExpSpectra(NMRProcessor):
-    """Apodization with exponential multiply (Lorentzian) in the last dimension
-    """
-    method = 'apodization_exp'
-    required_params = ('lb',)
-    optional_params = ('start', 'size')
-
-
-class ApodizationSinebellSpectra(NMRProcessor):
-    """Apodization with sinebell power (SP) in the last dimension
-    """
-    method = 'apodization_sine'
-    required_params = ('off', 'end', 'power')
-    optional_params = ('start', 'size')
