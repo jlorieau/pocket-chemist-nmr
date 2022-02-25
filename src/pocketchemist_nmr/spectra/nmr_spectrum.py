@@ -66,29 +66,43 @@ class NMRSpectrum(abc.ABC):
     @property
     @abc.abstractmethod
     def domain_type(self) -> t.Tuple[DomainType, ...]:
-        """The data domain type (freq, time) for all available dimensions, as
-        ordered in the data.
-
-        Returns
-        -------
-        domain_type
-            The current value of the domain type setting.
-        """
+        """The data domain type (freq, time) for all dimensions."""
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
     def data_type(self) -> t.Tuple[DataType, ...]:
-        """The type data (real, imag, complex) of all available dimensions, as
-        ordered in the data."""
+        """The type data (real, imag, complex) of all dimensions"""
         raise NotImplementedError
 
     @property
     @abc.abstractmethod
-    def sw(self) -> t.Tuple[int, ...]:
-        """Spectral widths (in Hz) of all available dimensions, as ordered in
-        the data."""
+    def sw_hz(self) -> t.Tuple[float, ...]:
+        """Spectral widths in Hz of all dimensions"""
         raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def sw_ppm(self) -> t.Tuple[float, ...]:
+        """Spectra widths in ppm of all dimensions"""
+        return NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def car_hz(self) -> t.Tuple[float, ...]:
+        """The carrier (center) frequencies (in Hz) of all dimensions"""
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def car_ppm(self) -> t.Tuple[float, ...]:
+        """The carrier (center) frequencies (in ppm) of all dimensions"""
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def obs_mhz(self) -> t.Tuple[float, ...]:
+        """The observed (Zeeman) frequency in MHz of all dimensions"""
 
     @property
     @abc.abstractmethod
@@ -243,7 +257,7 @@ class NMRSpectrum(abc.ABC):
           apodizes points within the range.
         """
         # Get the time delays
-        sw = self.sw[-1]  # Spectral width (Hz)
+        sw = self.sw_hz[-1]  # Spectral width (Hz)
         npts = self.npts[-1]  # Number of points
         size = npts if size is None else size
         scaled_sw = sw * float(size - start) / float(npts)
@@ -306,7 +320,7 @@ class NMRSpectrum(abc.ABC):
           apodizes points within the range.
         """
         # Get the time delays
-        sw = self.sw[-1]  # Spectral width (Hz)
+        sw = self.sw_hz[-1]  # Spectral width (Hz)
         npts = self.npts[-1]  # Number of points
         size = npts if size is None else size
         scaled_sw = sw * float(size - start) / float(npts)
@@ -497,7 +511,7 @@ class NMRSpectrum(abc.ABC):
             Update the meta dict. This functionality is handled by sub-classes.
         """
         # Get the spectra width and data length for the last dimension
-        sw = self.sw[-1]
+        sw = self.sw_hz[-1]
         npts = self.data.size()[-1]
         group_delay = self.group_delay if self.correct_digital_filter else 0.0
 

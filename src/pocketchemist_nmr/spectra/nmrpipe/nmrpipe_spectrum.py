@@ -92,10 +92,24 @@ class NMRPipeSpectrum(NMRSpectrum):
         return tuple(data_types)
 
     @property
-    def sw(self):
-        """Spectral widths (in Hz) of all available dimensions, as ordered by
-        self.order"""
+    def sw_hz(self) -> t.Tuple[float, ...]:
         return tuple(self.meta[f"FDF{dim}SW"] for dim in self.order)
+
+    @property
+    def sw_ppm(self) -> t.Tuple[float, ...]:
+        return tuple(sw / obs for sw, obs in zip(self.sw_hz, self.obs_mhz))
+
+    @property
+    def car_hz(self) -> t.Tuple[float, ...]:
+        return tuple(car * obs for car, obs in zip(self.car_ppm, self.obs_mhz))
+
+    @property
+    def car_ppm(self) -> t.Tuple[float, ...]:
+        return tuple(self.meta[f"FDF{dim}CAR"] for dim in self.order)
+
+    @property
+    def obs_mhz(self) -> t.Tuple[float, ...]:
+        return tuple(self.meta[f"FDF{dim}OBS"] for dim in self.order)
 
     @property
     def label(self) -> t.Tuple[str, ...]:
