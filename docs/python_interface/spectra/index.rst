@@ -20,7 +20,11 @@ Accessors
 .. autoproperty:: NMRSpectrum.ndims
 .. autoproperty:: NMRSpectrum.domain_type
 .. autoproperty:: NMRSpectrum.data_type
-.. autoproperty:: NMRSpectrum.sw
+.. autoproperty:: NMRSpectrum.sw_hz
+.. autoproperty:: NMRSpectrum.sw_ppm
+.. autoproperty:: NMRSpectrum.car_hz
+.. autoproperty:: NMRSpectrum.car_ppm
+.. autoproperty:: NMRSpectrum.obs_mhz
 .. autoproperty:: NMRSpectrum.label
 .. autoproperty:: NMRSpectrum.apodization
 .. autoproperty:: NMRSpectrum.npts
@@ -47,3 +51,4 @@ Processing
     NMRSpectrum.ft
     NMRSpectrum.transpose
     NMRSpectrum.phase
+    NMRSpectrum.zerofill
