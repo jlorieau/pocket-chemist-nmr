@@ -646,7 +646,7 @@ class NMRSpectrum(abc.ABC):
             size = npts * 2 * double
 
         # Zero-fill (pad) the last dimension with zeroes
-        delta = size - npts  # Number of points to pad
+        delta = int(size - npts)  # Number of points to pad
         assert delta > 0, (f"Zero-filling only works if the final number of "
                            f"points {size} is larger than the current number "
                            f"of points {size}")

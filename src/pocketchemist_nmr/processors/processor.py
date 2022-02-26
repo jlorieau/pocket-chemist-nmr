@@ -10,8 +10,9 @@ from pocketchemist.processors.fft import FFTProcessor
 
 from ..spectra import NMRSpectrum
 
-__all__ = ('NMRProcessor', 'NMRGroupProcessor', 'FTSpectra', 'Transpose2D',
-           'PhaseSpectra', 'ApodizationExpSpectra')
+__all__ = ('NMRProcessor', 'NMRGroupProcessor', 'ApodizationExpSpectra',
+           'ApodizationSinebellSpectra', 'FTSpectra', 'PhaseSpectra',
+           'Transpose2D', 'ZeroFillSpectra')
 
 
 def set_logger(logger_):
@@ -136,3 +137,9 @@ class Transpose2D(NMRProcessor):
         # Setup the arguments that are passed to future processors
         kwargs['spectra'] = spectra
         return kwargs
+
+
+class ZeroFillSpectra(NMRProcessor):
+    """Zero-fill the last dimension of a dataset"""
+    method = 'zerofill'
+    optional_params = ('double', 'double_base2', 'size', 'pad')

@@ -147,6 +147,7 @@ def nmrpipe_in(in_format, show_header, in_filepaths):
 
 
 # Spectrum processing functions
+# These are ordered the same way as listed in NMRPipe
 
 @nmrpipe.group(name='-fn', context_settings=CONTEXT_SETTINGS)
 def nmrpipe_fn():
@@ -190,6 +191,28 @@ def nmrpipe_fn_tp():
 
     group = read_stdin()  # Unpack the stdin
     group += Transpose2D()  # Add the FT processor
+    write_stdout(group)  # Write the objects to stdout
+
+
+@nmrpipe_fn.command(name='ZF', context_settings=CONTEXT_SETTINGS)
+@click.option('-zf', required=False, type=float, default=1.0,
+              help="Number of times to double the size with zero-filling")
+@click.option('-zf2', required=False, type=float, default=1.0,
+              help="Number of times to double the size to match the next 2^N "
+                   "size with zero-filling")
+@click.option('-pad', required=False, type=float, default=None,
+              help="Number of points to add with zero-filling")
+@click.option('-size', required=False, type=float, default=None,
+              help="Final size after zero-filling")
+@nmrpipe_out
+def nmrpipe_fn_zf(zf, zf2, pad, size):
+    """Zero-fill the last dimension of a spectrum"""
+    from ..processors.processor import ZeroFillSpectra
+    logger.debug(f"zf={zf}, zf2={zf2}, pad={pad}, size={size}")
+
+    group = read_stdin()  # Unpack the stdin
+    group += ZeroFillSpectra(double=zf, double_base2=zf2, size=size,
+                             pad=pad)  # Add processor
     write_stdout(group)  # Write the objects to stdout
 
 
