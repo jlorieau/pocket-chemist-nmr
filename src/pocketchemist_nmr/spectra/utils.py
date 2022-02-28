@@ -33,7 +33,7 @@ from .constants import RangeType
 __all__ = ('interleave_block_to_single', 'interleave_single_to_block',
            'split_block_to_complex', 'split_single_to_complex',
            'combine_block_from_complex', 'combine_single_from_complex',
-           'gen_range')
+           'range_endpoints', 'gen_range')
 
 
 def interleave_block_to_single(tensor: torch.Tensor) -> torch.Tensor:
@@ -192,29 +192,12 @@ def combine_single_from_complex(complex_tensor: torch.Tensor) -> torch.Tensor:
                        dim=dim).view(size)
 
 
-def gen_range(npts: int,
-              range_type: RangeType = RangeType.UNIT,
-              sw: t.Optional[float] = None,
-              group_delay: t.Optional[float] = None) \
-        -> torch.Tensor:
-    """Generate a range of values based on spectral parameters
-
-    Parameters
-    ----------
-    npts
-        The number of points for the range
-    range_type
-        The type of range to generate
-    sw
-        The spectral width (in Hz) for the spectrum
-    group_delay
-        The optional group delay (in pts) to apply in offsetting time ranges
-
-    Returns
-    -------
-    range
-        A tensor with the range values
-    """
+def range_endpoints(npts: int,
+                    range_type: RangeType = RangeType.UNIT,
+                    sw: t.Optional[float] = None,
+                    group_delay: t.Optional[float] = None) \
+        -> t.Tuple[float, float]:
+    """The endpoints for ranges, based on spectral parameters"""
     # Find the endpoints for the range
     if RangeType.UNIT in range_type:
         # Unit range from [0,1[
@@ -253,7 +236,36 @@ def gen_range(npts: int,
 
     # Generate the range
     if RangeType.ENDPOINT in range_type:
-        return torch.linspace(start=start, end=end, steps=npts)
+        return start, end
     else:
+        return start, end + delta
 
-        return torch.linspace(start=start, end=end + delta, steps=npts)
+
+def gen_range(npts: int,
+              range_type: RangeType = RangeType.UNIT,
+              sw: t.Optional[float] = None,
+              group_delay: t.Optional[float] = None) \
+        -> torch.Tensor:
+    """Generate a range of values based on spectral parameters
+
+    Parameters
+    ----------
+    npts
+        The number of points for the range
+    range_type
+        The type of range to generate
+    sw
+        The spectral width (in Hz) for the spectrum
+    group_delay
+        The optional group delay (in pts) to apply in offsetting time ranges
+
+    Returns
+    -------
+    range
+        A tensor with the range values
+    """
+    start, end = range_endpoints(npts=npts, range_type=range_type, sw=sw,
+                                 group_delay=group_delay)
+
+    # Generate the range
+    return torch.linspace(start=start, end=end, steps=npts)

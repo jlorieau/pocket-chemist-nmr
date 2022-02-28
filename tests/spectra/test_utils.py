@@ -1,8 +1,6 @@
 """
 Test spectrum utilities
 """
-from math import isclose
-
 import torch
 import pytest
 
@@ -12,7 +10,8 @@ from pocketchemist_nmr.spectra.utils import (combine_block_from_complex,
                                              split_single_to_complex,
                                              interleave_block_to_single,
                                              interleave_single_to_block,
-                                             gen_range, RangeType)
+                                             gen_range, range_endpoints,
+                                             RangeType)
 
 
 def test_interleave_block_to_single():
@@ -232,11 +231,17 @@ def test_combine_split_single_complex_hypercomplex_2d():
      'expected': {'dx': 9000.**-1, 'start': 0. - 10. * 9000. ** -1,
                   'end': 9000.**-1 * 99. - 10. * 9000. **-1}}
 ))
-def test_gen_range(params):
-    """Test the gen_range utility function"""
+def test_range(params):
+    """Test the range_endpoints and gen_range utility functions"""
     kwargs, expected = params['kwargs'], params['expected']
+
+    # Test range_endpoints
+    start, end = range_endpoints(**kwargs)
+    assert start == pytest.approx(expected['start'])
+    assert end == pytest.approx(expected['end'])
+
+    # Test gen_range
     rng = gen_range(**kwargs)
-    print(rng)
     assert len(rng) == kwargs['npts']
     assert rng[1] - rng[0] == pytest.approx(expected['dx'])
     assert rng[0] == pytest.approx(expected['start'])
