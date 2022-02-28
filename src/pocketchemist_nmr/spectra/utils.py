@@ -244,8 +244,7 @@ def range_endpoints(npts: int,
 def gen_range(npts: int,
               range_type: RangeType = RangeType.UNIT,
               sw: t.Optional[float] = None,
-              group_delay: t.Optional[float] = None) \
-        -> torch.Tensor:
+              group_delay: t.Optional[float] = None) -> torch.Tensor:
     """Generate a range of values based on spectral parameters
 
     Parameters
@@ -261,7 +260,7 @@ def gen_range(npts: int,
 
     Returns
     -------
-    range
+    tensor_range
         A tensor with the range values
     """
     start, end = range_endpoints(npts=npts, range_type=range_type, sw=sw,

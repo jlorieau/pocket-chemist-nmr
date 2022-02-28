@@ -46,6 +46,16 @@ class NMRSpectrum(abc.ABC):
     #: The default attributes that are set to None when reset
     reset_attrs = ('data', 'in_filepath', 'out_filepath')
 
+    #: The range type for generating ranges of frequencies
+    freq_range_type = RangeType.FREQ | RangeType.ENDPOINT
+
+    #: The range type for generating ranges of times
+    time_range_type = RangeType.TIME | RangeType.ENDPOINT
+
+    #: The range type for generating ranges for first-order phase correction
+    #: sinebell apodization and other methods
+    unit_range_type = RangeType.UNIT
+
     def __init__(self, in_filepath, out_filepath=None):
         self.reset()
         self.in_filepath = Path(in_filepath)
@@ -202,6 +212,26 @@ class NMRSpectrum(abc.ABC):
         from the last dimension."""
         raise NotImplementedError
 
+    @property
+    def freq_range(self) -> t.Tuple[torch.Tensor, ...]:
+        """Generate a range (tensor) of frequencies in Hz for each dimension
+
+        The current dimension is the last dimension.
+        """
+        return tuple(gen_range(npts, range_type=self.freq_range_type,
+                               sw=sw, group_delay=self.group_delay)
+                     for npts, sw in zip(self.npts, self.sw_hz))
+
+    @property
+    def time_range(self) -> t.Tuple[torch.Tensor, ...]:
+        """Generate a range (tensor) of times in sec for each dimension
+
+        The current dimension is the last dimension.
+        """
+        return tuple(gen_range(npts, range_type=self.time_range_type,
+                               sw=sw, group_delay=self.group_delay)
+                     for npts, sw in zip(self.npts, self.sw_hz))
+
     # Accessor functions
 
     @abc.abstractmethod
@@ -227,13 +257,15 @@ class NMRSpectrum(abc.ABC):
     def convert(self, value: float,
                 unit_from: UnitType = UnitType.POINTS,
                 unit_to: UnitType = UnitType.POINTS,
-                correct_digital_filter: bool = True) -> float:
+                correct_digital_filter: bool = True) -> t.Union[float, int]:
         """Convert a values from one unit to another
 
         Parameters
         ----------
         value
-            The value to convert
+            The value to convert.
+            If the unit_from is in points, negative values indicate the number
+            of points from the end of the dataset
         unit_from
             The unit type of the value. eg. UnitType.Hz, UnitType.ppm
         unit_to
@@ -262,15 +294,24 @@ class NMRSpectrum(abc.ABC):
             elif unit_to is UnitType.FREQ or unit_from is UnitType.PPM:
                 raise ValueError(msg.format(domain_type, unit_to))
 
+        # Get parameters that will be needed in the calculations
+        npts = self.npts[-1]
+        dw_s = self.sw_hz[-1] / float(npts)
+        range_hz = self.range_hz[-1]
+        sw_hz = abs(range_hz[0] - range_hz[1])
+        df_hz = sw_hz / npts
+        range_ppm = self.range_ppm[-1]
+        sw_ppm = abs(range_ppm[0] - range_ppm[1])
+        df_ppm = sw_ppm / npts
+
         # Retrieve the point number (position) for the value in units
         if unit_from is UnitType.POINTS:
             # Nothing to change for points converted to points
-            point = value
+            value = float(value)
+            point = value if value > 0.0 else float(npts) + value
         elif unit_from is UnitType.SEC:
             # Convert time in sec to points
-            npts = self.npts[-1]
-            dw = self.sw_hz[-1] / float(npts)
-            point = round(value / dw)
+            point = float(value / dw_s)
 
             # Account for group delay if a digital filter correction is needed
             if correct_digital_filter and self.correct_digital_filter:
@@ -278,9 +319,29 @@ class NMRSpectrum(abc.ABC):
                 point -= shift_points
         elif unit_from is UnitType.HZ:
             # Convert frequency in Hz to points
-            point
+            point = (value - range_hz[0]) / df_hz
+        elif unit_from is UnitType.PPM:
+            # Convert frequency in ppm to points
+            point = (value - range_ppm[0]) / df_ppm
+        else:
+            raise NotImplementedError
 
+        # Check that the number of points is within range
+        assert 0.0 < point < float(npts), (
+            f"The value '{value}' is not within range of the data'")
 
+        # Retrieve the value of the point number
+        if unit_to is UnitType.POINTS:
+            # Nothing to change if the destination unit is in points
+            return round(point)
+        elif unit_to is UnitType.SEC:
+            return float(point) * dw_s
+        elif unit_to is UnitType.HZ:
+            return float(point) * df_hz
+        elif unit_to is UnitType.PPM:
+            return float(point) * df_ppm
+        else:
+            raise NotImplementedError
 
     # I/O methods
 
@@ -340,7 +401,7 @@ class NMRSpectrum(abc.ABC):
     # Manipulator methods
     def apodization_exp(self, lb: float, first_point_scale: float = 1.0,
                         start: int = 0, size: t.Optional[int] = None,
-                        range_type: RangeType = RangeType.TIME,
+                        range_type: t.Optional[RangeType] = None,
                         update_meta: bool = True) -> None:
         """Apply exponential apodization to the last dimension.
 
@@ -375,6 +436,9 @@ class NMRSpectrum(abc.ABC):
           range. This function, instead, copies these points (scale 1.0) and
           apodizes points within the range.
         """
+        # Prepare arguments
+        range_type = self.time_range_type if range_type is None else range_type
+
         # Get the time delays
         sw = self.sw_hz[-1]  # Spectral width (Hz)
         npts = self.npts[-1]  # Number of points
@@ -398,7 +462,7 @@ class NMRSpectrum(abc.ABC):
                          power: float = 1.0,
                          first_point_scale: float = 1.0,
                          start: int = 0, size: t.Optional[int] = None,
-                         range_type: RangeType = RangeType.UNIT,
+                         range_type: t.Optional[RangeType] = RangeType.UNIT,
                          update_meta: bool = True) -> None:
         """Apply sine-bell apodization to the last dimension.
 
@@ -438,6 +502,9 @@ class NMRSpectrum(abc.ABC):
           range. This function, instead, copies these points (scale 1.0) and
           apodizes points within the range.
         """
+        # Prepare arguments
+        range_type = self.unit_range_type if range_type is None else range_type
+
         # Get the time delays
         sw = self.sw_hz[-1]  # Spectral width (Hz)
         npts = self.npts[-1]  # Number of points
@@ -598,8 +665,10 @@ class NMRSpectrum(abc.ABC):
         if flip:
             self.data = torch.flip(self.data, (-1,))
 
-    def phase(self, p0: float, p1: float, discard_imaginaries: bool = True,
-              range_type: RangeType = RangeType.UNIT, update_meta: bool = True):
+    def phase(self, p0: float, p1: float,
+              discard_imaginaries: bool = True,
+              range_type: t.Optional[RangeType] = None,
+              update_meta: bool = True):
         """Apply phase correction to the last dimension.
 
         Phasing rotates the real and imaginary components of complex numbers
@@ -629,6 +698,9 @@ class NMRSpectrum(abc.ABC):
         update_meta
             Update the meta dict. This functionality is handled by sub-classes.
         """
+        # Prepare arguments
+        range_type = self.unit_range_type if range_type is None else range_type
+
         # Get the spectra width and data length for the last dimension
         sw = self.sw_hz[-1]
         npts = self.data.size()[-1]
