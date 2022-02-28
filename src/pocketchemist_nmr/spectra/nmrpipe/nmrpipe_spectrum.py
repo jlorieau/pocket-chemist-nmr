@@ -108,6 +108,27 @@ class NMRPipeSpectrum(NMRSpectrum):
         return tuple(self.meta[f"FDF{dim}CAR"] for dim in self.order)
 
     @property
+    def range_hz(self) -> t.Tuple[t.Tuple[float, float], ...]:
+        # FDF{dim}ORIG is the Hz frequency of the last point.
+        range_hz = []
+        for dim in self.order:
+            orig_hz = self.meta[f"FDF{dim}ORIG"]
+            sw_hz = self.meta[f"FDF{dim}SW"]
+            npts = (-1. * self.meta[f"FDF{dim}ZF"]  # Use ZF size, if available
+                    if self.meta[f"FDF{dim}ZF"] < -1.0 else
+                    self.meta[f"FDF{dim}TDSIZE"])  # Otherwise use TDSIZE
+            range_left = orig_hz + sw_hz * (1.0 - 1./float(npts))
+            range_right = orig_hz
+
+            range_hz.append((range_left, range_right))
+        return tuple(range_hz)
+
+    @property
+    def range_ppm(self) -> t.Tuple[t.Tuple[float, float], ...]:
+        return tuple((rng[0] / obs_mhz, rng[1] / obs_mhz)
+                     for rng, obs_mhz in zip(self.range_hz, self.obs_mhz))
+
+    @property
     def obs_mhz(self) -> t.Tuple[float, ...]:
         return tuple(self.meta[f"FDF{dim}OBS"] for dim in self.order)
 

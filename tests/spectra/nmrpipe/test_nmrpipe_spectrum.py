@@ -14,8 +14,9 @@ from pocketchemist_nmr.spectra.constants import ApodizationType, RangeType
 
 #: Attributes to test
 attrs = ('ndims', 'order', 'domain_type', 'data_type', 'sw_hz', 'sw_ppm',
-         'car_hz', 'car_ppm', 'obs_mhz', 'label', 'apodization', 'group_delay',
-         'correct_digital_filter', 'sign_adjustment', 'plane2dphase')
+         'car_hz', 'car_ppm', 'range_hz', 'range_ppm', 'obs_mhz', 'label',
+         'apodization', 'group_delay', 'correct_digital_filter',
+         'sign_adjustment', 'plane2dphase')
 
 
 def parametrize_casesets(*globs, cases=None, prefix='data_') -> tuple:
@@ -38,21 +39,43 @@ def parametrize_casesets(*globs, cases=None, prefix='data_') -> tuple:
 
 def match_attributes(spectrum, expected):
     """Check the attributes of a spectrum"""
+    unmatched_values = dict()
+
     for attr in attrs:
         spectrum_value = getattr(spectrum, attr)
         expected_value = expected['spectrum'][attr]
 
-        print(f"attribute: {attr}, spectrum value: '{spectrum_value}', "
-              f"expected value: '{expected_value}'")
         # Check that the values match expected
         if (hasattr(expected_value, '__iter__') and
                 all(isinstance(i, float) for i in expected_value)):
-            # For parameters that are lists of floats, compare each individually
-            # in case there are floating point errors
-            assert all([isclose(i, j) for i, j in zip(spectrum_value,
-                                                      expected_value)])
+            # Float parameters
+            if not all(isclose(i, j)
+                       for i, j in zip(spectrum_value, expected_value)):
+                unmatched_values[attr] = ('mismatched float values',
+                                          spectrum_value, expected_value)
+        elif (hasattr(expected_value, '__iter__') and
+              all(isinstance(i, tuple) for i in expected_value) and
+              all(isinstance(j, float) for i in expected_value for j in i )):
+            # Tuple of tuples of floats
+            if not all(isclose(i, j)
+                       for tpl1, tpl2 in zip(spectrum_value, expected_value)
+                       for i, j in zip(tpl1, tpl2)):
+                unmatched_values[attr] = ('mistmatched tuple of tuple floats',
+                                          spectrum_value, expected_value)
+
         else:
-            assert spectrum_value == expected_value
+            # All other values are compared directly
+            if not spectrum_value == expected_value:
+                unmatched_values[attr] = ('mistmatched values',
+                                          spectrum_value, expected_value)
+
+    # Assert that there are no unmatched_values
+    if len(unmatched_values) > 0:
+        msg = "The following values (spectrum vs expected) do not match:\n"
+        msg += '\n'.join(f'  {k}: {value1} != {value2}  ({reason})'
+                         for k, (reason, value1, value2)
+                         in unmatched_values.items())
+        raise AssertionError(msg)
 
 
 def match_metas(meta1: dict, meta2: dict,

@@ -10,8 +10,8 @@ import torch
 from torch.nn.functional import pad as pad_tensor
 from loguru import logger
 
-from .constants import (DomainType, DataType, DataLayout, ApodizationType,
-                        RangeType)
+from .constants import (UnitType, DomainType, DataType, DataLayout,
+                        ApodizationType, RangeType)
 from .meta import NMRMetaDict
 from .utils import (split_block_to_complex, combine_block_from_complex,
                     split_single_to_complex, combine_single_from_complex,
@@ -55,7 +55,7 @@ class NMRSpectrum(abc.ABC):
         # Load the spectrum
         self.load()
 
-    # Basic accessor/mutator methods
+    # Basic accessor/mutator properties
 
     @property
     @abc.abstractmethod
@@ -120,6 +120,33 @@ class NMRSpectrum(abc.ABC):
 
     @property
     @abc.abstractmethod
+    def range_hz(self) -> t.Tuple[t.Tuple[float, float], ...]:
+        """The left- and right-side frequency ranges (in hz) of all dimensions.
+
+        The current dimension is the last dimension
+
+        .. note:: For each dimension, the first range value is greater (>)
+                  than the second because NMR data is listed from positive
+                  frequencies to negative frequencies.
+        """
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
+    def range_ppm(self) -> t.Tuple[t.Tuple[float, float], ...]:
+        """The left- and right-right frequency ranges (in ppm) of all
+        dimensions.
+
+        The current dimension is the last dimension
+
+        .. note:: For each dimension, the first range value is greater (>)
+                  than the second because NMR data is listed from positive
+                  frequencies to negative frequencies.
+        """
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
     def obs_mhz(self) -> t.Tuple[float, ...]:
         """The observed (Zeeman) frequency in MHz of all dimensions
 
@@ -153,26 +180,6 @@ class NMRSpectrum(abc.ABC):
         """
         return tuple(self.data.size())
 
-    @abc.abstractmethod
-    def data_layout(self, dim: int,
-                    data_type: t.Optional[DataType] = None) -> DataLayout:
-        """Give the current data layout for all dimensions or the expected
-        data layout for the given data type and dimension.
-
-        Parameters
-        ----------
-        dim
-            The current or expected data layout for the given dimension
-        data_type
-            If specified, give the expected data layout for the given data type
-
-        Returns
-        -------
-        data_layout
-            The data layout for the given data type and dimension
-        """
-        raise NotImplementedError
-
     @property
     @abc.abstractmethod
     def group_delay(self) -> t.Union[None, float]:
@@ -194,6 +201,86 @@ class NMRSpectrum(abc.ABC):
         """Whether a digital correction filter must be corrected (removed)
         from the last dimension."""
         raise NotImplementedError
+
+    # Accessor functions
+
+    @abc.abstractmethod
+    def data_layout(self, dim: int,
+                    data_type: t.Optional[DataType] = None) -> DataLayout:
+        """Give the current data layout for all dimensions or the expected
+        data layout for the given data type and dimension.
+
+        Parameters
+        ----------
+        dim
+            The current or expected data layout for the given dimension
+        data_type
+            If specified, give the expected data layout for the given data type
+
+        Returns
+        -------
+        data_layout
+            The data layout for the given data type and dimension
+        """
+        raise NotImplementedError
+
+    def convert(self, value: float,
+                unit_from: UnitType = UnitType.POINTS,
+                unit_to: UnitType = UnitType.POINTS,
+                correct_digital_filter: bool = True) -> float:
+        """Convert a values from one unit to another
+
+        Parameters
+        ----------
+        value
+            The value to convert
+        unit_from
+            The unit type of the value. eg. UnitType.Hz, UnitType.ppm
+        unit_to
+            The unit type to convert the value to.
+        correct_digital_filter
+            If a digital filter correction is needed, apply it in the
+            calculation.
+
+        Returns
+        -------
+        point
+            The point number corresponding to the value
+        """
+        # Make sure the unit type is compatible with the current domain type
+        domain_type = self.domain_type[-1]
+        msg = ("The unit type '{unit}' is incompatible with the "
+               "'{domain_type}' domain type")
+        if domain_type is DomainType.FREQ:
+            if unit_from is UnitType.SEC:
+                raise ValueError(msg.format(domain_type, unit_from))
+            elif unit_to is UnitType.SEC:
+                raise ValueError(msg.format(domain_type, unit_to))
+        elif domain_type is DomainType.TIME:
+            if unit_from is UnitType.FREQ or unit_from is UnitType.PPM:
+                raise ValueError(msg.format(domain_type, unit_from))
+            elif unit_to is UnitType.FREQ or unit_from is UnitType.PPM:
+                raise ValueError(msg.format(domain_type, unit_to))
+
+        # Retrieve the point number (position) for the value in units
+        if unit_from is UnitType.POINTS:
+            # Nothing to change for points converted to points
+            point = value
+        elif unit_from is UnitType.SEC:
+            # Convert time in sec to points
+            npts = self.npts[-1]
+            dw = self.sw_hz[-1] / float(npts)
+            point = round(value / dw)
+
+            # Account for group delay if a digital filter correction is needed
+            if correct_digital_filter and self.correct_digital_filter:
+                shift_points = int(floor(self.group_delay))
+                point -= shift_points
+        elif unit_from is UnitType.HZ:
+            # Convert frequency in Hz to points
+            point
+
+
 
     # I/O methods
 
