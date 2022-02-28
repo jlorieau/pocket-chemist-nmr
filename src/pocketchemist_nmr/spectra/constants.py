@@ -3,11 +3,24 @@ Constants and enum types for NMRSpectra
 """
 from enum import Enum, Flag, auto
 
-__all__ = ('DomainType', 'DataType', 'DataLayout', 'ApodizationType',
-           'RangeType')
+__all__ = ('UnitType', 'DomainType', 'DataType', 'DataLayout',
+           'ApodizationType', 'RangeType')
 
 
 # Enumeration types
+class UnitType(Enum):
+    """The types of units for values"""
+    UNKNOWN = 0  # Unknown units
+
+    POINTS = 100  # Unit of points (number of points)
+    PERCENT = 110  # Percentage
+
+    HZ = 200  # Frequency in Hz (s^-1)
+    PPM = 210  # Frequency in parts-per-million (relative to Larmor freq)
+
+    SEC = 300  # Time in seconds
+
+
 class DomainType(Enum):
     """The data domain type for a dimension"""
     UNKNOWN = 0  # Unknown domain type
