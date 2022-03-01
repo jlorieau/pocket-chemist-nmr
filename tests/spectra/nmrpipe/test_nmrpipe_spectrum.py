@@ -172,40 +172,50 @@ def test_nmrpipe_spectrum_properties(expected):
 
 @parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
                         cases='...cases.nmrpipe')
-def test_nmrpipe_spectrum_time_ranges(expected):
-    """Test the NMRPipeSpectrum array_s properties"""
+def test_nmrpipe_spectrum_array_hz(expected):
+    """Test the NMRPipeSpectrum array_hz method"""
     # Load the spectrum
     print(f"Loading spectrum '{expected['filepath']}")
     spectrum = NMRPipeSpectrum(expected['filepath'])
 
-    # Set the range_type
-    spectrum.time_range_type = RangeType.TIME
+    # Check that the frequency series respect the spectral width
+    t1 = tuple(f_rng[-1] - f_rng[0] for f_rng in spectrum.array_hz())
+    t2 = spectrum.sw_hz
+    match_tuple_floats(t1, t2)
+
+
+@parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
+                        cases='...cases.nmrpipe')
+def test_nmrpipe_spectrum_array_ppm(expected):
+    """Test the NMRPipeSpectrum array_ppm method"""
+    # Load the spectrum
+    print(f"Loading spectrum '{expected['filepath']}")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+
+    # Check that the frequency series respect the spectral width (within 4
+    # decimal places)
+    t1 = tuple(round(float(f_rng[-1] - f_rng[0]), 4)
+               for f_rng in spectrum.array_ppm())
+    t2 = tuple(round(sw_ppm, 4) for sw_ppm in spectrum.sw_ppm)
+    match_tuple_floats(t1, t2)
+
+
+@parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
+                        cases='...cases.nmrpipe')
+def test_nmrpipe_spectrum_array_s(expected):
+    """Test the NMRPipeSpectrum array_s method"""
+    # Load the spectrum
+    print(f"Loading spectrum '{expected['filepath']}")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
 
     # Check that the time series respect the spectral widths
-    t1 = tuple((t_rng[1] - t_rng[0]) ** -1 for t_rng in spectrum.array_s)
+    t1 = tuple((t_rng[1] - t_rng[0]) ** -1 for t_rng in spectrum.array_s())
     t2 = spectrum.sw_hz
 
     # Match the range values to within 2 decimals--i.e. 8392.123 and 8392.12
     # match
     match_tuple_floats(tuple(round(float(i), 2) for i in t1),
                        tuple(round(float(j), 2) for j in t2))
-
-
-@parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
-                        cases='...cases.nmrpipe')
-def test_nmrpipe_spectrum_array_hz(expected):
-    """Test the NMRPipeSpectrum array_hz properties"""
-    # Load the spectrum
-    print(f"Loading spectrum '{expected['filepath']}")
-    spectrum = NMRPipeSpectrum(expected['filepath'])
-
-    # Setup the range type
-    spectrum.freq_range_type = RangeType.FREQ | RangeType.ENDPOINT
-
-    # Check that the frequency series respect the spectral width
-    t1 = tuple(f_rng[-1] - f_rng[0] for f_rng in spectrum.array_hz)
-    t2 = spectrum.sw_hz
-    match_tuple_floats(t1, t2)
 
 
 @parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',

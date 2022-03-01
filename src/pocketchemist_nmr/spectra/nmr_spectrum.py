@@ -173,27 +173,6 @@ class NMRSpectrum(abc.ABC):
         raise NotImplementedError
 
     @property
-    def array_hz(self) -> t.Tuple[torch.Tensor, ...]:
-        """Generate an array (tensor) of frequency values in Hz for each
-        dimension
-
-        The current dimension is the last dimension.
-        """
-        return tuple(gen_range(npts, range_type=self.freq_range_type,
-                               sw=sw, group_delay=self.group_delay)
-                     for npts, sw in zip(self.npts, self.sw_hz))
-
-    @property
-    def array_s(self) -> t.Tuple[torch.Tensor, ...]:
-        """Generate an array (tensor) of time values in sec for each dimension
-
-        The current dimension is the last dimension.
-        """
-        return tuple(gen_range(npts, range_type=self.time_range_type,
-                               sw=sw, group_delay=self.group_delay)
-                     for npts, sw in zip(self.npts, self.sw_hz))
-
-    @property
     @abc.abstractmethod
     def label(self) -> t.Tuple[str, ...]:
         """The labels for all dimensions, as ordered in the data.
@@ -343,6 +322,61 @@ class NMRSpectrum(abc.ABC):
             return float(point) * df_ppm
         else:
             raise NotImplementedError
+
+    def array_hz(self, range_type: t.Optional[RangeType] = None) \
+            -> t.Tuple[torch.Tensor, ...]:
+        """Generate an array (tensor) of frequency values in Hz for each
+        dimension
+
+        The current dimension is the last dimension.
+        """
+        range_type = self.freq_range_type if range_type is None else range_type
+        return tuple(gen_range(npts, range_type=range_type,
+                               sw=sw, group_delay=self.group_delay)
+                     for npts, sw in zip(self.npts, self.sw_hz))
+
+    def array_ppm(self, range_type: t.Optional[RangeType] = None) \
+            -> t.Tuple[torch.Tensor, ...]:
+        """Generate an array (tensor) of frequency values in ppm for each
+        dimension
+
+        The current dimension is the last dimension.
+        """
+        range_type = self.freq_range_type if range_type is None else range_type
+        return tuple(gen_range(npts, range_type=range_type,
+                               sw=sw / obs_mhz, group_delay=self.group_delay)
+                     for npts, sw, obs_mhz in zip(self.npts, self.sw_hz,
+                                                  self.obs_mhz))
+
+    def array_s(self, range_type: t.Optional[RangeType] = None) \
+            -> t.Tuple[torch.Tensor, ...]:
+        """Generate an array (tensor) of time values in sec for each dimension
+
+        The current dimension is the last dimension.
+        """
+        range_type = self.time_range_type if range_type is None else range_type
+        if self.correct_digital_filter:
+            # Apply the group delay correction
+            return tuple(gen_range(npts, range_type=range_type,
+                                   sw=sw, group_delay=self.group_delay)
+                         for npts, sw in zip(self.npts, self.sw_hz))
+        else:
+            # Do not apply the group delay correction
+            return tuple(gen_range(npts, range_type=range_type,
+                                   sw=sw, group_delay=0.0)
+                         for npts, sw in zip(self.npts, self.sw_hz))
+
+    def array_unit(self, range_type: t.Optional[RangeType] = None) \
+            -> t.Tuple[torch.Tensor, ...]:
+        """Generate an array (tensor) of unit values ([0,1[ or [0,1]) for each
+        dimension
+
+        The current dimension is the last dimension.
+        """
+        range_type = self.unit_range_type if range_type is None else range_type
+        return tuple(gen_range(npts, range_type=range_type,
+                               sw=sw, group_delay=self.group_delay)
+                     for npts, sw in zip(self.npts, self.sw_hz))
 
     # I/O methods
 
