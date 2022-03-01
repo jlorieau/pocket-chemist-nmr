@@ -329,6 +329,17 @@ class NMRSpectrum(abc.ABC):
         dimension
 
         The current dimension is the last dimension.
+
+        Parameters
+        ----------
+        range_type
+            The type of range to use for the x-axis data points
+
+        Returns
+        -------
+        array_hz
+            A tuple of arrays (1D tensors) for the values of frequencies in Hz
+            for each dimension.
         """
         range_type = self.freq_range_type if range_type is None else range_type
         return tuple(gen_range(npts, range_type=range_type,
@@ -341,6 +352,17 @@ class NMRSpectrum(abc.ABC):
         dimension
 
         The current dimension is the last dimension.
+
+        Parameters
+        ----------
+        range_type
+            The type of range to use for the x-axis data points
+
+        Returns
+        -------
+        array_hz
+            A tuple of arrays (1D tensors) for the values of frequencies in ppm
+            for each dimension.
         """
         range_type = self.freq_range_type if range_type is None else range_type
         return tuple(gen_range(npts, range_type=range_type,
@@ -353,6 +375,17 @@ class NMRSpectrum(abc.ABC):
         """Generate an array (tensor) of time values in sec for each dimension
 
         The current dimension is the last dimension.
+
+        Parameters
+        ----------
+        range_type
+            The type of range to use for the x-axis data points
+
+        Returns
+        -------
+        array_hz
+            A tuple of arrays (1D tensors) for the values of frequencies in
+            seconds for each dimension.
         """
         range_type = self.time_range_type if range_type is None else range_type
         if self.correct_digital_filter:
@@ -472,21 +505,13 @@ class NMRSpectrum(abc.ABC):
           apodizes points within the range.
         """
         # Prepare arguments
-        range_type = self.time_range_type if range_type is None else range_type
-
-        # Get the time delays
-        sw = self.sw_hz[-1]  # Spectral width (Hz)
-        npts = self.npts[-1]  # Number of points
-        size = npts if size is None else size
-        scaled_sw = sw * float(size - start) / float(npts)
-        size = npts if size is None else npts
-        group_delay = self.group_delay if self.correct_digital_filter else 0.0
+        t = self.array_s(range_type=range_type)[-1]  # Get last (current) dim
+        size = int(self.npts[-1]) if size is None else size
 
         # Calculate the decay rate
-        k = torch.ones(npts)
-        t = gen_range(npts=size, range_type=range_type, sw=scaled_sw,
-                      group_delay=group_delay)
-        k[start:start + size] = torch.abs(lb * torch.pi * t)
+        k = torch.ones(len(t))
+        k[start:start + size] = torch.abs(lb * torch.pi *
+                                          t[start: start + size])
 
         # Calculate the apodization func
         self.data *= torch.exp(-k)
@@ -538,24 +563,16 @@ class NMRSpectrum(abc.ABC):
           apodizes points within the range.
         """
         # Prepare arguments
-        range_type = self.unit_range_type if range_type is None else range_type
-
-        # Get the time delays
-        sw = self.sw_hz[-1]  # Spectral width (Hz)
-        npts = self.npts[-1]  # Number of points
-        size = npts if size is None else size
-        scaled_sw = sw * float(size - start) / float(npts)
-        size = npts if size is None else npts
-        group_delay = self.group_delay if self.correct_digital_filter else 0.0
+        x = self.array_unit(range_type=range_type)[-1]  # Get last (current) dim
+        size = int(self.npts[-1]) if size is None else size
 
         # Calculate the sine-belle function
         off *= torch.pi
         end *= torch.pi
-        k = torch.ones(npts)
-        t = gen_range(npts=size, range_type=range_type, sw=scaled_sw,
-                      group_delay=group_delay)
-
-        k[start:start + size] = torch.sin(off + (end - off) * t) ** power
+        k = torch.ones(len(x))
+        k[start:start + size] = torch.sin(off +
+                                          (end - off) *
+                                          x[start: start + size]) ** power
 
         # Calculate the apodization func
         self.data *= k
@@ -734,15 +751,9 @@ class NMRSpectrum(abc.ABC):
             Update the meta dict. This functionality is handled by sub-classes.
         """
         # Prepare arguments
-        range_type = self.unit_range_type if range_type is None else range_type
+        x = self.array_unit(range_type)[-1]  # Get last (current) dim
 
-        # Get the spectra width and data length for the last dimension
-        sw = self.sw_hz[-1]
-        npts = self.data.size()[-1]
-        group_delay = self.group_delay if self.correct_digital_filter else 0.0
-
-        x = gen_range(npts, range_type=range_type, sw=sw,
-                      group_delay=group_delay)
+        # Apply the zeroth and first order phase
         phase = p0 + p1 * x
         phase *= torch.pi / 180.  # in radians
         self.data *= torch.exp(phase * 1.j)
