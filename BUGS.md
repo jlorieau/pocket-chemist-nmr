@@ -29,4 +29,8 @@ incorrectly (bugs).
    zero-filling, the current approach is likely indistinguishable from the 
    better approach--i.e. when zero filled to 512 points, the spectral width
    is only incorrect by 0.2% and frequencies in between are only incorrect by
-   a fraction of that amount.
+   a fraction of that amount. The solution to this problem is to use
+   freq_range_type, time_range_type and unit_range_type NMRSpectrum attributes
+   to switch between NMRPipe-type ranges in tests and to use correct range
+   types by default. The corresponding NMRSpectrum range_hz, 
+   range_ppm, array_hz, array_s give the correct range values.
