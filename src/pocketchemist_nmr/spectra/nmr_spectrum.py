@@ -74,6 +74,14 @@ class NMRSpectrum(abc.ABC):
         raise NotImplementedError
 
     @property
+    def npts(self) -> t.Tuple[int, ...]:
+        """The number of complex, real or imaginary points in each dimension
+
+        The current dimension is the last dimension.
+        """
+        return tuple(self.data.size())
+
+    @property
     @abc.abstractmethod
     def domain_type(self) -> t.Tuple[DomainType, ...]:
         """The data domain type (freq, time) for all dimensions
@@ -130,6 +138,15 @@ class NMRSpectrum(abc.ABC):
 
     @property
     @abc.abstractmethod
+    def obs_mhz(self) -> t.Tuple[float, ...]:
+        """The observed (Zeeman) frequency in MHz of all dimensions
+
+        The current dimension is the last dimension.
+        """
+        raise NotImplementedError
+
+    @property
+    @abc.abstractmethod
     def range_hz(self) -> t.Tuple[t.Tuple[float, float], ...]:
         """The left- and right-side frequency ranges (in hz) of all dimensions.
 
@@ -156,13 +173,25 @@ class NMRSpectrum(abc.ABC):
         raise NotImplementedError
 
     @property
-    @abc.abstractmethod
-    def obs_mhz(self) -> t.Tuple[float, ...]:
-        """The observed (Zeeman) frequency in MHz of all dimensions
+    def array_hz(self) -> t.Tuple[torch.Tensor, ...]:
+        """Generate an array (tensor) of frequency values in Hz for each
+        dimension
 
         The current dimension is the last dimension.
         """
-        raise NotImplementedError
+        return tuple(gen_range(npts, range_type=self.freq_range_type,
+                               sw=sw, group_delay=self.group_delay)
+                     for npts, sw in zip(self.npts, self.sw_hz))
+
+    @property
+    def array_s(self) -> t.Tuple[torch.Tensor, ...]:
+        """Generate an array (tensor) of time values in sec for each dimension
+
+        The current dimension is the last dimension.
+        """
+        return tuple(gen_range(npts, range_type=self.time_range_type,
+                               sw=sw, group_delay=self.group_delay)
+                     for npts, sw in zip(self.npts, self.sw_hz))
 
     @property
     @abc.abstractmethod
@@ -181,14 +210,6 @@ class NMRSpectrum(abc.ABC):
         The current dimension is the last dimension.
         """
         raise NotImplementedError
-
-    @property
-    def npts(self) -> t.Tuple[int, ...]:
-        """The number of complex, real or imaginary points in each dimension
-
-        The current dimension is the last dimension.
-        """
-        return tuple(self.data.size())
 
     @property
     @abc.abstractmethod
@@ -211,27 +232,6 @@ class NMRSpectrum(abc.ABC):
         """Whether a digital correction filter must be corrected (removed)
         from the last dimension."""
         raise NotImplementedError
-
-    @property
-    def array_hz(self) -> t.Tuple[torch.Tensor, ...]:
-        """Generate an array (tensor) of frequency values in Hz for each
-        dimension
-
-        The current dimension is the last dimension.
-        """
-        return tuple(gen_range(npts, range_type=self.freq_range_type,
-                               sw=sw, group_delay=self.group_delay)
-                     for npts, sw in zip(self.npts, self.sw_hz))
-
-    @property
-    def array_s(self) -> t.Tuple[torch.Tensor, ...]:
-        """Generate an array (tensor) of time values in sec for each dimension
-
-        The current dimension is the last dimension.
-        """
-        return tuple(gen_range(npts, range_type=self.time_range_type,
-                               sw=sw, group_delay=self.group_delay)
-                     for npts, sw in zip(self.npts, self.sw_hz))
 
     # Accessor functions
 
