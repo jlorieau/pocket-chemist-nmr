@@ -137,6 +137,21 @@ def match_metas(meta1: dict, meta2: dict,
         raise AssertionError(msg)
 
 
+def match_tuple_floats(t1, t2, **kwargs):
+    """Match the values of two tuples with floats"""
+    mismatched = dict()
+    for item, (value1, value2) in enumerate(zip(t1, t2)):
+        if not isclose(value1, value2, **kwargs):
+            mismatched[item] = value1, value2
+
+    if len(mismatched) > 0:
+        msg = f"Mismatch between tuple of floats {t1} and {t2}:\n"
+        msg += '\n'.join(f'  item {item}: {value1} != {value2}'
+                         for item, (value1, value2) in
+                         sorted(mismatched.items()))
+        raise AssertionError(msg)
+
+
 # Property Accessors/Mutators
 @parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
                         cases='...cases.nmrpipe')
@@ -146,8 +161,51 @@ def test_nmrpipe_spectrum_properties(expected):
     print(f"Loading spectrum '{expected['filepath']}")
     spectrum = NMRPipeSpectrum(expected['filepath'])
 
+    # Configure the range types to match NMRPipe's processing
+    spectrum.freq_range_type = RangeType.FREQ
+    spectrum.time_range_type = RangeType.TIME
+    spectrum.unit_range_type = RangeType.UNIT
+
     # Check the attributes
     match_attributes(spectrum, expected)
+
+
+@parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
+                        cases='...cases.nmrpipe')
+def test_nmrpipe_spectrum_time_ranges(expected):
+    """Test the NMRPipeSpectrum array_s properties"""
+    # Load the spectrum
+    print(f"Loading spectrum '{expected['filepath']}")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+
+    # Set the range_type
+    spectrum.time_range_type = RangeType.TIME
+
+    # Check that the time series respect the spectral widths
+    t1 = tuple((t_rng[1] - t_rng[0]) ** -1 for t_rng in spectrum.array_s)
+    t2 = spectrum.sw_hz
+
+    # Match the range values to within 2 decimals--i.e. 8392.123 and 8392.12
+    # match
+    match_tuple_floats(tuple(round(float(i), 2) for i in t1),
+                       tuple(round(float(j), 2) for j in t2))
+
+
+@parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
+                        cases='...cases.nmrpipe')
+def test_nmrpipe_spectrum_array_hz(expected):
+    """Test the NMRPipeSpectrum array_hz properties"""
+    # Load the spectrum
+    print(f"Loading spectrum '{expected['filepath']}")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+
+    # Setup the range type
+    spectrum.freq_range_type = RangeType.FREQ | RangeType.ENDPOINT
+
+    # Check that the frequency series respect the spectral width
+    t1 = tuple(f_rng[-1] - f_rng[0] for f_rng in spectrum.array_hz)
+    t2 = spectrum.sw_hz
+    match_tuple_floats(t1, t2)
 
 
 @parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
@@ -161,6 +219,7 @@ def test_nmrpipe_spectrum_data_layout(expected):
     for dim, data_type in enumerate(spectrum.data_type):
         data_layout = spectrum.data_layout(dim=dim, data_type=data_type)
         assert data_layout is expected['spectrum']['data_layout'][dim]
+
 
 
 # I/O methods
@@ -186,6 +245,11 @@ def test_nmrpipe_spectrum_load_save(expected, tmpdir):
 
     # Reload the spectrum
     spectrum = NMRPipeSpectrum(out_filepath)
+
+    # Configure the range types to match NMRPipe's processing
+    spectrum.freq_range_type = RangeType.FREQ
+    spectrum.time_range_type = RangeType.TIME
+    spectrum.unit_range_type = RangeType.UNIT
 
     # Check the attributes
     match_attributes(spectrum, expected)

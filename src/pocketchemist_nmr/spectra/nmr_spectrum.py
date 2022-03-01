@@ -50,7 +50,7 @@ class NMRSpectrum(abc.ABC):
     freq_range_type = RangeType.FREQ | RangeType.ENDPOINT
 
     #: The range type for generating ranges of times
-    time_range_type = RangeType.TIME | RangeType.ENDPOINT
+    time_range_type = RangeType.TIME
 
     #: The range type for generating ranges for first-order phase correction
     #: sinebell apodization and other methods
@@ -213,8 +213,9 @@ class NMRSpectrum(abc.ABC):
         raise NotImplementedError
 
     @property
-    def freq_range(self) -> t.Tuple[torch.Tensor, ...]:
-        """Generate a range (tensor) of frequencies in Hz for each dimension
+    def array_hz(self) -> t.Tuple[torch.Tensor, ...]:
+        """Generate an array (tensor) of frequency values in Hz for each
+        dimension
 
         The current dimension is the last dimension.
         """
@@ -223,8 +224,8 @@ class NMRSpectrum(abc.ABC):
                      for npts, sw in zip(self.npts, self.sw_hz))
 
     @property
-    def time_range(self) -> t.Tuple[torch.Tensor, ...]:
-        """Generate a range (tensor) of times in sec for each dimension
+    def array_s(self) -> t.Tuple[torch.Tensor, ...]:
+        """Generate an array (tensor) of time values in sec for each dimension
 
         The current dimension is the last dimension.
         """

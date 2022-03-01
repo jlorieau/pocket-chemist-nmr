@@ -14,6 +14,7 @@ from .fileio import (load_nmrpipe_tensor, load_nmrpipe_multifile_tensor,
 from ...filters.bruker import bruker_group_delay
 from .meta import NMRPipeMetaDict
 from ..nmr_spectrum import NMRSpectrum
+from ..utils import range_endpoints
 from ..constants import (DomainType, DataType, DataLayout, ApodizationType,
                          RangeType)
 
@@ -111,13 +112,17 @@ class NMRPipeSpectrum(NMRSpectrum):
     def range_hz(self) -> t.Tuple[t.Tuple[float, float], ...]:
         # FDF{dim}ORIG is the Hz frequency of the last point.
         range_hz = []
-        for dim in self.order:
+        for dim, domain_type in zip(self.order, self.domain_type):
             orig_hz = self.meta[f"FDF{dim}ORIG"]
             sw_hz = self.meta[f"FDF{dim}SW"]
             npts = (-1. * self.meta[f"FDF{dim}ZF"]  # Use ZF size, if available
                     if self.meta[f"FDF{dim}ZF"] < -1.0 else
                     self.meta[f"FDF{dim}TDSIZE"])  # Otherwise use TDSIZE
-            range_left = orig_hz + sw_hz * (1.0 - 1./float(npts))
+            start, end = range_endpoints(npts=npts,
+                                         range_type=self.freq_range_type,
+                                         sw=sw_hz, group_delay=self.group_delay)
+
+            range_left = orig_hz + end
             range_right = orig_hz
 
             range_hz.append((range_left, range_right))
@@ -276,7 +281,7 @@ class NMRPipeSpectrum(NMRSpectrum):
 
     def apodization_exp(self, lb: float, first_point_scale: float = 1.0,
                         start: int = 0, size: t.Optional[int] = None,
-                        range_type: RangeType = RangeType.TIME,
+                        range_type: t.Optional[RangeType] = None,
                         update_meta: bool = True):
         super().apodization_exp(lb=lb, first_point_scale=first_point_scale,
                                 start=start, size=size, range_type=range_type,
@@ -300,7 +305,7 @@ class NMRPipeSpectrum(NMRSpectrum):
                          power: float = 1.0,
                          first_point_scale: float = 1.0,
                          start: int = 0, size: t.Optional[int] = None,
-                         range_type: RangeType = RangeType.TIME,
+                         range_type: t.Optional[RangeType] = None,
                          update_meta: bool = True) -> None:
         super().apodization_sine(off=off, end=end, power=power,
                                  first_point_scale=first_point_scale,
@@ -391,8 +396,10 @@ class NMRPipeSpectrum(NMRSpectrum):
 
         return rv
 
-    def phase(self, p0: float, p1: float, discard_imaginaries: bool = True,
-              range_type=RangeType.UNIT, update_meta: bool = True):
+    def phase(self, p0: float, p1: float,
+              discard_imaginaries: bool = True,
+              range_type: t.Optional[RangeType] = None,
+              update_meta: bool = True):
         rv = super().phase(p0, p1, discard_imaginaries)
 
         # Update the metadata, as needed
