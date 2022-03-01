@@ -172,6 +172,19 @@ def test_nmrpipe_spectrum_properties(expected):
 
 @parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
                         cases='...cases.nmrpipe')
+def test_nmrpipe_spectrum_data_layout(expected):
+    """Test the NMRPipeSpectrum data_layout method"""
+    # Load the spectrum
+    print(f"Loading spectrum '{expected['filepath']}")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+
+    for dim, data_type in enumerate(spectrum.data_type):
+        data_layout = spectrum.data_layout(dim=dim, data_type=data_type)
+        assert data_layout is expected['spectrum']['data_layout'][dim]
+
+
+@parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
+                        cases='...cases.nmrpipe')
 def test_nmrpipe_spectrum_array_hz(expected):
     """Test the NMRPipeSpectrum array_hz method"""
     # Load the spectrum
@@ -216,20 +229,6 @@ def test_nmrpipe_spectrum_array_s(expected):
     # match
     match_tuple_floats(tuple(round(float(i), 2) for i in t1),
                        tuple(round(float(j), 2) for j in t2))
-
-
-@parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
-                        cases='...cases.nmrpipe')
-def test_nmrpipe_spectrum_data_layout(expected):
-    """Test the NMRPipeSpectrum data_layout method"""
-    # Load the spectrum
-    print(f"Loading spectrum '{expected['filepath']}")
-    spectrum = NMRPipeSpectrum(expected['filepath'])
-
-    for dim, data_type in enumerate(spectrum.data_type):
-        data_layout = spectrum.data_layout(dim=dim, data_type=data_type)
-        assert data_layout is expected['spectrum']['data_layout'][dim]
-
 
 
 # I/O methods
