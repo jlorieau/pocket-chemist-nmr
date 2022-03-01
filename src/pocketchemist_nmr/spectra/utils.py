@@ -197,7 +197,24 @@ def range_endpoints(npts: int,
                     sw: t.Optional[float] = None,
                     group_delay: t.Optional[float] = None) \
         -> t.Tuple[float, float]:
-    """The endpoints for ranges, based on spectral parameters"""
+    """The endpoints for ranges, based on spectral parameters
+
+    Parameters
+    ----------
+    npts
+        The number of points for the range
+    range_type
+        The type of range to generate
+    sw
+        The spectral width (in Hz) for the spectrum
+    group_delay
+        The optional group delay (in pts) to apply in offsetting time ranges
+
+    Returns
+    -------
+    start, end
+        A start and end points of the range values
+    """
     # Find the endpoints for the range
     if RangeType.UNIT in range_type:
         # Unit range from [0,1[
