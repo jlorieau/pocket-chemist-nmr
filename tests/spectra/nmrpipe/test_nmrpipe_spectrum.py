@@ -10,7 +10,8 @@ import torch
 import pytest
 from pytest_cases import parametrize_with_cases, get_all_cases
 from pocketchemist_nmr.spectra.nmrpipe import NMRPipeSpectrum
-from pocketchemist_nmr.spectra.constants import ApodizationType, RangeType
+from pocketchemist_nmr.spectra.constants import (ApodizationType, RangeType,
+                                                 UnitType)
 
 #: Attributes to test
 attrs = ('ndims', 'order', 'domain_type', 'data_type', 'sw_hz', 'sw_ppm',
@@ -181,6 +182,54 @@ def test_nmrpipe_spectrum_data_layout(expected):
     for dim, data_type in enumerate(spectrum.data_type):
         data_layout = spectrum.data_layout(dim=dim, data_type=data_type)
         assert data_layout is expected['spectrum']['data_layout'][dim]
+
+
+@parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
+                        cases='...cases.nmrpipe')
+def test_nmrpipe_spectrum_convert(expected):
+    """Test the NMRPipeSpectrum convert method"""
+    # Load the spectrum
+    print(f"Loading spectrum '{expected['filepath']}")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+
+    for dim in tuple(range(spectrum.ndims)) + (-1,):
+        # Check points -> Hz
+        value1 = spectrum.convert(0, UnitType.POINTS, UnitType.HZ, dim=dim)
+        value2 = spectrum.convert(1, UnitType.POINTS, UnitType.HZ, dim=dim)
+        value3 = spectrum.convert(spectrum.npts[dim] - 1, UnitType.POINTS,
+                                  UnitType.HZ, dim=dim)
+        assert value1 - value3 == pytest.approx(spectrum.sw_hz[dim])
+        assert value1 - value2 == pytest.approx(spectrum.sw_hz[dim] /
+                                                spectrum.npts[dim])
+
+        # Check Hz -> points
+        value1 = spectrum.convert(value1, UnitType.HZ, UnitType.POINTS, dim=dim)
+        value2 = spectrum.convert(value2, UnitType.HZ, UnitType.POINTS, dim=dim)
+        value3 = spectrum.convert(value3, UnitType.HZ, UnitType.POINTS, dim=dim)
+        assert value1 == 0
+        assert value2 == 1
+        assert value3 == spectrum.npts[dim] - 1
+
+        # Check points -> ppm
+        value1 = spectrum.convert(0, UnitType.POINTS, UnitType.PPM, dim=dim)
+        value2 = spectrum.convert(1, UnitType.POINTS, UnitType.PPM, dim=dim)
+        value3 = spectrum.convert(spectrum.npts[dim] - 1, UnitType.POINTS,
+                                  UnitType.PPM, dim=dim)
+        assert value1 - value3 == pytest.approx(spectrum.sw_ppm[dim])
+        assert value1 - value2 == pytest.approx(spectrum.sw_ppm[dim] /
+                                                spectrum.npts[dim])
+
+        # Check ppm -> points
+        value1 = spectrum.convert(value1, UnitType.PPM, UnitType.POINTS,
+                                  dim=dim)
+        value2 = spectrum.convert(value2, UnitType.PPM, UnitType.POINTS,
+                                  dim=dim)
+        value3 = spectrum.convert(value3, UnitType.PPM, UnitType.POINTS,
+                                  dim=dim)
+        assert value1 == 0
+        assert value2 == 1
+        assert value3 == spectrum.npts[dim] - 1
+
 
 
 @parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',

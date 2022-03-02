@@ -37,7 +37,7 @@ def test_load_spectra_nmrpipe(expected, tmpdir):
     # Check that the spectrum was correctly loaded and returned in the kwargs
     assert 'spectra' in kwargs
     assert len(kwargs['spectra']) == 1
-    spectrum = kwargs['spectra'][0]
+    spectrum_load = kwargs['spectra'][0]
 
     # Save spectra and try reloading
     out_filepath = Path(tmpdir) / expected['filepath'].name.replace("%", "")
@@ -55,9 +55,8 @@ def test_load_spectra_nmrpipe(expected, tmpdir):
     kwargs = processor.process()
 
     # Check the spectrum's class and metadata
-    spectrum = kwargs['spectra'][0]
-    assert isinstance(spectrum, NMRPipeSpectrum)
-    assert spectrum.ndims == expected['header']['ndims']
+    spectrum_saved = kwargs['spectra'][0]
+    assert isinstance(spectrum_saved, NMRPipeSpectrum)
 
     # Delete the file
     out_filepath.unlink()

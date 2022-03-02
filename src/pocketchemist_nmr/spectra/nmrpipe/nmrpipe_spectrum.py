@@ -54,14 +54,6 @@ class NMRPipeSpectrum(NMRSpectrum):
     # Basic accessor/mutator methods
 
     @property
-    def ndims(self):
-        """The number of dimensions in the spectrum"""
-        if 'FDDIMCOUNT' in self.meta:
-            return int(self.meta['FDDIMCOUNT'])
-        else:
-            return len(self.data.shape)
-
-    @property
     def order(self) -> t.Tuple[int, ...]:
         """The ordering of the data dimensions to the F1/F2/F3/F4 channels
         in the header.

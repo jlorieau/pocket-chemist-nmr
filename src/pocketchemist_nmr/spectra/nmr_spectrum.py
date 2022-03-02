@@ -68,10 +68,9 @@ class NMRSpectrum(abc.ABC):
     # Basic accessor/mutator properties
 
     @property
-    @abc.abstractmethod
     def ndims(self) -> int:
         """The number of dimensions in the spectrum"""
-        raise NotImplementedError
+        return len(self.data.shape)
 
     @property
     def npts(self) -> t.Tuple[int, ...]:
@@ -237,6 +236,7 @@ class NMRSpectrum(abc.ABC):
     def convert(self, value: float,
                 unit_from: UnitType = UnitType.POINTS,
                 unit_to: UnitType = UnitType.POINTS,
+                dim: int = -1,
                 correct_digital_filter: bool = True) -> t.Union[float, int]:
         """Convert a values from one unit to another
 
@@ -250,6 +250,9 @@ class NMRSpectrum(abc.ABC):
             The unit type of the value. eg. UnitType.Hz, UnitType.ppm
         unit_to
             The unit type to convert the value to.
+        dim
+            The dimension for which the value should be converted. By default,
+            this is the last (current dimension)
         correct_digital_filter
             If a digital filter correction is needed, apply it in the
             calculation.
@@ -259,69 +262,33 @@ class NMRSpectrum(abc.ABC):
         point
             The point number corresponding to the value
         """
-        # Make sure the unit type is compatible with the current domain type
-        domain_type = self.domain_type[-1]
-        msg = ("The unit type '{unit}' is incompatible with the "
-               "'{domain_type}' domain type")
-        if domain_type is DomainType.FREQ:
-            if unit_from is UnitType.SEC:
-                raise ValueError(msg.format(domain_type, unit_from))
-            elif unit_to is UnitType.SEC:
-                raise ValueError(msg.format(domain_type, unit_to))
-        elif domain_type is DomainType.TIME:
-            if unit_from is UnitType.FREQ or unit_from is UnitType.PPM:
-                raise ValueError(msg.format(domain_type, unit_from))
-            elif unit_to is UnitType.FREQ or unit_from is UnitType.PPM:
-                raise ValueError(msg.format(domain_type, unit_to))
-
         # Get parameters that will be needed in the calculations
-        npts = self.npts[-1]
-        dw_s = self.sw_hz[-1] / float(npts)
-        range_hz = self.range_hz[-1]
-        sw_hz = abs(range_hz[0] - range_hz[1])
-        df_hz = sw_hz / npts
-        range_ppm = self.range_ppm[-1]
-        sw_ppm = abs(range_ppm[0] - range_ppm[1])
-        df_ppm = sw_ppm / npts
+        endpoints = dict()
+        npts = self.npts[dim]
+        for label, unit in (('from', unit_from), ('to', unit_to)):
+            if unit is UnitType.POINTS:
+                endpoints[label] = (0.0, float(npts - 1))
+            elif unit is UnitType.HZ:
+                endpoints[label] = self.range_hz[dim]
+            elif unit is UnitType.PPM:
+                endpoints[label] = self.range_ppm[dim]
+            else:
+                raise NotImplementedError
 
-        # Retrieve the point number (position) for the value in units
-        if unit_from is UnitType.POINTS:
-            # Nothing to change for points converted to points
-            value = float(value)
-            point = value if value > 0.0 else float(npts) + value
-        elif unit_from is UnitType.SEC:
-            # Convert time in sec to points
-            point = float(value / dw_s)
-
-            # Account for group delay if a digital filter correction is needed
-            if correct_digital_filter and self.correct_digital_filter:
-                shift_points = int(floor(self.group_delay))
-                point -= shift_points
-        elif unit_from is UnitType.HZ:
-            # Convert frequency in Hz to points
-            point = (value - range_hz[0]) / df_hz
-        elif unit_from is UnitType.PPM:
-            # Convert frequency in ppm to points
-            point = (value - range_ppm[0]) / df_ppm
-        else:
-            raise NotImplementedError
+        # Get the point position for the 'from' value
+        point = ((float(value) - endpoints['from'][0]) * float(npts) /
+                 (endpoints['from'][1] - endpoints['from'][0]))
 
         # Check that the number of points is within range
-        assert 0.0 < point < float(npts), (
-            f"The value '{value}' is not within range of the data'")
+        assert 0.0 <= point <= float(npts), (
+            f"The value '{value}' is not within range of "
+            f"[{endpoints['from'][0]}, {endpoints['from'][1]}[")
 
-        # Retrieve the value of the point number
-        if unit_to is UnitType.POINTS:
-            # Nothing to change if the destination unit is in points
-            return round(point)
-        elif unit_to is UnitType.SEC:
-            return float(point) * dw_s
-        elif unit_to is UnitType.HZ:
-            return float(point) * df_hz
-        elif unit_to is UnitType.PPM:
-            return float(point) * df_ppm
-        else:
-            raise NotImplementedError
+        # Convert the point position to the new value
+        new_value = ((endpoints['to'][1] - endpoints['to'][0]) *
+                     (round(point) / npts) + endpoints['to'][0])
+
+        return round(new_value) if unit_to is UnitType.POINTS else new_value
 
     def array_hz(self, range_type: t.Optional[RangeType] = None) \
             -> t.Tuple[torch.Tensor, ...]:
