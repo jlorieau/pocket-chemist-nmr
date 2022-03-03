@@ -39,6 +39,7 @@ def data_nmrpipe_complex_fid_1d():
                           -2602.950439453125),),  # Freq ranges in Hz
             'range_ppm': ((14.772849407325031,
                            -5.2072338341491955),),  # Freq ranges in ppm
+            'range_s': ((0.0, 0.0798),),  # Time ranges in secs (w/o grp delay)
             'obs_mhz': (499.872009,),  # Observe frequency in MHz
             'label': ('1H',),  # The labels for each dimension
             'apodization': (ApodizationType.NONE,),  # Apodization type
@@ -116,6 +117,7 @@ def data_nmrpipe_complex_fid_zf_1d():
     d['spectrum']['shape'] = (799 * 1 * 2,)
     d['spectrum']['range_hz'] = ((7385.888906237777, -2607.853271484375),)
     d['spectrum']['range_ppm'] = ((14.775560081700569, -5.21704200892245),)
+    d['spectrum']['range_s'] = ((0.0, 0.1597),)
     d['spectrum']['data_heights'] = (((0,), 0 + 0j),
                                      ((-1,), 0 + 0j))
     return d
@@ -132,6 +134,7 @@ def data_nmrpipe_real_fid_zf_1d():
     d['header']['pts'] = (799 * 1 * 2,)
     d['spectrum']['range_hz'] = ((7385.888906237777, -2607.853271484375),)
     d['spectrum']['range_ppm'] = ((14.775560081700569, -5.21704200892245),)
+    d['spectrum']['range_s'] = ((0.0, 0.1597),)
     d['spectrum']['shape'] = (799 * 1 * 2,)
     d['spectrum']['data_heights'] = (((0,), 0 + 0j),
                                      ((-1,), 0 + 0j))
@@ -155,6 +158,7 @@ def data_nmrpipe_real_spectrum_1d():
     d['spectrum']['data_layout'] = (DataLayout.CONTIGUOUS,)
     d['spectrum']['range_hz'] = ((7385.888916015625, -2612.890380859375),)
     d['spectrum']['range_ppm'] = ((14.775560101261272, -5.227118807145823),)
+    d['spectrum']['range_s'] = ((0.0, 0.8191),)
     d['spectrum']['apodization'] = (ApodizationType.SINEBELL,)
     d['spectrum']['correct_digital_filter'] = False
     d['spectrum']['data_heights'] = (((0,), 491585.80000),
@@ -225,6 +229,8 @@ def data_nmrpipe_complex_fid_2d():
                          (6392.299548, -1608.001221)),  # Freq ranges in Hz
             'range_ppm': ((134.0660073496, 101.2453363),
                           (12.78787255, -3.2168258891)),  # Freq ranges in ppm
+            'range_s': ((0.0, 0.1094705806796),
+                        (0.0, 0.0797471971341)),  # Time range in sec
             'label': ('15N', 'HN'),
             'apodization': (ApodizationType.NONE, ApodizationType.NONE),
             'group_delay': 67.98423767089844,
@@ -250,7 +256,7 @@ def data_nmrpipe_complex_fid_tp_2d():
         d['header'][entry] = d['header'][entry][::-1]
 
     for entry in ('order', 'shape', 'sw_hz', 'sw_ppm', 'car_hz', 'car_ppm',
-                  'range_hz', 'range_ppm', 'obs_mhz', 'label'):
+                  'range_hz', 'range_ppm', 'range_s', 'obs_mhz', 'label'):
         d['spectrum'][entry] = d['spectrum'][entry][::-1]
 
     d['spectrum']['shape'] = (640 * 2, 184 * 1)
@@ -274,6 +280,8 @@ def data_nmrpipe_complex_fid_zf_2d():
                                  (6392.29930992, -1614.26147461))
     d['spectrum']['range_ppm'] = ((134.0660073, 101.2453363),
                                   (12.787872078, -3.2293496028))
+    d['spectrum']['range_s'] = ((0.0, 0.1094705806796),
+                                (0.0, 0.159619194264))
     d['spectrum']['data_heights'] = (((0, 0), 0. + 0.j),
                                      ((0, -1), 0. + 0.j),
                                      ((1, 0), 0. + 0.j),
@@ -295,6 +303,8 @@ def data_nmrpipe_complex_fid_tp_zf_2d():
                                  (6791.38206847, 5124.2426758))
     d['spectrum']['range_ppm'] = ((12.7878725533, -3.216825889147),
                                   (134.0660099886, 101.1556650516))
+    d['spectrum']['range_s'] = ((0.0, 0.0797471971341),
+                                (0.0, 0.219539361254))
     d['spectrum']['data_heights'] = (((0, 0), 0. + 0.j),
                                      ((0, -1), 0. + 0.j),
                                      ((1, 0), 0. + 0.j),
@@ -325,6 +335,8 @@ def data_nmrpipe_real_spectrum_2d():
                                  (6791.38206847, 5124.2426758))
     d['spectrum']['range_ppm'] = ((10.25485175822, 6.24839390650),
                                   (134.0660099886, 101.1556650516))
+    d['spectrum']['range_s'] = ((0.0, 0.510681581647),
+                                (0.0, 0.219539361254))
     d['spectrum']['apodization'] = (ApodizationType.SINEBELL,
                                     ApodizationType.SINEBELL)
     d['spectrum']['correct_digital_filter'] = False
@@ -356,6 +368,8 @@ def data_nmrpipe_complex_spectrum_2d():
                                  (5126.11335322, 3123.3972168))
     d['spectrum']['range_ppm'] = ((134.0660099886, 101.1556650516),
                                   (10.25485175822, 6.2483939065))
+    d['spectrum']['range_s'] = ((0.0, 0.219539361254),
+                                (0.0, 0.510681581647))
     d['spectrum']['apodization'] = (ApodizationType.SINEBELL,
                                     ApodizationType.SINEBELL)
     d['spectrum']['correct_digital_filter'] = False
@@ -397,6 +411,8 @@ def data_nmrpipe_complex_fid_plane_3d():
                         (5882.43963524, -1101.31372070)),
            'range_ppm': ((133.6419390955, 101.4880745249),
                          (11.76789163240, -2.20319141753)),
+           'range_s': ((0.0, 0.02273159598812),
+                       (0.0, 0.0797567955968)),
            'label': ('15N', 'HN'),
            'apodization': (ApodizationType.NONE, ApodizationType.NONE),
            'group_delay': 67.98582458496094,
@@ -446,6 +462,9 @@ def data_nmrpipe_complex_fid_3d():
             'range_ppm': ((182.58107239, 171.304916831),
                           (133.6419390955, 101.4880745249),
                           (11.76789163240, -2.20319141753)),
+            'range_s': ((0.0, 0.0345800119933),
+                        (0.0, 0.02273159598812),
+                        (0.0, 0.0797567955968)),
             'label': ('13C',  '15N', 'HN'),
             'apodization': (ApodizationType.NONE, ApodizationType.NONE,
                             ApodizationType.NONE),
@@ -494,6 +513,9 @@ def data_nmrpipe_rrc_spectrum_3d():
     d['spectrum']['range_ppm'] = ((182.58107239, 171.304916831),
                                   (134.065015418, 101.1939028403),
                                   (11.50766031962, 6.00920181839))
+    d['spectrum']['range_s'] = ((0.0, 0.0345800119933),
+                                (0.0, 0.1525409730781),
+                                (0.0, 0.0795365475288))
     d['spectrum']['apodization'] = (ApodizationType.NONE,
                                     ApodizationType.SINEBELL,
                                     ApodizationType.NONE)
@@ -539,6 +561,9 @@ def data_nmrpipe_real_spectrum_singlefile_3d():
     d['spectrum']['range_ppm'] = ((134.065015418, 101.1939028403),
                                   (182.6938345618, 171.214620104),
                                   (11.50766031962, 6.00920181839))
+    d['spectrum']['range_s'] = ((0.0, 0.152540973078),
+                                (0.0, 0.353407722571),
+                                (0.0, 0.079536547529))
     d['spectrum']['label'] = ('15N', '13C', 'HN')
     d['spectrum']['apodization'] = (ApodizationType.SINEBELL,
                                     ApodizationType.SINEBELL,
