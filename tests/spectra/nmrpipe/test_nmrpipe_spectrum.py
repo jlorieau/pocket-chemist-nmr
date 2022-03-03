@@ -293,6 +293,14 @@ def test_nmrpipe_spectrum_array_s(expected):
     # Check the starting point
     assert all(a[0] == 0.0 for a in spectrum.array_s)
 
+    # Check the resolution to within 4 decimals--i.e. 12.34234 and 12.2323 are
+    # the same
+    match_tuple_floats(tuple((a[-1] - a[0])**-1 for a in spectrum.array_s),
+                       tuple(sw_hz / (npts - 1)
+                             for sw_hz, npts in zip(spectrum.sw_hz,
+                                                    spectrum.npts_data)),
+                       abs_tol=0.0001)
+
     # Match the range values to within 2 decimals--i.e. 8392.123 and 8392.12
     # match
     match_tuple_floats(t1, t2, abs_tol=0.01)
@@ -308,6 +316,14 @@ def test_nmrpipe_spectrum_array_s(expected):
     # Check the first point of all dims except last (current) dimension
     assert all(a[0] == 0.0
                for a in spectrum.array_s[:-1])  # all dims except last
+
+    # Check the resolution to within 4 decimals--i.e. 12.34234 and 12.2323 are
+    # the same
+    match_tuple_floats(tuple((a[-1] - a[0])**-1 for a in spectrum.array_s),
+                       tuple(sw_hz / (npts - 1)
+                             for sw_hz, npts in zip(spectrum.sw_hz,
+                                                    spectrum.npts_data)),
+                       abs_tol=0.0001)
 
     # Check the first point of the last (current) dimension
     if spectrum.correct_digital_filter:
