@@ -2,6 +2,7 @@
 Test the spectra/nmrpipe_spectrum.py submodule
 """
 from cmath import isclose
+from math import floor
 from pathlib import Path
 from itertools import product, chain
 import typing as t
@@ -15,8 +16,8 @@ from pocketchemist_nmr.spectra.constants import (ApodizationType, RangeType,
 
 #: Attributes to test
 attrs = ('ndims', 'order', 'domain_type', 'data_type', 'sw_hz', 'sw_ppm',
-         'car_hz', 'car_ppm', 'range_hz', 'range_ppm', 'obs_mhz', 'label',
-         'apodization', 'group_delay', 'correct_digital_filter',
+         'car_hz', 'car_ppm', 'range_hz', 'range_ppm', 'range_s', 'obs_mhz',
+         'label', 'apodization', 'group_delay', 'correct_digital_filter',
          'sign_adjustment', 'plane2dphase')
 
 
@@ -231,7 +232,6 @@ def test_nmrpipe_spectrum_convert(expected):
         assert value3 == spectrum.npts[dim] - 1
 
 
-
 @parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
                         cases='...cases.nmrpipe')
 def test_nmrpipe_spectrum_array_hz(expected):
@@ -240,10 +240,15 @@ def test_nmrpipe_spectrum_array_hz(expected):
     print(f"Loading spectrum '{expected['filepath']}")
     spectrum = NMRPipeSpectrum(expected['filepath'])
 
-    # Check that the frequency series respect the spectral width
-    t1 = tuple(f_rng[-1] - f_rng[0] for f_rng in spectrum.array_hz())
+    # Set the freq range type to a default freq range with endpoint.
+    # [sw/2, -sw/2]
+    spectrum.time_range_type = RangeType.FREQ | RangeType.ENDPOINT
+
+    # Check that the frequency series respect the spectral width (within 2
+    # decimal places)
+    t1 = tuple(f_rng[0] - f_rng[-1] for f_rng in spectrum.array_hz)
     t2 = spectrum.sw_hz
-    match_tuple_floats(t1, t2)
+    match_tuple_floats(t1, t2, abs_tol=0.01)
 
 
 @parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
@@ -254,12 +259,15 @@ def test_nmrpipe_spectrum_array_ppm(expected):
     print(f"Loading spectrum '{expected['filepath']}")
     spectrum = NMRPipeSpectrum(expected['filepath'])
 
+    # Set the freq range type to a default freq range with endpoint.
+    # [sw/2, -sw/2]
+    spectrum.time_range_type = RangeType.FREQ | RangeType.ENDPOINT
+
     # Check that the frequency series respect the spectral width (within 4
     # decimal places)
-    t1 = tuple(round(float(f_rng[-1] - f_rng[0]), 4)
-               for f_rng in spectrum.array_ppm())
-    t2 = tuple(round(sw_ppm, 4) for sw_ppm in spectrum.sw_ppm)
-    match_tuple_floats(t1, t2)
+    t1 = tuple(f_rng[0] - f_rng[-1] for f_rng in spectrum.array_ppm)
+    t2 = spectrum.sw_ppm
+    match_tuple_floats(t1, t2, abs_tol=0.0001)
 
 
 @parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
@@ -270,14 +278,64 @@ def test_nmrpipe_spectrum_array_s(expected):
     print(f"Loading spectrum '{expected['filepath']}")
     spectrum = NMRPipeSpectrum(expected['filepath'])
 
+    # Set the time range type to a default time range [0, tmax[
+    spectrum.time_range_type = RangeType.TIME
+
     # Check that the time series respect the spectral widths
-    t1 = tuple((t_rng[1] - t_rng[0]) ** -1 for t_rng in spectrum.array_s())
+    t1 = tuple((t_rng[1] - t_rng[0]) ** -1 for t_rng in spectrum.array_s)
     t2 = spectrum.sw_hz
+
+    # Collect other values used for tests below on group delay
+    t0 = tuple(t_rng[0] for t_rng in spectrum.array_s)
+    tmax = tuple(t_rng[-1] for t_rng in spectrum.array_s)
+    dw = tuple(t_rng[1] - t_rng[0] for t_rng in spectrum.array_s)
+
+    # Check the starting point
+    assert all(a[0] == 0.0 for a in spectrum.array_s)
 
     # Match the range values to within 2 decimals--i.e. 8392.123 and 8392.12
     # match
-    match_tuple_floats(tuple(round(float(i), 2) for i in t1),
-                       tuple(round(float(j), 2) for j in t2))
+    match_tuple_floats(t1, t2, abs_tol=0.01)
+
+    # Set the time range type to a default time range with a group delay,
+    # This will only apply to the current (last) dimension
+    # [-group_delay, tmax - group_delay[
+    spectrum.time_range_type = RangeType.TIME | RangeType.GROUP_DELAY
+
+    # Get the group delay value in seconds
+    grp_delay = floor(spectrum.group_delay) * dw[-1]
+
+    # Check the first point of all dims except last (current) dimension
+    assert all(a[0] == 0.0
+               for a in spectrum.array_s[:-1])  # all dims except last
+
+    # Check the first point of the last (current) dimension
+    if spectrum.correct_digital_filter:
+        # Digital filter correction needed
+        assert spectrum.array_s[-1][0] == pytest.approx(t0[-1] - grp_delay)
+    else:
+        # No digital filter correction needed. Group delay not applied
+        assert spectrum.array_s[-1][0] == 0.0
+
+    # Check the last point of all dims except last (current) dimension
+    assert all(a[-1] == pytest.approx(tmax)
+               for a, tmax in zip(spectrum.array_s[:-1], tmax))
+
+    # Check the last point of the last (current) dimension
+    if spectrum.correct_digital_filter:
+        # Digital filter correction needed
+        assert spectrum.array_s[-1][-1] == pytest.approx(tmax[-1] - grp_delay)
+    else:
+        # No digital filter correction needed. Group delay not applied
+        assert spectrum.array_s[-1][-1] == pytest.approx(tmax[-1])
+
+    # Check that the time series respect the spectral widths
+    t1 = tuple((t_rng[1] - t_rng[0]) ** -1 for t_rng in spectrum.array_s)
+    t2 = spectrum.sw_hz
+
+    # Match the range values to within 1 decimals--i.e. 8392.13 and 8392.12
+    # match
+    match_tuple_floats(t1, t2, abs_tol=0.1)
 
 
 # I/O methods
@@ -328,6 +386,9 @@ def test_nmrpipe_spectrum_apodization_exp(expected, expected_em):
     spectrum = NMRPipeSpectrum(expected['filepath'])
     spectrum_em = NMRPipeSpectrum(expected_em['filepath'])
 
+    # Configure the range types to match NMRPipe's processing
+    spectrum.time_range_type = RangeType.TIME
+
     # Get the apodization parameters
     dim = spectrum_em.order[0]
     code = spectrum_em.meta[f'FDF{dim}APODCODE']
@@ -339,7 +400,7 @@ def test_nmrpipe_spectrum_apodization_exp(expected, expected_em):
     assert all(apod is ApodizationType.NONE for apod in spectrum.apodization)
 
     # Apodization the original dataset
-    spectrum.apodization_exp(lb=lb, range_type=RangeType.TIME)
+    spectrum.apodization_exp(lb=lb)
 
     # Check the header
     match_metas(spectrum.meta, spectrum_em.meta)
@@ -371,6 +432,9 @@ def test_nmrpipe_spectrum_apodization_sine(expected, expected_sp):
     spectrum = NMRPipeSpectrum(expected['filepath'])
     spectrum_sp = NMRPipeSpectrum(expected_sp['filepath'])
 
+    # Configure the range types to match NMRPipe's processing
+    spectrum.unit_range_type = RangeType.UNIT
+
     # Get the apodization parameters
     dim = spectrum_sp.order[0]
     code = spectrum_sp.meta[f'FDF{dim}APODCODE']
@@ -384,8 +448,7 @@ def test_nmrpipe_spectrum_apodization_sine(expected, expected_sp):
     assert all(apod is ApodizationType.NONE for apod in spectrum.apodization)
 
     # Apodization the original dataset
-    spectrum.apodization_sine(off=off, end=end, power=power,
-                              range_type=RangeType.UNIT)
+    spectrum.apodization_sine(off=off, end=end, power=power)
 
     # Check the header
     match_metas(spectrum.meta, spectrum_sp.meta)
@@ -460,14 +523,16 @@ def test_nmrpipe_spectrum_phase(expected, expected_ps):
     spectrum = NMRPipeSpectrum(expected['filepath'])
     spectrum_ps = NMRPipeSpectrum(expected_ps['filepath'])
 
+    # Configure the range types to match NMRPipe's processing
+    spectrum.unit_range_type = RangeType.UNIT
+
     # Get the phase to use
     dim = spectrum_ps.order[-1]
     p0 = spectrum_ps.meta[f'FDF{dim}P0']
     p1 = spectrum_ps.meta[f'FDF{dim}P1']
 
     # Phase the spectrum
-    spectrum.phase(p0=p0, p1=p1, range_type=RangeType.UNIT,
-                   discard_imaginaries=True)
+    spectrum.phase(p0=p0, p1=p1, discard_imaginaries=True)
 
     # Check the header
     match_metas(spectrum.meta, spectrum_ps.meta)

@@ -46,10 +46,10 @@ class NMRSpectrum(abc.ABC):
     #: The default attributes that are set to None when reset
     reset_attrs = ('data', 'in_filepath', 'out_filepath')
 
-    #: The range type for generating ranges of frequencies
+    #: The range type for generating ranges of spectrum frequencies
     freq_range_type = RangeType.FREQ | RangeType.ENDPOINT
 
-    #: The range type for generating ranges of times
+    #: The range type for generating ranges of FID times.
     time_range_type = RangeType.TIME
 
     #: The range type for generating ranges for first-order phase correction
@@ -74,11 +74,21 @@ class NMRSpectrum(abc.ABC):
 
     @property
     def npts(self) -> t.Tuple[int, ...]:
-        """The number of complex, real or imaginary points in each dimension
+        """The number of complex, real + imaginary points in each dimension
 
         The current dimension is the last dimension.
         """
         return tuple(self.data.size())
+
+    @property
+    def npts_data(self) -> t.Tuple[int, ...]:
+        """The number of data points, complex or real, in each dimension"""
+        # Get the number of complex or real points
+        ndims = self.ndims
+        return tuple(int(npts / 2)
+                     if data_type is DataType.COMPLEX and dim != ndims else
+                     npts for dim, (data_type, npts) in
+                     enumerate(zip(self.data_type, self.npts), 1))
 
     @property
     @abc.abstractmethod
@@ -173,6 +183,60 @@ class NMRSpectrum(abc.ABC):
 
     @property
     @abc.abstractmethod
+    def range_s(self) -> t.Tuple[t.Tuple[float, float], ...]:
+        """The left- and right-right time ranges (in seconds) of all
+        dimensions.
+
+        The current dimension is the last dimension
+        """
+        raise NotImplementedError
+
+
+    @property
+    def array_hz(self) -> t.Tuple[torch.Tensor, ...]:
+        """Generate an array (tensor) of frequency values in Hz for each
+        dimension
+
+        The current dimension is the last dimension.
+        """
+        return tuple(torch.linspace(start=start, end=end, steps=npts)
+                     for (start, end), npts
+                     in zip(self.range_hz, self.npts_data))
+
+    @property
+    def array_ppm(self) -> t.Tuple[torch.Tensor, ...]:
+        """Generate an array (tensor) of frequency values in ppm for each
+        dimension
+
+        The current dimension is the last dimension.
+        """
+        return tuple(torch.linspace(start=start, end=end, steps=npts)
+                     for (start, end), npts
+                     in zip(self.range_ppm, self.npts_data))
+
+    @property
+    def array_s(self) -> t.Tuple[torch.Tensor, ...]:
+        """Generate an array (tensor) of time values in sec for each dimension
+
+        The current dimension is the last dimension.
+        """
+        return tuple(torch.linspace(start=start, end=end, steps=npts)
+                     for (start, end), npts
+                     in zip(self.range_s, self.npts_data))
+
+    @property
+    def array_unit(self) -> t.Tuple[torch.Tensor, ...]:
+        """Generate an array (tensor) of unit values ([0,1[ or [0,1]) for each
+        dimension
+
+        The current dimension is the last dimension.
+        """
+        return tuple(gen_range(npts, range_type=self.unit_range_type,
+                               sw=sw, group_delay=self.group_delay)
+                     for npts, sw in zip(self.npts_data, self.sw_hz))
+
+    @property
+    @abc.abstractmethod
     def label(self) -> t.Tuple[str, ...]:
         """The labels for all dimensions, as ordered in the data.
 
@@ -236,8 +300,7 @@ class NMRSpectrum(abc.ABC):
     def convert(self, value: float,
                 unit_from: UnitType = UnitType.POINTS,
                 unit_to: UnitType = UnitType.POINTS,
-                dim: int = -1,
-                correct_digital_filter: bool = True) -> t.Union[float, int]:
+                dim: int = -1) -> t.Union[float, int]:
         """Convert a values from one unit to another
 
         Parameters
@@ -289,94 +352,6 @@ class NMRSpectrum(abc.ABC):
                      (round(point) / npts) + endpoints['to'][0])
 
         return round(new_value) if unit_to is UnitType.POINTS else new_value
-
-    def array_hz(self, range_type: t.Optional[RangeType] = None) \
-            -> t.Tuple[torch.Tensor, ...]:
-        """Generate an array (tensor) of frequency values in Hz for each
-        dimension
-
-        The current dimension is the last dimension.
-
-        Parameters
-        ----------
-        range_type
-            The type of range to use for the x-axis data points
-
-        Returns
-        -------
-        array_hz
-            A tuple of arrays (1D tensors) for the values of frequencies in Hz
-            for each dimension.
-        """
-        range_type = self.freq_range_type if range_type is None else range_type
-        return tuple(gen_range(npts, range_type=range_type,
-                               sw=sw, group_delay=self.group_delay)
-                     for npts, sw in zip(self.npts, self.sw_hz))
-
-    def array_ppm(self, range_type: t.Optional[RangeType] = None) \
-            -> t.Tuple[torch.Tensor, ...]:
-        """Generate an array (tensor) of frequency values in ppm for each
-        dimension
-
-        The current dimension is the last dimension.
-
-        Parameters
-        ----------
-        range_type
-            The type of range to use for the x-axis data points
-
-        Returns
-        -------
-        array_hz
-            A tuple of arrays (1D tensors) for the values of frequencies in ppm
-            for each dimension.
-        """
-        range_type = self.freq_range_type if range_type is None else range_type
-        return tuple(gen_range(npts, range_type=range_type,
-                               sw=sw / obs_mhz, group_delay=self.group_delay)
-                     for npts, sw, obs_mhz in zip(self.npts, self.sw_hz,
-                                                  self.obs_mhz))
-
-    def array_s(self, range_type: t.Optional[RangeType] = None) \
-            -> t.Tuple[torch.Tensor, ...]:
-        """Generate an array (tensor) of time values in sec for each dimension
-
-        The current dimension is the last dimension.
-
-        Parameters
-        ----------
-        range_type
-            The type of range to use for the x-axis data points
-
-        Returns
-        -------
-        array_hz
-            A tuple of arrays (1D tensors) for the values of frequencies in
-            seconds for each dimension.
-        """
-        range_type = self.time_range_type if range_type is None else range_type
-        if self.correct_digital_filter:
-            # Apply the group delay correction
-            return tuple(gen_range(npts, range_type=range_type,
-                                   sw=sw, group_delay=self.group_delay)
-                         for npts, sw in zip(self.npts, self.sw_hz))
-        else:
-            # Do not apply the group delay correction
-            return tuple(gen_range(npts, range_type=range_type,
-                                   sw=sw, group_delay=0.0)
-                         for npts, sw in zip(self.npts, self.sw_hz))
-
-    def array_unit(self, range_type: t.Optional[RangeType] = None) \
-            -> t.Tuple[torch.Tensor, ...]:
-        """Generate an array (tensor) of unit values ([0,1[ or [0,1]) for each
-        dimension
-
-        The current dimension is the last dimension.
-        """
-        range_type = self.unit_range_type if range_type is None else range_type
-        return tuple(gen_range(npts, range_type=range_type,
-                               sw=sw, group_delay=self.group_delay)
-                     for npts, sw in zip(self.npts, self.sw_hz))
 
     # I/O methods
 
@@ -436,7 +411,6 @@ class NMRSpectrum(abc.ABC):
     # Manipulator methods
     def apodization_exp(self, lb: float, first_point_scale: float = 1.0,
                         start: int = 0, size: t.Optional[int] = None,
-                        range_type: t.Optional[RangeType] = None,
                         update_meta: bool = True) -> None:
         """Apply exponential apodization to the last dimension.
 
@@ -460,8 +434,6 @@ class NMRSpectrum(abc.ABC):
             Apply apodization starting from this point
         size
             Apply apodization over this length of points
-        range_type
-            The type of range to use for the x-axis data points
         update_meta
             Update the meta dict. This functionality is handled by sub-classes.
 
@@ -472,7 +444,7 @@ class NMRSpectrum(abc.ABC):
           apodizes points within the range.
         """
         # Prepare arguments
-        t = self.array_s(range_type=range_type)[-1]  # Get last (current) dim
+        t = self.array_s[-1]  # Get last (current) dim
         size = int(self.npts[-1]) if size is None else size
 
         # Calculate the decay rate
@@ -489,7 +461,6 @@ class NMRSpectrum(abc.ABC):
                          power: float = 1.0,
                          first_point_scale: float = 1.0,
                          start: int = 0, size: t.Optional[int] = None,
-                         range_type: t.Optional[RangeType] = RangeType.UNIT,
                          update_meta: bool = True) -> None:
         """Apply sine-bell apodization to the last dimension.
 
@@ -518,8 +489,6 @@ class NMRSpectrum(abc.ABC):
             Apply apodization starting from this point
         size
             Apply apodization over this length of points
-        range_type
-            The type of range to use for the x-axis data points
         update_meta
             Update the meta dict. This functionality is handled by sub-classes.
 
@@ -530,7 +499,7 @@ class NMRSpectrum(abc.ABC):
           apodizes points within the range.
         """
         # Prepare arguments
-        x = self.array_unit(range_type=range_type)[-1]  # Get last (current) dim
+        x = self.array_unit[-1]  # Get last (current) dim
         size = int(self.npts[-1]) if size is None else size
 
         # Calculate the sine-belle function
@@ -686,7 +655,6 @@ class NMRSpectrum(abc.ABC):
 
     def phase(self, p0: float, p1: float,
               discard_imaginaries: bool = True,
-              range_type: t.Optional[RangeType] = None,
               update_meta: bool = True):
         """Apply phase correction to the last dimension.
 
@@ -712,13 +680,11 @@ class NMRSpectrum(abc.ABC):
         discard_imaginaries
             Only keep the real component of complex numbers after phase
             correction and discard the imaginary component
-        range_type
-            The type of range to use for the x-axis data points
         update_meta
             Update the meta dict. This functionality is handled by sub-classes.
         """
         # Prepare arguments
-        x = self.array_unit(range_type)[-1]  # Get last (current) dim
+        x = self.array_unit[-1]  # Get last (current) dim
 
         # Apply the zeroth and first order phase
         phase = p0 + p1 * x

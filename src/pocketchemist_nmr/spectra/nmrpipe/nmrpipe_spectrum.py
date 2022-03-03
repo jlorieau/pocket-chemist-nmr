@@ -51,6 +51,11 @@ class NMRPipeSpectrum(NMRSpectrum):
     #: Header metadata dict
     meta: NMRPipeMetaDict
 
+    #: The range type for generating ranges of times. The group delay
+    #: correction will be applied for the last dimension when
+    #: correct_digital_filter is True
+    time_range_type = RangeType.TIME | RangeType.GROUP_DELAY
+
     # Basic accessor/mutator methods
 
     @property
@@ -108,7 +113,7 @@ class NMRPipeSpectrum(NMRSpectrum):
     def range_hz(self) -> t.Tuple[t.Tuple[float, float], ...]:
         # FDF{dim}ORIG is the Hz frequency of the last point.
         range_hz = []
-        for dim, domain_type in zip(self.order, self.domain_type):
+        for dim in self.order:
             orig_hz = self.meta[f"FDF{dim}ORIG"]
             sw_hz = self.meta[f"FDF{dim}SW"]
             npts = (-1. * self.meta[f"FDF{dim}ZF"]  # Use ZF size, if available
@@ -128,6 +133,39 @@ class NMRPipeSpectrum(NMRSpectrum):
     def range_ppm(self) -> t.Tuple[t.Tuple[float, float], ...]:
         return tuple((rng[0] / obs_mhz, rng[1] / obs_mhz)
                      for rng, obs_mhz in zip(self.range_hz, self.obs_mhz))
+
+    @property
+    def range_s(self) -> t.Tuple[t.Tuple[float, float], ...]:
+        range_s = []
+        for count, dim in enumerate(self.order, 1):
+            sw_hz = self.meta[f"FDF{dim}SW"]
+
+            if (self.meta[f"FDF{dim}X1"] > 0.0 and
+               self.meta[f"FDF{dim}XN"] > 0.0):
+                # Get the data size from the extracted region first
+                npts = (int(self.meta[f"FDF{dim}XN"]) -
+                        int(self.meta[f"FDF{dim}X1"]) + 1)
+            elif self.meta[f"FDF{dim}ZF"] < -1.0:
+                # Then get the npts from the zero-fill
+                npts = -1. * self.meta[f"FDF{dim}ZF"]
+            else:
+                # Finally get the npts from the original data size
+                npts = self.meta[f"FDF{dim}TDSIZE"]
+
+            # Determine whether the group delay correction must be applied to
+            # the last dimension
+            if self.correct_digital_filter and count == self.ndims:
+                start, end = range_endpoints(npts=npts,
+                                             range_type=self.time_range_type,
+                                             sw=sw_hz,
+                                             group_delay=self.group_delay)
+            else:
+                start, end = range_endpoints(npts=npts,
+                                             range_type=self.time_range_type,
+                                             sw=sw_hz)
+
+            range_s.append((start, end))
+        return tuple(range_s)
 
     @property
     def label(self) -> t.Tuple[str, ...]:
@@ -273,11 +311,9 @@ class NMRPipeSpectrum(NMRSpectrum):
 
     def apodization_exp(self, lb: float, first_point_scale: float = 1.0,
                         start: int = 0, size: t.Optional[int] = None,
-                        range_type: t.Optional[RangeType] = None,
                         update_meta: bool = True):
         super().apodization_exp(lb=lb, first_point_scale=first_point_scale,
-                                start=start, size=size, range_type=range_type,
-                                update_meta=update_meta)
+                                start=start, size=size, update_meta=update_meta)
 
         # Update the metadata values
         if update_meta:
@@ -297,11 +333,10 @@ class NMRPipeSpectrum(NMRSpectrum):
                          power: float = 1.0,
                          first_point_scale: float = 1.0,
                          start: int = 0, size: t.Optional[int] = None,
-                         range_type: t.Optional[RangeType] = None,
                          update_meta: bool = True) -> None:
         super().apodization_sine(off=off, end=end, power=power,
                                  first_point_scale=first_point_scale,
-                                 start=start, size=size, range_type=range_type,
+                                 start=start, size=size,
                                  update_meta=update_meta)
 
         # Update the metadata values
@@ -390,7 +425,6 @@ class NMRPipeSpectrum(NMRSpectrum):
 
     def phase(self, p0: float, p1: float,
               discard_imaginaries: bool = True,
-              range_type: t.Optional[RangeType] = None,
               update_meta: bool = True):
         rv = super().phase(p0, p1, discard_imaginaries)
 
