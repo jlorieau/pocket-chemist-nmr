@@ -26,6 +26,7 @@ A simple transpose would produce (X: block, Y: single):
 
 """
 import typing as t
+from math import floor
 
 import torch
 from .constants import RangeType
@@ -227,12 +228,12 @@ def range_endpoints(npts: int,
         assert sw is not None, "Time mode requires a spectral width (sw)"
         # Time range from [0, sw[
         dw = sw ** -1
-        group_delay = (0.0 if group_delay is None else group_delay) * dw
+        group_delay = 0.0 if group_delay is None else floor(group_delay)
         tmax = dw * npts
 
         if RangeType.GROUP_DELAY in range_type:
             # Appli group delay, if specified
-            start, end = 0. - group_delay, tmax - group_delay
+            start, end = 0. - group_delay * dw, tmax - group_delay * dw
         else:
             start, end = 0., tmax
     else:
