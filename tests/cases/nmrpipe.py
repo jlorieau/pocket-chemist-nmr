@@ -107,6 +107,51 @@ def data_nmrpipe_complex_fid_ft_1d():
 
 
 @case(tags='singlefile')
+def data_nmrpipe_complex_fid_ext_real_1d():
+    """A complex 1d Free-Induction Decay (FID) after extraction and discarding
+    imaginary component"""
+    d = data_nmrpipe_complex_fid_1d()
+    d['filepath'] = (Path('data') / 'bruker' /
+                     'CD20170124_av500hd_100_ubq_oneone1d' /
+                     'spec_ext_real.fid')
+    d['header']['data_type'] = (DataType.REAL,)
+    d['header']['data_pts'] = (512,)
+    d['header']['pts'] = (512,)
+    d['spectrum']['shape'] = (512,)
+    d['spectrum']['domain_type'] = (DomainType.TIME,)
+    d['spectrum']['data_type'] = (DataType.REAL,)
+    d['spectrum']['data_layout'] = (DataLayout.CONTIGUOUS,)
+    d['spectrum']['range_hz'] = ((7385.88891602, -2594.57983398),)
+    d['spectrum']['range_ppm'] = ((14.77556010126, -5.1904883367),)
+    d['spectrum']['range_s'] = ((0.0, 0.0511),)
+    d['spectrum']['correct_digital_filter'] = True
+    d['spectrum']['data_heights'] = (((0,), 0.00000),
+                                     ((-1,), 3465.33700))
+    return d
+
+
+@case(tags='singlefile')
+def data_nmrpipe_complex_fid_ext_1d():
+    """A complex 1d Free-Induction Decay (FID) after extraction"""
+    d = data_nmrpipe_complex_fid_1d()
+    d['filepath'] = (Path('data') / 'bruker' /
+                     'CD20170124_av500hd_100_ubq_oneone1d' /
+                     'spec_ext.fid')
+    d['header']['data_pts'] = (512 * 2,)
+    d['header']['pts'] = (512,)
+    d['spectrum']['shape'] = (512,)
+    d['spectrum']['domain_type'] = (DomainType.TIME,)
+    d['spectrum']['data_layout'] = (DataLayout.BLOCK_INTERLEAVE,)
+    d['spectrum']['range_hz'] = ((7385.88891602, -2594.57983398),)
+    d['spectrum']['range_ppm'] = ((14.77556010126, -5.1904883367),)
+    d['spectrum']['range_s'] = ((0.0, 0.0511),)
+    d['spectrum']['correct_digital_filter'] = True
+    d['spectrum']['data_heights'] = (((0,), 0.00000 + 0.00000j),
+                                     ((-1,), 3465.3374 + 464744.1250j))
+    return d
+
+
+@case(tags='singlefile')
 def data_nmrpipe_complex_fid_ft_ext_1d():
     """A complex 1d Free-Induction Decay (FID) after automatic Fourier
     transformation"""

@@ -366,7 +366,7 @@ class NMRPipeSpectrum(NMRSpectrum):
         new_pts = (end - start)  # New data size
 
         # Update the meta dict
-        if update_meta:
+        if update_meta and self.domain_type[-1]:
             # Get the last (current) dimension
             dim = self.order[-1]
 
@@ -374,15 +374,14 @@ class NMRPipeSpectrum(NMRSpectrum):
             if self.domain_type[-1] is DomainType.TIME:
                 new_size = self.data.size()[-1]
                 if self.data_type[-1] is DataType.COMPLEX:
-                    self.meta[f"FDF{dim}CENTER"] = float(round(1. +
-                                                               new_size / 2.))
+                    center = float(round(1. + new_size / 2.))
                 elif self.data_type[-1] is DataType.REAL:
-                    self.meta[f"FDF{dim}CENTER"] = float(round(1. +
-                                                               new_size / 4.))
+                    center = float(round(1. + new_size / 2.))
                 else:
                     raise NotImplementedError
             elif self.domain_type[-1] is DomainType.FREQ:
-                self.meta[f"FDF{dim}CENTER"] -= start
+                center = self.meta[f"FDF{dim}CENTER"] - start
+            self.meta[f"FDF{dim}CENTER"] = center
 
             # Update FDFnAPOD
             self.meta[f"FDF{dim}APOD"] = float(end - start)
@@ -390,18 +389,34 @@ class NMRPipeSpectrum(NMRSpectrum):
             # Update FDSIZE
             self.meta[f"FDSIZE"] = float(end - start)
 
-            # Update FDFnSW
-            self.meta[f"FDF{dim}SW"] = self.sw_hz[-1] * new_pts / old_pts
+            # Update time-domain size (FDFnTDSIZE)
+            if self.domain_type[-1] is DomainType.TIME:
+                self.meta[f"FDF{dim}TDSIZE"] = float(end - start)
 
-            # Update the FDFnX1 and FDFnXN extracted ranges
-            self.meta[f"FDF{dim}X1"] = float(start + 1)
-            self.meta[f"FDF{dim}XN"] = float(end)
+            # Update FDFnSW. This is only done by NMRPipe for the frequency
+            # domain
+            if self.domain_type[-1] is DomainType.FREQ:
+                self.meta[f"FDF{dim}SW"] = self.sw_hz[-1] * new_pts / old_pts
+
+            # Update the FDFnX1 and FDFnXN extracted ranges. This is only
+            # done by NMRPipe when the dimension is in the frequency domain
+            if self.domain_type[-1] is DomainType.FREQ:
+                self.meta[f"FDF{dim}X1"] = float(start + 1)
+                self.meta[f"FDF{dim}XN"] = float(end)
 
             # Update the ORIG frequency, which the frequency of the last
             # point.
             # ORIG = ORIG_OLD + df_hz * (old_end_pt - new_end_pt)
-            self.meta[f"FDF{dim}ORIG"] += ((self.sw_hz[-1] / new_pts) *
-                                           (old_pts - end))
+            # This is only done by NMRPipe for the frequency domain
+            if self.domain_type[-1] is DomainType.FREQ:
+                orig = self.meta[f"FDF{dim}ORIG"]
+                orig += ((self.sw_hz[-1] / new_pts) * (old_pts - end))
+            elif self.domain_type[-1] is DomainType.TIME:
+                orig = (self.car_hz[-1]
+                        - (self.sw_hz[-1] / new_pts) * (new_pts - center))
+            else:
+                raise NotImplementedError
+            self.meta[f"FDF{dim}ORIG"] = orig
 
             # Update other meta values
             self.update_meta()

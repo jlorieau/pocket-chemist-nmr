@@ -557,7 +557,9 @@ class NMRSpectrum(abc.ABC):
                                  unit_to=UnitType.POINTS, dim=-1)
         start_point, end_point = (min(start_point, end_point),
                                   max(start_point, end_point))  # reorder
-        start_point -= 1  # Req to get data of size [start_point, end_point]
+
+        if start_point > 0:
+            start_point -= 1  # Req to get data of size [start_point, end_point]
 
         # Conduct the extraction
         self.data = self.data[..., start_point: end_point]

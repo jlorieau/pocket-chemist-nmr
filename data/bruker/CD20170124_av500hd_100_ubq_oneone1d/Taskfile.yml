@@ -48,7 +48,15 @@ tasks:
       - "nmrPipe -in spec.fid \
          | nmrPipe -fn FT -auto \
           -ov -out spec_ft.fid"
-      - "showhdr -dump spec_ft.fid > spec_ft.hdr"
+      - "nmrPipe -in spec.fid \
+         | nmrPipe -fn EXT -x1 0 -xn 512 -sw \
+         | nmrPipe -fn PS -p0 0.0 -p1 0.0 -di \
+          -ov -out spec_ext_real.fid"
+      - "showhdr -dump spec_ext.fid > spec_ext_real.hdr"
+      - "nmrPipe -in spec.fid \
+         | nmrPipe -fn EXT -x1 0 -xn 512 -sw \
+          -ov -out spec_ext.fid"
+      - "showhdr -dump spec_ext.fid > spec_ext.hdr"
       - "nmrPipe -in spec.fid \
          | nmrPipe -fn FT -auto \
          | nmrpipe -fn EXT -x1 10.0ppm -xn 6.0ppm -sw \
@@ -95,6 +103,10 @@ tasks:
       - "spec_sp.hdr"
       - "spec_ft.fid"
       - "spec_ft.hdr"
+      - "spec_ext.fid"
+      - "spec_ext.hdr"
+      - "spec_ft_ext_real.fid"
+      - "spec_ft_ext_real.hdr"
       - "spec_ft_ext.fid"
       - "spec_ft_ext.hdr"
       - "spec_zf.fid"

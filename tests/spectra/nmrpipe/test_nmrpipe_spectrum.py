@@ -11,8 +11,8 @@ import torch
 import pytest
 from pytest_cases import parametrize_with_cases, get_all_cases
 from pocketchemist_nmr.spectra.nmrpipe import NMRPipeSpectrum
-from pocketchemist_nmr.spectra.constants import (ApodizationType, RangeType,
-                                                 UnitType)
+from pocketchemist_nmr.spectra.constants import (UnitType, ApodizationType,
+                                                 DomainType, RangeType)
 
 #: Attributes to test
 attrs = ('ndims', 'order', 'domain_type', 'data_type', 'sw_hz', 'sw_ppm',
@@ -486,6 +486,10 @@ def test_nmrpipe_spectrum_apodization_sine(expected, expected_sp):
                          parametrize_casesets('*nmrpipe_complex_fid_ft_1d',
                                               '*nmrpipe_complex_fid_ft_ext_1d',
                                               cases='...cases.nmrpipe',
+                                              prefix='data_') +
+                         parametrize_casesets('*nmrpipe_complex_fid_1d',
+                                              '*nmrpipe_complex_fid_ext*_1d',
+                                              cases='...cases.nmrpipe',
                                               prefix='data_'))
 def test_nmrpipe_spectrum_ext(expected, expected_ext):
     """Test the NMRPipeSpectrum ft method"""
@@ -498,13 +502,30 @@ def test_nmrpipe_spectrum_ext(expected, expected_ext):
     # Set the default NMRPipe range types
     spectrum.freq_range_type = RangeType.FREQ
 
-    # Get the extract ranges for the last (current) dimension
-    dim = spectrum_ext.order[-1]
-    x1 = int(spectrum_ext.meta[f"FDF{dim}X1"])
-    xn = int(spectrum_ext.meta[f"FDF{dim}XN"])
-    print('x1:', x1, xn)
-    assert x1 > 0 and xn > 0, ("Dataset must have an extracted region to test "
-                               "in the last dimension")
+    # Get the extract ranges for the last (current) dimension. The FDFnX1 and
+    # FDFnXN values are only populated with the last dimension's domain type
+    # is frequency
+    dim = spectrum.order[-1]
+    npts = spectrum.npts[-1]
+
+    if spectrum_ext.domain_type[-1] is DomainType.FREQ:
+        x1 = int(spectrum_ext.meta[f"FDF{dim}X1"])
+        xn = int(spectrum_ext.meta[f"FDF{dim}XN"])
+    else:
+        x1 = 0
+        xn = spectrum_ext.npts[-1]  # use extract spectrum's size
+
+    assert x1 >= 0 and 0 < xn < npts, (
+        "Dataset must have an extracted region to test in the last dimension")
+
+    # Discard imaginaries if the spectrum_ext is real data only
+    if spectrum.data.is_complex() and not spectrum_ext.data.is_complex():
+        dim = spectrum.order[-1]
+        spectrum.data = spectrum.data.real
+
+        # Update header values to reflect the change in data type
+        spectrum.meta[f"FDF{dim}QUADFLAG"] = 1.0  # Real dimension
+        spectrum.meta["FDQUADFLAG"] = 1.0  # Real dimension
 
     # Conduct the extraction
     spectrum.extract(start=x1, unit_start=UnitType.POINTS,
@@ -517,7 +538,8 @@ def test_nmrpipe_spectrum_ext(expected, expected_ext):
     match_metas(spectrum.meta, spectrum_ext.meta)
 
     # Find the tolerance for float errors
-    tol = spectrum.data.real.max() * 0.0002
+    tol = (spectrum.data.real.max() * 0.0002 if spectrum.data.is_complex() else
+           spectrum.data.max() * 0.002)
 
     # Check the values
     if spectrum.ndims == 1:
