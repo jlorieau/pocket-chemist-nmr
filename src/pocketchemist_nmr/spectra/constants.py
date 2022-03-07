@@ -1,6 +1,8 @@
 """
 Constants and enum types for NMRSpectra
 """
+import typing as t
+import re
 from enum import Enum, Flag, auto
 
 __all__ = ('UnitType', 'DomainType', 'DataType', 'DataLayout',
@@ -19,6 +21,63 @@ class UnitType(Enum):
     PPM = 210  # Frequency in parts-per-million (relative to Larmor freq)
 
     SEC = 300  # Time in seconds
+
+    @classmethod
+    def from_string(cls, string: str) \
+            -> t.Tuple[t.Union[float, int, None], 'UnitType']:
+        """Convert a unit string with optional value to a float/int value and a
+        unit type.
+
+        Parameters
+        ----------
+        string
+            The string to convert
+
+        Returns
+        -------
+        value, unit
+            The parsed value, if present, or None, if not present, and
+            the UnitType
+
+        Examples
+        --------
+        >>> UnitType.from_string("2.34 sec")
+        (2.34, <UnitType.SEC: 300>)
+        >>> UnitType.from_string("38.0%")
+        (38.0, <UnitType.PERCENT: 110>)
+        >>> UnitType.from_string("Hz")
+        (None, <UnitType.HZ: 200>)
+        >>> UnitType.from_string("-1.32e-3 ppm")
+        (-0.00132, <UnitType.PPM: 210>)
+        """
+        match = re.match(r'(?P<value>\-?[\d\.]+[eE]?[\-\+]?\d*)?'
+                         r'\s*'
+                         r'(?P<unit>[\w\%]+)', string)
+        if match is None:
+            raise ValueError(f"Cannot parse and convert the value '{string}'")
+        d = match.groupdict()
+
+        # Parse the value
+        value = d['value']
+        if value is not None:
+            try:
+                value = int(value)
+            except ValueError:
+                value = float(value)
+
+        # Parse the unit
+        if d['unit'].lower() in ('', 'pt', 'pts'):
+            return value, cls.POINTS
+        elif d['unit'].lower() in ('%', 'pct', 'percent'):
+            return value, cls.PERCENT
+        elif d['unit'].lower() in ('hz', 'hertz', 's^-1'):
+            return value, cls.HZ
+        elif d['unit'].lower() in ('ppm', 'parts-per-million'):
+            return value, cls.PPM
+        elif d['unit'].lower() in ('s', 'sec', 'second', 'seconds'):
+            return value, cls.SEC
+        else:
+            raise NotImplementedError
 
 
 class DomainType(Enum):
