@@ -194,6 +194,22 @@ def test_nmrpipe_spectrum_convert(expected):
     spectrum = NMRPipeSpectrum(expected['filepath'])
 
     for dim in tuple(range(spectrum.ndims)) + (-1,):
+        # Check points -> percent
+        value1 = spectrum.convert(0.0, UnitType.PERCENT, UnitType.POINTS,
+                                  dim=dim)
+        value2 = spectrum.convert(100.0, UnitType.PERCENT, UnitType.POINTS,
+                                  dim=dim)
+        assert value1 == 0
+        assert value2 == spectrum.npts[dim] - 1
+
+        # Check percent -> points
+        value1 = spectrum.convert(0, UnitType.POINTS, UnitType.PERCENT,
+                                  dim=dim)
+        value2 = spectrum.convert(spectrum.npts[dim] - 1, UnitType.POINTS,
+                                  UnitType.PERCENT, dim=dim)
+        assert value1 == 0.0
+        assert value2 == 100.0
+
         # Check points -> Hz
         value1 = spectrum.convert(0, UnitType.POINTS, UnitType.HZ, dim=dim)
         value2 = spectrum.convert(1, UnitType.POINTS, UnitType.HZ, dim=dim)

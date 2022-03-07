@@ -331,6 +331,8 @@ class NMRSpectrum(abc.ABC):
         for label, unit in (('from', unit_from), ('to', unit_to)):
             if unit is UnitType.POINTS:
                 endpoints[label] = (0.0, float(npts - 1))
+            elif unit is UnitType.PERCENT:
+                endpoints[label] = (0.0, 100.0)
             elif unit is UnitType.HZ:
                 endpoints[label] = self.range_hz[dim]
             elif unit is UnitType.PPM:
