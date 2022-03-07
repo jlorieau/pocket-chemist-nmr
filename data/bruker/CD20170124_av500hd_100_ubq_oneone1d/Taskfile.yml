@@ -50,6 +50,11 @@ tasks:
           -ov -out spec_ft.fid"
       - "showhdr -dump spec_ft.fid > spec_ft.hdr"
       - "nmrPipe -in spec.fid \
+         | nmrPipe -fn FT -auto \
+         | nmrpipe -fn EXT -x1 10.0ppm -xn 6.0ppm -sw \
+          -ov -out spec_ft_ext.fid"
+      - "showhdr -dump spec_ft_ext.fid > spec_ft_ext.hdr"
+      - "nmrPipe -in spec.fid \
          | nmrPipe -fn ZF \
           -ov -out spec_zf.fid"
       - "showhdr -dump spec_zf.fid > spec_zf.hdr"
@@ -90,6 +95,8 @@ tasks:
       - "spec_sp.hdr"
       - "spec_ft.fid"
       - "spec_ft.hdr"
+      - "spec_ft_ext.fid"
+      - "spec_ft_ext.hdr"
       - "spec_zf.fid"
       - "spec_zf.hdr"
       - "spec_real_zf.fid"

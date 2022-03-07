@@ -15,8 +15,8 @@ from ...filters.bruker import bruker_group_delay
 from .meta import NMRPipeMetaDict
 from ..nmr_spectrum import NMRSpectrum
 from ..utils import range_endpoints
-from ..constants import (DomainType, DataType, DataLayout, ApodizationType,
-                         RangeType)
+from ..constants import (UnitType, DomainType, DataType, DataLayout,
+                         ApodizationType, RangeType)
 
 __all__ = ('NMRPipeSpectrum',)
 
@@ -353,6 +353,59 @@ class NMRPipeSpectrum(NMRSpectrum):
             # Update other meta dict values
             self.update_meta()
 
+    def extract(self,
+                start: t.Union[int, float],
+                unit_start: UnitType,
+                end: t.Union[int, float],
+                unit_end: UnitType,
+                update_meta: bool = True):
+        old_pts = self.data.size()[-1]  # Old data size
+        start, end = super().extract(start=start, unit_start=unit_start,
+                                     end=end, unit_end=unit_end,
+                                     update_meta=update_meta)
+        new_pts = (end - start)  # New data size
+
+        # Update the meta dict
+        if update_meta:
+            # Get the last (current) dimension
+            dim = self.order[-1]
+
+            # Update FDFnCENTER
+            if self.domain_type[-1] is DomainType.TIME:
+                new_size = self.data.size()[-1]
+                if self.data_type[-1] is DataType.COMPLEX:
+                    self.meta[f"FDF{dim}CENTER"] = float(round(1. +
+                                                               new_size / 2.))
+                elif self.data_type[-1] is DataType.REAL:
+                    self.meta[f"FDF{dim}CENTER"] = float(round(1. +
+                                                               new_size / 4.))
+                else:
+                    raise NotImplementedError
+            elif self.domain_type[-1] is DomainType.FREQ:
+                self.meta[f"FDF{dim}CENTER"] -= start
+
+            # Update FDFnAPOD
+            self.meta[f"FDF{dim}APOD"] = float(end - start)
+
+            # Update FDSIZE
+            self.meta[f"FDSIZE"] = float(end - start)
+
+            # Update FDFnSW
+            self.meta[f"FDF{dim}SW"] = self.sw_hz[-1] * new_pts / old_pts
+
+            # Update the FDFnX1 and FDFnXN extracted ranges
+            self.meta[f"FDF{dim}X1"] = float(start + 1)
+            self.meta[f"FDF{dim}XN"] = float(end)
+
+            # Update the ORIG frequency, which the frequency of the last
+            # point.
+            # ORIG = ORIG_OLD + df_hz * (old_end_pt - new_end_pt)
+            self.meta[f"FDF{dim}ORIG"] += ((self.sw_hz[-1] / new_pts) *
+                                           (old_pts - end))
+
+            # Update other meta values
+            self.update_meta()
+
     def ft(self,
            auto: bool = False,
            center: bool = True,
@@ -505,12 +558,11 @@ class NMRPipeSpectrum(NMRSpectrum):
             self.meta[f"FDF{dim}ZF"] = -1. * float(new_size)
 
             # The point position for the center point.
-            # TODO: It's possible this doesn't catch all circumstances
             # (From bruk2pipe.c)
             if self.data_type[-1] is DataType.COMPLEX:
                 center_pt = float(round(1. + new_size / 2.))
                 freq_size = float(new_size)
-            elif self.data_type[-1] is  DataType.REAL:
+            elif self.data_type[-1] is DataType.REAL:
                 center_pt = float(round(1. + new_size / 4.))
                 freq_size = float(new_size / 2.)
             else:
@@ -518,9 +570,10 @@ class NMRPipeSpectrum(NMRSpectrum):
 
             self.meta[f"FDF{dim}CENTER"] = center_pt
 
-            # Update the ORIG frequency, which the frequency of the center
-            # position. According to bruk2pipe.c:
+            # Update the ORIG frequency, which the of the last point
+            # According to bruk2pipe.c:
             # xOrig = xObs*xCar - xSW*(xFreqSize - xMid)/xFreqSize;
+            #       = (center_hz) - df_hz * (end_pt - center_pt)
             orig = (self.obs_mhz[-1] * self.car_ppm[-1] -  # carrier in Hz
                     self.sw_hz[-1] * (freq_size - center_pt) / freq_size)
             self.meta[f"FDF{dim}ORIG"] = orig

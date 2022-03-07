@@ -107,6 +107,28 @@ def data_nmrpipe_complex_fid_ft_1d():
 
 
 @case(tags='singlefile')
+def data_nmrpipe_complex_fid_ft_ext_1d():
+    """A complex 1d Free-Induction Decay (FID) after automatic Fourier
+    transformation"""
+    d = data_nmrpipe_complex_fid_1d()
+    d['filepath'] = (Path('data') / 'bruker' /
+                     'CD20170124_av500hd_100_ubq_oneone1d' / 'spec_ft_ext.fid')
+    d['header']['data_pts'] = (320,)
+    d['header']['pts'] = (160,)
+    d['spectrum']['shape'] = (160,)
+    d['spectrum']['domain_type'] = (DomainType.FREQ,)
+    d['spectrum']['sw_hz'] = (2002.503173828125,)
+    d['spectrum']['sw_ppm'] = (4.006031817470854,)
+    d['spectrum']['range_hz'] = ((5004.05526164, 3004.05834961),)
+    d['spectrum']['range_ppm'] = ((10.01067306985, 6.00965505941),)
+    d['spectrum']['range_s'] = ((0.0, 0.0794006232190),)
+    d['spectrum']['correct_digital_filter'] = False
+    d['spectrum']['data_heights'] = (((0,), 829997.00000 - 471829.80000j),
+                                     ((-1,), -6763269.00000 + 5847060.00000j))
+    return d
+
+
+@case(tags='singlefile')
 def data_nmrpipe_complex_fid_zf_1d():
     """A complex 1d Free-Induction Decay (FID) after zero-filling"""
     d = data_nmrpipe_complex_fid_1d()

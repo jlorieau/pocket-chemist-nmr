@@ -513,6 +513,57 @@ class NMRSpectrum(abc.ABC):
         # Calculate the apodization func
         self.data *= k
 
+    def extract(self,
+                start: t.Union[int, float],
+                unit_start: UnitType,
+                end: t.Union[int, float],
+                unit_end: UnitType,
+                update_meta: bool = True):
+        """Extract a region of the last (current) dimension.
+
+        Parameters
+        ----------
+        start
+            Extracted region starting position
+        unit_start
+            The unit of the starting position value
+        end
+            Extracted region ending position
+        unit_end
+            The unit of the ending position value
+        update_meta
+            Update the meta dict. This functionality is handled by sub-classes.
+
+        Returns
+        -------
+        start_point, end_point
+            The starting and end point of the extraction
+        """
+        # Check that the unit types are compatible with the domain type
+        if self.domain_type[-1] is DomainType.FREQ:
+            if UnitType.SEC in (unit_start, unit_end):
+                raise ValueError(f"The start and end units must be in points "
+                                 f"or frequency units for a frequency domain")
+        elif self.domain_type[-1] is DomainType.TIME:
+            if (UnitType.HZ in (unit_start, unit_end) or
+               UnitType.PPM in (unit_start, unit_end)):
+                raise ValueError(f"The start and end units must be in points "
+                                 f"or time units for a time domain")
+
+        # Get the starting and ending points
+        start_point = self.convert(value=start, unit_from=unit_start,
+                                   unit_to=UnitType.POINTS, dim=-1)
+        end_point = self.convert(value=end, unit_from=unit_end,
+                                 unit_to=UnitType.POINTS, dim=-1)
+        start_point, end_point = (min(start_point, end_point),
+                                  max(start_point, end_point))  # reorder
+        start_point -= 1  # Req to get data of size [start_point, end_point]
+
+        # Conduct the extraction
+        self.data = self.data[..., start_point: end_point]
+
+        return start_point, end_point
+
     def ft(self,
            auto: bool = False,
            center: bool = True,
@@ -523,7 +574,7 @@ class NMRSpectrum(abc.ABC):
            neg: bool = False,
            bruk: bool = False,
            update_meta: bool = True):
-        """Perform a Fourier Transform to the last dimension.
+        """Perform a Fourier Transform to the last (current) dimension.
 
         The discrete fast Fourier transformation (fft) in the forward
         (time -> frequency) direction is as follows:

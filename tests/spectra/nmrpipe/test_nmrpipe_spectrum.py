@@ -22,7 +22,7 @@ attrs = ('ndims', 'order', 'domain_type', 'data_type', 'sw_hz', 'sw_ppm',
 
 
 def parametrize_casesets(*globs, cases=None, prefix='data_') -> tuple:
-    """Convert a serirs of case globs into a set of cases for parametrization.
+    """Convert a series of case globs into a set of cases for parametrization.
     """
     # Convert globs to functions
     funcs = []
@@ -476,6 +476,52 @@ def test_nmrpipe_spectrum_apodization_sine(expected, expected_sp):
     # Check the values
     if spectrum.ndims == 1:
         for row, (i, j) in enumerate(zip(spectrum.data, spectrum_sp.data)):
+            assert isclose(i, j, abs_tol=tol)
+    else:
+        raise NotImplementedError
+
+
+# See cases_nmrpipe_spectrum.py for a listing of test cases
+@pytest.mark.parametrize('expected, expected_ext',
+                         parametrize_casesets('*nmrpipe_complex_fid_ft_1d',
+                                              '*nmrpipe_complex_fid_ft_ext_1d',
+                                              cases='...cases.nmrpipe',
+                                              prefix='data_'))
+def test_nmrpipe_spectrum_ext(expected, expected_ext):
+    """Test the NMRPipeSpectrum ft method"""
+    # Load the spectrum, if needed (cache for future tests)
+    print(f"Loading spectra: '{expected['filepath']}' and "
+          f"'{expected_ext['filepath']}'")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+    spectrum_ext = NMRPipeSpectrum(expected_ext['filepath'])
+
+    # Set the default NMRPipe range types
+    spectrum.freq_range_type = RangeType.FREQ
+
+    # Get the extract ranges for the last (current) dimension
+    dim = spectrum_ext.order[-1]
+    x1 = int(spectrum_ext.meta[f"FDF{dim}X1"])
+    xn = int(spectrum_ext.meta[f"FDF{dim}XN"])
+    print('x1:', x1, xn)
+    assert x1 > 0 and xn > 0, ("Dataset must have an extracted region to test "
+                               "in the last dimension")
+
+    # Conduct the extraction
+    spectrum.extract(start=x1, unit_start=UnitType.POINTS,
+                     end=xn, unit_end=UnitType.POINTS)
+
+    # Compare the shapes of data
+    assert spectrum.data.shape == spectrum_ext.data.shape
+
+    # Compare to the reference dataset
+    match_metas(spectrum.meta, spectrum_ext.meta)
+
+    # Find the tolerance for float errors
+    tol = spectrum.data.real.max() * 0.0002
+
+    # Check the values
+    if spectrum.ndims == 1:
+        for row, (i, j) in enumerate(zip(spectrum.data, spectrum_ext.data)):
             assert isclose(i, j, abs_tol=tol)
     else:
         raise NotImplementedError
