@@ -49,10 +49,12 @@ class UnitType(Enum):
         (None, <UnitType.HZ: 200>)
         >>> UnitType.from_string("-1.32e-3 ppm")
         (-0.00132, <UnitType.PPM: 210>)
+        >>> UnitType.from_string("332")
+        (332, <UnitType.POINTS: 100>)
         """
         match = re.match(r'(?P<value>\-?[\d\.]+[eE]?[\-\+]?\d*)?'
                          r'\s*'
-                         r'(?P<unit>[\w\%]+)', string)
+                         r'(?P<unit>[\w\%]+)?', string)
         if match is None:
             raise ValueError(f"Cannot parse and convert the value '{string}'")
         d = match.groupdict()
@@ -66,7 +68,7 @@ class UnitType(Enum):
                 value = float(value)
 
         # Parse the unit
-        if d['unit'].lower() in ('', 'pt', 'pts'):
+        if d['unit'] is None or d['unit'].lower() in ('pt', 'pts'):
             return value, cls.POINTS
         elif d['unit'].lower() in ('%', 'pct', 'percent'):
             return value, cls.PERCENT
@@ -77,7 +79,7 @@ class UnitType(Enum):
         elif d['unit'].lower() in ('s', 'sec', 'second', 'seconds'):
             return value, cls.SEC
         else:
-            raise NotImplementedError
+            return value, cls.UNKNOWN
 
 
 class DomainType(Enum):
