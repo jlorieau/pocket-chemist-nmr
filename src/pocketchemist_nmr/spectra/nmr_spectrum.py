@@ -310,7 +310,8 @@ class NMRSpectrum(abc.ABC):
             If the unit_from is in points, negative values indicate the number
             of points from the end of the dataset
         unit_from
-            The unit type of the value. eg. UnitType.Hz, UnitType.ppm
+            The unit type of the value. eg. UnitType.Hz, UnitType.ppm.
+            For UnitType.POINTS, reverse indexing is supported.
         unit_to
             The unit type to convert the value to.
         dim
@@ -340,9 +341,14 @@ class NMRSpectrum(abc.ABC):
             else:
                 raise NotImplementedError
 
-        # Get the point position for the 'from' value
-        point = ((float(value) - endpoints['from'][0]) * float(npts) /
-                 (endpoints['from'][1] - endpoints['from'][0]))
+        # Get the point position for the 'from' value.
+        if unit_from is UnitType.POINTS and value < 0:
+            # Allow reverse indexing for unit_from UnitType.POINTS
+            point = float(self.npts[dim]) + float(value) + 1.0
+        else:
+            # Otherwise, calculate the new point value from the endpoints
+            point = ((float(value) - endpoints['from'][0]) * float(npts) /
+                     (endpoints['from'][1] - endpoints['from'][0]))
 
         # Check that the number of points is within range
         assert 0.0 <= point <= float(npts), (

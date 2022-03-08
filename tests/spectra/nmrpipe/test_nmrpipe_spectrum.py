@@ -207,8 +207,11 @@ def test_nmrpipe_spectrum_convert(expected):
                                   dim=dim)
         value2 = spectrum.convert(spectrum.npts[dim] - 1, UnitType.POINTS,
                                   UnitType.PERCENT, dim=dim)
+        value3 = spectrum.convert(-1, UnitType.POINTS, UnitType.PERCENT,
+                                  dim=dim)  # reverse indexing
         assert value1 == 0.0
         assert value2 == 100.0
+        assert value3 == 100.0
 
         # Check points -> Hz
         value1 = spectrum.convert(0, UnitType.POINTS, UnitType.HZ, dim=dim)
