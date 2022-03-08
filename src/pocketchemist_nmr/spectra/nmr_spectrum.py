@@ -24,10 +24,18 @@ __all__ = ('NMRSpectrum',)
 class NMRSpectrum(abc.ABC):
     """An NMR spectrum base class.
 
-    The base class handles the generic processing methodology. Subclasses
-    should override methods that are specific to their
-    implementation--specifically when interating with the self.meta dict, which
-    is implementation specific.
+    Notes
+    -----
+    - The base class handles the generic processing methodology. Subclasses
+      should override methods that are specific to their
+      implementation--specifically when interating with the self.meta dict,
+      which is implementation specific.
+    - The processing functions and some accessors are designed to operate on
+      the last (current) dimension only. The other dimensions are processed
+      after a transpose to set another dimension as the last dimension. The
+      reason for this approach is that NMR multidimensional data is hypercomplex
+      such that the last dimension can be viewed as complex numbers but other
+      dimension's complex data must interleaved, and it is not complex.
     """
 
     #: Metadata on the spectrum.
@@ -299,9 +307,9 @@ class NMRSpectrum(abc.ABC):
 
     def convert(self, value: float,
                 unit_from: UnitType = UnitType.POINTS,
-                unit_to: UnitType = UnitType.POINTS,
-                dim: int = -1) -> t.Union[float, int]:
-        """Convert a values from one unit to another
+                unit_to: UnitType = UnitType.POINTS) -> t.Union[float, int]:
+        """Convert a values from one unit to another in the last (current)
+        dimension.
 
         Parameters
         ----------
@@ -314,12 +322,6 @@ class NMRSpectrum(abc.ABC):
             For UnitType.POINTS, reverse indexing is supported.
         unit_to
             The unit type to convert the value to.
-        dim
-            The dimension for which the value should be converted. By default,
-            this is the last (current dimension)
-        correct_digital_filter
-            If a digital filter correction is needed, apply it in the
-            calculation.
 
         Returns
         -------
@@ -328,36 +330,39 @@ class NMRSpectrum(abc.ABC):
         """
         # Get parameters that will be needed in the calculations
         endpoints = dict()
-        npts = self.npts[dim]
+        npts = self.npts_data[-1]
+
         for label, unit in (('from', unit_from), ('to', unit_to)):
             if unit is UnitType.POINTS:
                 endpoints[label] = (0.0, float(npts - 1))
             elif unit is UnitType.PERCENT:
                 endpoints[label] = (0.0, 100.0)
+            elif unit is UnitType.SEC:
+                endpoints[label] = self.range_s[-1]
             elif unit is UnitType.HZ:
-                endpoints[label] = self.range_hz[dim]
+                endpoints[label] = self.range_hz[-1]
             elif unit is UnitType.PPM:
-                endpoints[label] = self.range_ppm[dim]
+                endpoints[label] = self.range_ppm[-1]
             else:
                 raise NotImplementedError
 
         # Get the point position for the 'from' value.
         if unit_from is UnitType.POINTS and value < 0:
             # Allow reverse indexing for unit_from UnitType.POINTS
-            point = float(self.npts[dim]) + float(value) + 1.0
+            point = float(npts) + float(value)
         else:
             # Otherwise, calculate the new point value from the endpoints
-            point = ((float(value) - endpoints['from'][0]) * float(npts) /
+            point = ((float(value) - endpoints['from'][0]) * float(npts - 1) /
                      (endpoints['from'][1] - endpoints['from'][0]))
 
         # Check that the number of points is within range
-        assert 0.0 <= point <= float(npts), (
+        assert 0.0 <= point < float(npts), (
             f"The value '{value}' is not within range of "
             f"[{endpoints['from'][0]}, {endpoints['from'][1]}[")
 
         # Convert the point position to the new value
         new_value = ((endpoints['to'][1] - endpoints['to'][0]) *
-                     (round(point) / npts) + endpoints['to'][0])
+                     (round(point) / (npts - 1)) + endpoints['to'][0])
 
         return round(new_value) if unit_to is UnitType.POINTS else new_value
 
@@ -560,9 +565,9 @@ class NMRSpectrum(abc.ABC):
 
         # Get the starting and ending points
         start_point = self.convert(value=start, unit_from=unit_start,
-                                   unit_to=UnitType.POINTS, dim=-1)
+                                   unit_to=UnitType.POINTS)
         end_point = self.convert(value=end, unit_from=unit_end,
-                                 unit_to=UnitType.POINTS, dim=-1)
+                                 unit_to=UnitType.POINTS)
         start_point, end_point = (min(start_point, end_point),
                                   max(start_point, end_point))  # reorder
 

@@ -193,62 +193,72 @@ def test_nmrpipe_spectrum_convert(expected):
     print(f"Loading spectrum '{expected['filepath']}")
     spectrum = NMRPipeSpectrum(expected['filepath'])
 
-    for dim in tuple(range(spectrum.ndims)) + (-1,):
-        # Check points -> percent
-        value1 = spectrum.convert(0.0, UnitType.PERCENT, UnitType.POINTS,
-                                  dim=dim)
-        value2 = spectrum.convert(100.0, UnitType.PERCENT, UnitType.POINTS,
-                                  dim=dim)
-        assert value1 == 0
-        assert value2 == spectrum.npts[dim] - 1
+    # Check points -> percent
+    value1 = spectrum.convert(0.0, UnitType.PERCENT, UnitType.POINTS)
+    value2 = spectrum.convert(100.0, UnitType.PERCENT, UnitType.POINTS)
+    assert value1 == 0
+    assert value2 == spectrum.npts[-1] - 1
 
-        # Check percent -> points
-        value1 = spectrum.convert(0, UnitType.POINTS, UnitType.PERCENT,
-                                  dim=dim)
-        value2 = spectrum.convert(spectrum.npts[dim] - 1, UnitType.POINTS,
-                                  UnitType.PERCENT, dim=dim)
-        value3 = spectrum.convert(-1, UnitType.POINTS, UnitType.PERCENT,
-                                  dim=dim)  # reverse indexing
-        assert value1 == 0.0
-        assert value2 == 100.0
-        assert value3 == 100.0
+    # Check percent -> points
+    value1 = spectrum.convert(0, UnitType.POINTS, UnitType.PERCENT)
+    value2 = spectrum.convert(spectrum.npts[-1] - 1, UnitType.POINTS,
+                              UnitType.PERCENT)
+    # Try reverse indexing
+    value3 = spectrum.convert(-1, UnitType.POINTS, UnitType.PERCENT)
+    assert value1 == 0.0
+    assert value2 == 100.0
+    assert value3 == 100.0
 
-        # Check points -> Hz
-        value1 = spectrum.convert(0, UnitType.POINTS, UnitType.HZ, dim=dim)
-        value2 = spectrum.convert(1, UnitType.POINTS, UnitType.HZ, dim=dim)
-        value3 = spectrum.convert(spectrum.npts[dim] - 1, UnitType.POINTS,
-                                  UnitType.HZ, dim=dim)
-        assert value1 - value3 == pytest.approx(spectrum.sw_hz[dim])
-        assert value1 - value2 == pytest.approx(spectrum.sw_hz[dim] /
-                                                spectrum.npts[dim])
+    # Check points -> sec
+    value1 = spectrum.convert(0, UnitType.POINTS, UnitType.SEC)
+    value2 = spectrum.convert(1, UnitType.POINTS, UnitType.SEC)
+    assert (value2 - value1) ** -1 == pytest.approx(spectrum.sw_hz[-1])
 
-        # Check Hz -> points
-        value1 = spectrum.convert(value1, UnitType.HZ, UnitType.POINTS, dim=dim)
-        value2 = spectrum.convert(value2, UnitType.HZ, UnitType.POINTS, dim=dim)
-        value3 = spectrum.convert(value3, UnitType.HZ, UnitType.POINTS, dim=dim)
-        assert value1 == 0
-        assert value2 == 1
-        assert value3 == spectrum.npts[dim] - 1
+    # Check sec -> points
+    value1 = spectrum.convert(value1, UnitType.SEC, UnitType.POINTS)
+    value2 = spectrum.convert(value2, UnitType.SEC, UnitType.POINTS)
+    assert value1 == 0.0
+    assert value2 == 1.0
 
-        # Check points -> ppm
-        value1 = spectrum.convert(0, UnitType.POINTS, UnitType.PPM, dim=dim)
-        value2 = spectrum.convert(1, UnitType.POINTS, UnitType.PPM, dim=dim)
-        value3 = spectrum.convert(spectrum.npts[dim] - 1, UnitType.POINTS,
-                                  UnitType.PPM, dim=dim)
-        assert value1 - value3 == pytest.approx(spectrum.sw_ppm[dim])
-        assert value1 - value2 == pytest.approx(spectrum.sw_ppm[dim] /
-                                                spectrum.npts[dim])
+    # Check points -> Hz
+    value1 = spectrum.convert(0, UnitType.POINTS, UnitType.HZ)
+    value2 = spectrum.convert(1, UnitType.POINTS, UnitType.HZ)
+    value3 = spectrum.convert(spectrum.npts[-1] - 1, UnitType.POINTS,
+                              UnitType.HZ)
+    assert value1 - value3 == pytest.approx(spectrum.sw_hz[-1])
 
-        # Check ppm -> points
-        value1 = spectrum.convert(value1, UnitType.PPM, UnitType.POINTS,
-                                  dim=dim)
-        value2 = spectrum.convert(value2, UnitType.PPM, UnitType.POINTS,
-                                  dim=dim)
-        value3 = spectrum.convert(value3, UnitType.PPM, UnitType.POINTS,
-                                  dim=dim)
-        assert value1 == 0
-        assert value2 == 1
-        assert value3 == spectrum.npts[dim] - 1
+    # Match the resolution of array_hz
+    array_hz = spectrum.array_hz[-1]
+    assert value1 - value2 == pytest.approx(array_hz[0] - array_hz[1],
+                                            abs=0.001)
+
+    # Check Hz -> points
+    value1 = spectrum.convert(value1, UnitType.HZ, UnitType.POINTS)
+    value2 = spectrum.convert(value2, UnitType.HZ, UnitType.POINTS)
+    value3 = spectrum.convert(value3, UnitType.HZ, UnitType.POINTS)
+    assert value1 == 0
+    assert value2 == 1
+    assert value3 == spectrum.npts[-1] - 1
+
+    # Check points -> ppm
+    value1 = spectrum.convert(0, UnitType.POINTS, UnitType.PPM)
+    value2 = spectrum.convert(1, UnitType.POINTS, UnitType.PPM)
+    value3 = spectrum.convert(spectrum.npts[-1] - 1, UnitType.POINTS,
+                              UnitType.PPM)
+    assert value1 - value3 == pytest.approx(spectrum.sw_ppm[-1])
+
+    # Match the resolution of array_ppm
+    array_ppm = spectrum.array_ppm[-1]
+    assert value1 - value2 == pytest.approx(array_ppm[0] - array_ppm[1],
+                                            abs=0.0001)
+
+    # Check ppm -> points
+    value1 = spectrum.convert(value1, UnitType.PPM, UnitType.POINTS)
+    value2 = spectrum.convert(value2, UnitType.PPM, UnitType.POINTS)
+    value3 = spectrum.convert(value3, UnitType.PPM, UnitType.POINTS)
+    assert value1 == 0
+    assert value2 == 1
+    assert value3 == spectrum.npts[-1] - 1
 
 
 @parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
