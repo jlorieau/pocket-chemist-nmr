@@ -17,3 +17,4 @@ The nmrpipe subcommand is designed as a drop-in replacement to NMRPipe.
     nmrpipe_fn_ps
     nmrpipe_fn_em
     nmrpipe_fn_sp
+    nmrpipe_fn_ext

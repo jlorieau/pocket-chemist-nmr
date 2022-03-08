@@ -18,6 +18,8 @@ Accessors
 ---------
 
 .. autoproperty:: NMRSpectrum.ndims
+.. autoproperty:: NMRSpectrum.npts
+.. autoproperty:: NMRSpectrum.npts_data
 .. autoproperty:: NMRSpectrum.domain_type
 .. autoproperty:: NMRSpectrum.data_type
 .. autoproperty:: NMRSpectrum.sw_hz
@@ -25,12 +27,19 @@ Accessors
 .. autoproperty:: NMRSpectrum.car_hz
 .. autoproperty:: NMRSpectrum.car_ppm
 .. autoproperty:: NMRSpectrum.obs_mhz
+.. autoproperty:: NMRSpectrum.range_hz
+.. autoproperty:: NMRSpectrum.range_ppm
+.. autoproperty:: NMRSpectrum.range_s
+.. autoproperty:: NMRSpectrum.array_hz
+.. autoproperty:: NMRSpectrum.array_ppm
+.. autoproperty:: NMRSpectrum.array_s
 .. autoproperty:: NMRSpectrum.label
 .. autoproperty:: NMRSpectrum.apodization
-.. autoproperty:: NMRSpectrum.npts
 .. autoproperty:: NMRSpectrum.data_layout
 .. autoproperty:: NMRSpectrum.group_delay
 .. autoproperty:: NMRSpectrum.correct_digital_filter
+.. automethod:: NMRSpectrum.data_layout
+.. automethod:: NMRSpectrum.convert
 
 Saving and Loading
 ------------------
@@ -48,6 +57,7 @@ Processing
 
     NMRSpectrum.apodization_exp
     NMRSpectrum.apodization_sine
+    NMRSpectrum.extract
     NMRSpectrum.ft
     NMRSpectrum.transpose
     NMRSpectrum.phase
