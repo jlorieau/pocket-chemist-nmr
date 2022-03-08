@@ -9,6 +9,8 @@ from click_option_group import optgroup, MutuallyExclusiveOptionGroup
 from loguru import logger
 from humanfriendly.tables import format_pretty_table
 
+from ..spectra.constants import UnitType
+
 
 # Core plugin functionality
 
@@ -273,4 +275,34 @@ def nmrpipe_fn_sp(off, end, pow, start, size):
     group = read_stdin()
     group += ApodizationSinebellSpectra(off=off, end=end, power=pow,
                                         start=start, size=size)
+    write_stdout(group)
+
+
+@nmrpipe_fn.command(name='EXT', context_settings=CONTEXT_SETTINGS)
+@click.option('-x1', '--start', required=False, type=str, default='0',
+              help="Region range start (no units in points, Hz, sec, %, or "
+                   "PPM)")
+@click.option('-xn', '--end', required=False, type=str, default='NPTS',
+              help="Region range end (no units in points, Hz, sec, %, or "
+                   "PPM). Negative point values count from the end of the "
+                   "dimension.")
+@click.option('-sw', is_flag=True, type=bool, default=True, show_default=True,
+              help="Update the spectral width and position parameters")
+@nmrpipe_out
+def nmrpipe_fn_ext(start, end, sw):
+    """Extract a region from the last dimension"""
+    from ..processors.processor import ExtractSpectra
+
+    # Convert x1/xn
+    start, unit_start = UnitType.from_string(start)
+    if end == 'NPTS':
+        end, unit_end = -1, UnitType.POINTS
+    else:
+        end, unit_end = UnitType.from_string(end)
+
+    logger.debug(f"start={start} {unit_start}, end={end} {unit_end}, sw={sw}")
+
+    group = read_stdin()
+    group += ExtractSpectra(start=start, unit_start=unit_start,
+                            end=end, unit_end=unit_end, update_meta=sw)
     write_stdout(group)

@@ -11,8 +11,8 @@ from pocketchemist.processors.fft import FFTProcessor
 from ..spectra import NMRSpectrum
 
 __all__ = ('NMRProcessor', 'NMRGroupProcessor', 'ApodizationExpSpectra',
-           'ApodizationSinebellSpectra', 'FTSpectra', 'PhaseSpectra',
-           'Transpose2D', 'ZeroFillSpectra')
+           'ApodizationSinebellSpectra', 'ExtractSpectra', 'FTSpectra',
+           'PhaseSpectra', 'Transpose2D', 'ZeroFillSpectra')
 
 
 def set_logger(logger_):
@@ -91,6 +91,14 @@ class ApodizationSinebellSpectra(NMRProcessor):
     method = 'apodization_sine'
     required_params = ('off', 'end', 'power')
     optional_params = ('start', 'size')
+
+
+class ExtractSpectra(NMRProcessor):
+    """Extract region in the last dimension
+    """
+    method = 'extract'
+    required_params = ('start', 'unit_start', 'end', 'unit_end')
+    optional_params = ('update_meta',)
 
 
 class FTSpectra(FFTProcessor, NMRProcessor):

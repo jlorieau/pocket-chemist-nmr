@@ -21,6 +21,7 @@ def test_cli_nmrpipe_in(runner=CliRunner()):
 
 @pytest.mark.parametrize('fn, opts',
                          (('EM', ('-lb', '10.')),
+                          ('EXT', ()),
                           ('FT', ()),
                           ('PS', ()),
                           ('SP', ()),
