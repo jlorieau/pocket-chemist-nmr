@@ -120,6 +120,9 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
+# Taskfile
+**/.task/checksum/*
+
 # Pyre type checker
 .pyre/
 
@@ -133,7 +136,10 @@ test*.ft*
 2ri
 2ir
 2ii
+*.dat
 *.fid
 *.ft
+*.ft1
 *.ft2
 *.ft3
+*.hdr

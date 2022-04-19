@@ -1,0 +1,121 @@
+version: '3'
+
+vars:
+  PULPROG:
+    sh: grep PULPROG\= acqus|sed 's/.*<//g'|sed 's/>//g'
+
+tasks:
+  build:
+    deps: [process]
+
+  convert:
+    cmds:
+      - "bruk2pipe -verb -in ./fid \
+           -bad 0.0 -ext -aswap -AMX -decim 2000 -dspfvs 20 -grpdly 67.9862518310547  \
+           -xN              1792  \
+           -xT               799  \
+           -xMODE            DQD  \
+           -xSW        10000.000  \
+           -xOBS         499.872  \
+           -xCAR           4.773  \
+           -xLAB              1H  \
+           -ndim               1  \
+         | nmrPipe -fn MULT -c 2.44141e-01 \
+           -out ./spec.fid -ov"
+      - "sleep 3"
+      - "showhdr -dump spec.fid > spec.hdr"
+    sources:
+      - "fid"
+    generates:
+      - "spec.fid"
+      - "spec.hdr"
+
+  process:
+    deps: [convert,]
+    cmds:
+      - "nmrPipe -in spec.fid \
+         | nmrPipe -fn PS -p0 0.0 -p1 0.0 -di \
+          -ov -out spec_real.fid"
+      - "showhdr -dump spec_real.fid > spec_real.hdr"
+      - "nmrPipe -in spec.fid \
+         | nmrPipe -fn EM -lb 10.0 \
+          -ov -out spec_em.fid"
+      - "showhdr -dump spec_em.fid > spec_em.hdr"
+      - "nmrPipe -in spec.fid \
+         | nmrPipe -fn SP -off 0.45 -end 0.95 -pow 1.5 \
+          -ov -out spec_sp.fid"
+      - "showhdr -dump spec_sp.fid > spec_sp.hdr"
+      - "nmrPipe -in spec.fid \
+         | nmrPipe -fn FT -auto \
+          -ov -out spec_ft.fid"
+      - "nmrPipe -in spec.fid \
+         | nmrPipe -fn EXT -x1 0 -xn 512 -sw \
+         | nmrPipe -fn PS -p0 0.0 -p1 0.0 -di \
+          -ov -out spec_ext_real.fid"
+      - "showhdr -dump spec_ext.fid > spec_ext_real.hdr"
+      - "nmrPipe -in spec.fid \
+         | nmrPipe -fn EXT -x1 0 -xn 512 -sw \
+          -ov -out spec_ext.fid"
+      - "showhdr -dump spec_ext.fid > spec_ext.hdr"
+      - "nmrPipe -in spec.fid \
+         | nmrPipe -fn FT -auto \
+         | nmrpipe -fn EXT -x1 10.0ppm -xn 6.0ppm -sw \
+          -ov -out spec_ft_ext.fid"
+      - "showhdr -dump spec_ft_ext.fid > spec_ft_ext.hdr"
+      - "nmrPipe -in spec.fid \
+         | nmrPipe -fn ZF \
+          -ov -out spec_zf.fid"
+      - "showhdr -dump spec_zf.fid > spec_zf.hdr"
+      - "nmrPipe -in spec.fid \
+         | nmrPipe -fn PS -p0 0.0 -p1 0.0 -di \
+         | nmrPipe -fn ZF \
+          -ov -out spec_real_zf.fid"
+      - "showhdr -dump spec_real_zf.fid > spec_real_zf.hdr"
+      - "nmrPipe -in spec.fid \
+         | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
+         | nmrPipe -fn ZF -size 8192 \
+         | nmrPipe -fn FT -auto \
+         | nmrPipe -fn PS -p0 0. -p1 0. -di \
+          -ov -out {{.PULPROG}}.ft"
+      - "showhdr -dump {{.PULPROG}}.ft > {{.PULPROG}}.hdr"
+      - "nmrPipe -in spec.fid \
+         | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
+         | nmrPipe -fn ZF -size 8192 \
+         | nmrPipe -fn FT -auto \
+         | nmrPipe -fn PS -p0 0. -p1 0. \
+          -ov -out {{.PULPROG}}_complex.ft"
+      - "showhdr -dump {{.PULPROG}}_complex.ft > {{.PULPROG}}_complex.hdr"
+      - "nmrPipe -in spec.fid \
+         | nmrPipe  -fn SP -off 0.45 -end 0.95 -pow 1 -c 0.5 \
+         | nmrPipe -fn ZF -size 8192 \
+         | nmrPipe -fn FT -auto \
+         | nmrPipe -fn PS -p0 -33.0 -p1 0.5 -di \
+          -ov -out {{.PULPROG}}_ps.ft"
+      - "showhdr -dump {{.PULPROG}}_ps.ft > {{.PULPROG}}_ps.hdr"
+    sources:
+      - "spec.fid"
+    generates:
+      - "spec_real.fid"
+      - "spec_real.hdr"
+      - "spec_em.fid"
+      - "spec_em.hdr"
+      - "spec_sp.fid"
+      - "spec_sp.hdr"
+      - "spec_ft.fid"
+      - "spec_ft.hdr"
+      - "spec_ext.fid"
+      - "spec_ext.hdr"
+      - "spec_ft_ext_real.fid"
+      - "spec_ft_ext_real.hdr"
+      - "spec_ft_ext.fid"
+      - "spec_ft_ext.hdr"
+      - "spec_zf.fid"
+      - "spec_zf.hdr"
+      - "spec_real_zf.fid"
+      - "spec_real_zf.hdr"
+      - "{{.PULPROG}}.ft"
+      - "{{.PULPROG}}.hdr"
+      - "{{.PULPROG}}_complex.ft"
+      - "{{.PULPROG}}_complex.hdr"
+      - "{{.PULPROG}}_ps.ft"
+      - "{{.PULPROG}}_ps.hdr"

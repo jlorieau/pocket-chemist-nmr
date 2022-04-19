@@ -2,10 +2,11 @@
 Functions and utilities to unpack NMRPipe headers
 """
 import struct
+from array import array
 import typing as t
 
 from .definitions import get_nmrpipe_definitions
-from .constants import header_size_bytes
+from .constants import header_size_bytes, data_size_bytes
 from ..meta import NMRMetaDict
 
 __all__ = ('load_nmrpipe_meta', 'NMRPipeMetaDict')
@@ -27,8 +28,8 @@ def load_nmrpipe_meta(filelike: t.BinaryIO, start: int = 0,
     start
         The start byte to start reading the NMRPipe header data.
     end
-        The end by to end reading the NMRPipe header data. If this is None,
-        the the filelike's position will be placed to its original place.
+        The location to place the file after reading the header. If None,
+        the original location will be set.
 
     Returns
     -------
@@ -36,7 +37,6 @@ def load_nmrpipe_meta(filelike: t.BinaryIO, start: int = 0,
         Return a dict (:obj:`.NMRPipeMetaDict`) with metadata entries from
         an NMRPipe spectrum.
     """
-    assert 'b' in filelike.mode, "File must be read in binary mode"
 
     # Get the header definitions
     field_locations, field_descriptions, text_fields = get_nmrpipe_definitions()
@@ -71,7 +71,7 @@ def load_nmrpipe_meta(filelike: t.BinaryIO, start: int = 0,
 
         # Get the offset. This is the number of floats (4-bytes) before the
         # text entry, so it needs to be multiplied by 4
-        offset = field_locations[key] * 4
+        offset = field_locations[key] * data_size_bytes
 
         # Try to convert to string
         try:
@@ -85,3 +85,47 @@ def load_nmrpipe_meta(filelike: t.BinaryIO, start: int = 0,
 
     # Convert to and return a NMRPipeMetaDict
     return NMRPipeMetaDict(pipedict)
+
+
+def save_nmrpipe_meta(meta: NMRPipeMetaDict,
+                      size_bytes: t.Optional[int] = header_size_bytes,
+                      data_size_bytes: int = data_size_bytes) -> bytes:
+    """Save an NMRPipe meta dict into a string of bytes that can be used
+    as a header for an NMRPipe spectrum.
+
+    Parameters
+    ----------
+    meta
+        A dict (:obj:`.NMRPipeMetaDict`) with metadata entries from
+        an NMRPipe spectrum.
+    size_bytes
+        The size of the header in bytes
+    data_size_bytes
+        The size of elements (floats) in the header
+    """
+    # Get the header definitions
+    field_locations, field_descriptions, text_fields = get_nmrpipe_definitions()
+    fields_by_location = {v: k for k, v in field_locations.items()}
+
+    # Create an empty header
+    num_elems = int(size_bytes / data_size_bytes)
+    header = array('f', (float(0.0) for i in range(num_elems)))
+
+    # Pack header float values
+    for location, field_name in fields_by_location.items():
+        offset = location * data_size_bytes
+
+        # Construct the text field name from the field name
+        text_field_name = "SIZE_" + field_name.replace('FD', '')
+
+        # print(field_name, meta[field_name])
+        if text_field_name in text_fields:
+            # Handle strings
+            text_size = text_fields[text_field_name]  # in 4-byte floats
+            struct.pack_into(f'{text_size}s', header, offset,
+                             meta[field_name].encode())
+        else:
+            # Handle floating-point values
+            struct.pack_into('f', header, offset, meta[field_name])
+
+    return header.tobytes()

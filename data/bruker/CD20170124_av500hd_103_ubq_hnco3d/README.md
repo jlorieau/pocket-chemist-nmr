@@ -10,6 +10,13 @@ directory.
 |                  | FDF3SIZE   | 102                 |
 |                  | FDF4SIZE   | 1                   |
 |                  | FILECOUNT  | 102                 |
+| ft3/test%04d.fid | ORD        | 2, 3, 1             |
+|                  | NPTS       | 805x1, 512x1, 256x1 |
+|                  | FDSIZE     | 805                 |
+|                  | FDSPECNUM  | 512                 |
+|                  | FDF3SIZE   | 256                 |
+|                  | FDF4SIZE   | 1                   |
+|                  | FILECOUNT  | 256                 |
 | hncogp3d.ft3     | ORD        | 2, 3, 1             |
 |                  | NPTS       | 805x1, 512x1, 256x1 |
 |                  | FDSIZE     | 805                 | (F2)

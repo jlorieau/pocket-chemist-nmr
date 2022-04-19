@@ -1,252 +1,755 @@
 """
 Test the spectra/nmrpipe_spectrum.py submodule
 """
+from cmath import isclose
+from math import floor
 from pathlib import Path
+from itertools import product, chain
+import typing as t
 
+import torch
 import pytest
-import numpy as np
+from pytest_cases import parametrize_with_cases, get_all_cases
+from pocketchemist_nmr.spectra.nmrpipe import NMRPipeSpectrum
+from pocketchemist_nmr.spectra.constants import (UnitType, ApodizationType,
+                                                 DomainType, RangeType)
 
-from pocketchemist_nmr.spectra.nmr_spectrum import DomainType
-from pocketchemist_nmr.spectra.nmrpipe import (NMRPipeSpectrum, Plane2DPhase,
-                                               SignAdjustment)
+#: Attributes to test
+attrs = ('ndims', 'order', 'domain_type', 'data_type', 'sw_hz', 'sw_ppm',
+         'car_hz', 'car_ppm', 'range_hz', 'range_ppm', 'range_s', 'obs_mhz',
+         'label', 'apodization', 'group_delay', 'correct_digital_filter',
+         'sign_adjustment', 'plane2dphase')
 
-spectrum2d_exs = (Path('data') / 'bruker' /
-                  'CD20170124_av500hd_101_ubq_hsqcsi2d' /
-                  'hsqcetfpf3gpsi2.ft2',)
 
-spectrum3d_exs = (Path('data') / 'bruker' /
-                  'CD20170124_av500hd_103_ubq_hncosi2d' /
-                  'fid' / 'test%03d.fid',)
+def parametrize_casesets(*globs, cases=None, prefix='data_') -> tuple:
+    """Convert a series of case globs into a set of cases for parametrization.
+    """
+    # Convert globs to functions
+    funcs = []
+    dummy = lambda: None
+    for glob in globs:
+        glob_funcs = map(lambda glob: get_all_cases(dummy, cases=cases,
+                                                    prefix=prefix, glob=glob),
+                         glob if not isinstance(glob, str) else (glob,))
+        glob_funcs = chain.from_iterable(glob_funcs)
+        funcs.append(glob_funcs)
+
+    # Create a generator for the product of these
+    return tuple(tuple(f() for f in prod) if len(prod) > 1 else prod[0]()
+                 for prod in product(*funcs))
+
+
+def match_attributes(spectrum, expected):
+    """Check the attributes of a spectrum"""
+    unmatched_values = dict()
+
+    for attr in attrs:
+        spectrum_value = getattr(spectrum, attr)
+        expected_value = expected['spectrum'][attr]
+
+        # Check that the values match expected
+        if (hasattr(expected_value, '__iter__') and
+                all(isinstance(i, float) for i in expected_value)):
+            # Float parameters
+            if not all(isclose(i, j)
+                       for i, j in zip(spectrum_value, expected_value)):
+                unmatched_values[attr] = ('mismatched float values',
+                                          spectrum_value, expected_value)
+        elif (hasattr(expected_value, '__iter__') and
+              all(isinstance(i, tuple) for i in expected_value) and
+              all(isinstance(j, float) for i in expected_value for j in i )):
+            # Tuple of tuples of floats
+            if not all(isclose(i, j)
+                       for tpl1, tpl2 in zip(spectrum_value, expected_value)
+                       for i, j in zip(tpl1, tpl2)):
+                unmatched_values[attr] = ('mistmatched tuple of tuple floats',
+                                          spectrum_value, expected_value)
+
+        else:
+            # All other values are compared directly
+            if not spectrum_value == expected_value:
+                unmatched_values[attr] = ('mistmatched values',
+                                          spectrum_value, expected_value)
+
+    # Assert that there are no unmatched_values
+    if len(unmatched_values) > 0:
+        msg = "The following values (spectrum vs expected) do not match:\n"
+        msg += '\n'.join(f'  {k}: {value1} != {value2}  ({reason})'
+                         for k, (reason, value1, value2)
+                         in unmatched_values.items())
+        raise AssertionError(msg)
+
+
+def match_metas(meta1: dict, meta2: dict,
+                skip: t.Optional[t.Tuple[str, ...]] = None):
+    """Check that 2 meta dicts match
+
+    Parameters
+    ----------
+    meta1
+        The first meta dict to match
+    meta2
+        The second meta dict to match
+    skip
+        An optional list of keys to skip over when doing the comparison match
+    """
+    # Find keys missing from between the two meta dicts
+    assert len(meta1.keys() - meta2.keys()) == 0, (
+        f"The following keys are in meta1 but not meta2: "
+        f"{meta1.keys() - meta2.keys()}")
+    assert len(meta2.keys() - meta1.keys()) == 0, (
+        f"The following keys are in meta2 but not meta1: "
+        f"{meta2.keys() - meta1.keys()}")
+
+    # Check the values
+    unmatched_values = dict()
+    for k in meta1.keys():
+        # Skip entry, if specified
+        if skip is not None and k in skip:
+            continue
+
+        value1, value2 = meta1[k], meta2[k]
+
+        # Check that the types match
+        if type(value1) != type(value2):
+            unmatched_values[k] = ('mismatched types', value1, value2)
+
+        if 'MIN' in k or 'MAX' in k:
+            if not isclose(value1, value2, rel_tol=0.0001):
+                # For FDMAX/FDMIN/FDDISPMAX/FDDISPMIN, these should be within
+                # error (or within 0.01%)
+                unmatched_values[k] = ('mismatched min/max values', value1,
+                                       value2)
+        elif isinstance(value1, float):
+            if round(value1, 2) != round(value2, 2):
+                # For other floats, round them to make sure they match within
+                # the first decimal
+                unmatched_values[k] = ('mismatched float values',
+                                       value1, value2)
+        elif value1 != value2:
+            # For other values, just check them directly
+            unmatched_values[k] = ('mismatched values', value1, value2)
+
+    # Assert that there are no unmatched_values
+    if len(unmatched_values) > 0:
+        msg = "The following values do not match:\n"
+        msg += '\n'.join(f'  {k}: {value1} != {value2}  ({reason})'
+                         for k, (reason, value1, value2)
+                         in unmatched_values.items())
+        raise AssertionError(msg)
+
+
+def match_tuple_floats(t1, t2, **kwargs):
+    """Match the values of two tuples with floats"""
+    mismatched = dict()
+    for item, (value1, value2) in enumerate(zip(t1, t2)):
+        if not isclose(value1, value2, **kwargs):
+            mismatched[item] = value1, value2
+
+    if len(mismatched) > 0:
+        msg = f"Mismatch between tuple of floats {t1} and {t2}:\n"
+        msg += '\n'.join(f'  item {item}: {value1} != {value2}'
+                         for item, (value1, value2) in
+                         sorted(mismatched.items()))
+        raise AssertionError(msg)
 
 
 # Property Accessors/Mutators
-@pytest.mark.parametrize("in_filepath,ndims",
-                         [(spec, 2) for spec in spectrum2d_exs] +
-                         [(spec, 3) for spec in spectrum3d_exs])
-def test_nmrpipe_spectrum_ndims(in_filepath, ndims):
-    """Test the NMRPipeSpectrum ndims property (nD)"""
-    # Load the spectrum and check the number of dimensions
-    spectrum = NMRPipeSpectrum(in_filepath)
-
-    # If it's spectrum with an iterator, it has to be iterator once to
-    # populate self.meta and self.dict
-    if spectrum.iterator is not None:
-        next(spectrum)
-
-    assert spectrum.ndims == ndims
-
-    # See if the number of dimensions is correctly set in the header
-    assert int(spectrum.meta['FDDIMCOUNT']) == ndims
-
-
-@pytest.mark.parametrize("in_filepath,expected_order",
-                         [(spec, (1, 2)) for spec in spectrum2d_exs] +
-                         [(spec, (2, 1, 3)) for spec in spectrum3d_exs])
-def test_nmrpipe_spectrum_order(in_filepath, expected_order):
-    """Test the NMRPipeSpectrum order property"""
-    # Load the spectrum and check the number of dimensions
-    spectrum = NMRPipeSpectrum(in_filepath)
-
-    # If it's spectrum with an iterator, it has to be iterator once to
-    # populate self.meta and self.dict
-    if spectrum.iterator is not None:
-        next(spectrum)
-
-    # Check the default order
-    assert spectrum.order == expected_order
-
-    # Try changing the order
-    spectrum.order = tuple(reversed(expected_order))
-    assert spectrum.order == tuple(reversed(expected_order))
-
-    # Check the header
-    # ex: [2.0, 1.0, 3.0, 4.0] for a 2D
-    fddimorder = ([float(i) for i in spectrum.order] +
-                  [float(i) for i in range(len(expected_order) + 1, 4 + 1)])
-    assert spectrum.meta['FDDIMORDER'] == fddimorder
-
-
-@pytest.mark.parametrize("in_filepath", spectrum2d_exs + spectrum3d_exs)
-def test_nmrpipe_spectrum_domain_type(in_filepath):
-    """Test the NMRPipeSpectrum domain_type function"""
+@parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
+                        cases='...cases.nmrpipe')
+def test_nmrpipe_spectrum_properties(expected):
+    """Test the NMRPipeSpectrum accessor properties"""
     # Load the spectrum
-    spectrum = NMRPipeSpectrum(in_filepath)
+    print(f"Loading spectrum '{expected['filepath']}")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
 
-    # If it's spectrum with an iterator, it has to be iterator once to
-    # populate self.meta and self.dict
-    if spectrum.iterator is not None:
-        next(spectrum)
+    # Configure the range types to match NMRPipe's processing
+    spectrum.freq_range_type = RangeType.FREQ
+    spectrum.time_range_type = RangeType.TIME
+    spectrum.unit_range_type = RangeType.UNIT
 
-    # Check that the spectral widths are reasonable
-    for dim in range(0, 5):
-        if 0 < dim <= spectrum.ndims:
-
-            if in_filepath.suffix == '.fid':
-                # FIDs are in the time domain
-                assert spectrum.domain_type(dim) is DomainType.TIME
-
-                # Try changing the value
-                assert (spectrum.domain_type(dim, DomainType.FREQ)
-                        is DomainType.FREQ)
-
-            else:
-                # Processed spectra are in the frequency domain
-                assert spectrum.domain_type(dim) is DomainType.FREQ
-
-                # Try changing the value
-                assert (spectrum.domain_type(dim, DomainType.TIME)
-                        is DomainType.TIME)
-        else:
-            # invalid dimension number
-            with pytest.raises(AssertionError):
-                spectrum.domain_type(dim)
-
-            with pytest.raises(AssertionError):
-                spectrum.domain_type(dim)
+    # Check the attributes
+    match_attributes(spectrum, expected)
 
 
-@pytest.mark.parametrize("in_filepath", spectrum2d_exs + spectrum3d_exs)
-def test_nmrpipe_spectrum_sw(in_filepath):
-    """Test the NMRPipeSpectrum sw property"""
-    # Load the spectrum and check the number of dimensions
-    spectrum = NMRPipeSpectrum(in_filepath)
-
-    # If it's spectrum with an iterator, it has to be iterator once to
-    # populate self.meta and self.dict
-    if spectrum.iterator is not None:
-        next(spectrum)
-
-    # Check that the spectral widths are reasonable
-    ndims = spectrum.ndims
-    sws = spectrum.sw
-    assert len(sws) == ndims
-    assert all(0. < sw < 100000. for sw in sws)
-    for dim, sw in zip(spectrum.order, sws):
-        assert spectrum.meta[f"FDF{dim}SW"] == sw
-
-    # Try changing the spectral widths
-    rev_sws = tuple(reversed(sws))
-    assert rev_sws != sws
-
-    spectrum.sw = rev_sws
-    for dim, sw in zip(spectrum.order, rev_sws):
-        assert spectrum.meta[f"FDF{dim}SW"] == sw
-
-
-@pytest.mark.parametrize("in_filepath", spectrum2d_exs + spectrum3d_exs)
-def test_nmrpipe_spectrum_sign_adjustment(in_filepath):
-    """Test the NMRPipeSpectrum sign_adjustment method"""
+@parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
+                        cases='...cases.nmrpipe')
+def test_nmrpipe_spectrum_data_layout(expected):
+    """Test the NMRPipeSpectrum data_layout method"""
     # Load the spectrum
-    spectrum = NMRPipeSpectrum(in_filepath)
+    print(f"Loading spectrum '{expected['filepath']}")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
 
-    # If it's spectrum with an iterator, it has to be iterator once to
-    # populate self.meta and self.dict
-    if spectrum.iterator is not None:
-        next(spectrum)
-
-    assert spectrum.sign_adjustment() is SignAdjustment.NONE
-    assert spectrum.sign_adjustment(1) is SignAdjustment.NONE
+    for dim, data_type in enumerate(spectrum.data_type):
+        data_layout = spectrum.data_layout(dim=dim, data_type=data_type)
+        assert data_layout is expected['spectrum']['data_layout'][dim]
 
 
-@pytest.mark.parametrize("in_filepath", spectrum2d_exs + spectrum3d_exs)
-def test_nmrpipe_spectrum_plane2dphase(in_filepath):
-    """Test the NMRPipeSpectrum plane2dphase method"""
+@parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
+                        cases='...cases.nmrpipe')
+def test_nmrpipe_spectrum_convert(expected):
+    """Test the NMRPipeSpectrum convert method"""
     # Load the spectrum
-    spectrum = NMRPipeSpectrum(in_filepath)
+    print(f"Loading spectrum '{expected['filepath']}")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
 
-    # If it's spectrum with an iterator, it has to be iterator once to
-    # populate self.meta and self.dict
-    if spectrum.iterator is not None:
-        next(spectrum)
+    # Check points -> percent
+    value1 = spectrum.convert(0.0, UnitType.PERCENT, UnitType.POINTS)
+    value2 = spectrum.convert(100.0, UnitType.PERCENT, UnitType.POINTS)
+    assert value1 == 0
+    assert value2 == spectrum.npts[-1] - 1
 
-    # Check the method's value
-    assert spectrum.plane2dphase is Plane2DPhase.STATES
-    assert spectrum.meta['FD2DPHASE'] == 2.0
+    # Check percent -> points
+    value1 = spectrum.convert(0, UnitType.POINTS, UnitType.PERCENT)
+    value2 = spectrum.convert(spectrum.npts[-1] - 1, UnitType.POINTS,
+                              UnitType.PERCENT)
+    # Try reverse indexing
+    value3 = spectrum.convert(-1, UnitType.POINTS, UnitType.PERCENT)
+    assert value1 == 0.0
+    assert value2 == 100.0
+    assert value3 == 100.0
 
-    # Try modifying the value
-    spectrum.plane2dphase = Plane2DPhase.TPPI
-    assert spectrum.plane2dphase is Plane2DPhase.TPPI
-    assert spectrum.meta['FD2DPHASE'] == 1.0
+    # Check points -> sec
+    value1 = spectrum.convert(0, UnitType.POINTS, UnitType.SEC)
+    value2 = spectrum.convert(1, UnitType.POINTS, UnitType.SEC)
+    assert (value2 - value1) ** -1 == pytest.approx(spectrum.sw_hz[-1])
+
+    # Check sec -> points
+    value1 = spectrum.convert(value1, UnitType.SEC, UnitType.POINTS)
+    value2 = spectrum.convert(value2, UnitType.SEC, UnitType.POINTS)
+    assert value1 == 0.0
+    assert value2 == 1.0
+
+    # Check points -> Hz
+    value1 = spectrum.convert(0, UnitType.POINTS, UnitType.HZ)
+    value2 = spectrum.convert(1, UnitType.POINTS, UnitType.HZ)
+    value3 = spectrum.convert(spectrum.npts[-1] - 1, UnitType.POINTS,
+                              UnitType.HZ)
+    assert value1 - value3 == pytest.approx(spectrum.sw_hz[-1])
+
+    # Match the resolution of array_hz
+    array_hz = spectrum.array_hz[-1]
+    assert value1 - value2 == pytest.approx(array_hz[0] - array_hz[1],
+                                            abs=0.001)
+
+    # Check Hz -> points
+    value1 = spectrum.convert(value1, UnitType.HZ, UnitType.POINTS)
+    value2 = spectrum.convert(value2, UnitType.HZ, UnitType.POINTS)
+    value3 = spectrum.convert(value3, UnitType.HZ, UnitType.POINTS)
+    assert value1 == 0
+    assert value2 == 1
+    assert value3 == spectrum.npts[-1] - 1
+
+    # Check points -> ppm
+    value1 = spectrum.convert(0, UnitType.POINTS, UnitType.PPM)
+    value2 = spectrum.convert(1, UnitType.POINTS, UnitType.PPM)
+    value3 = spectrum.convert(spectrum.npts[-1] - 1, UnitType.POINTS,
+                              UnitType.PPM)
+    assert value1 - value3 == pytest.approx(spectrum.sw_ppm[-1])
+
+    # Match the resolution of array_ppm
+    array_ppm = spectrum.array_ppm[-1]
+    assert value1 - value2 == pytest.approx(array_ppm[0] - array_ppm[1],
+                                            abs=0.0001)
+
+    # Check ppm -> points
+    value1 = spectrum.convert(value1, UnitType.PPM, UnitType.POINTS)
+    value2 = spectrum.convert(value2, UnitType.PPM, UnitType.POINTS)
+    value3 = spectrum.convert(value3, UnitType.PPM, UnitType.POINTS)
+    assert value1 == 0
+    assert value2 == 1
+    assert value3 == spectrum.npts[-1] - 1
+
+
+@parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
+                        cases='...cases.nmrpipe')
+def test_nmrpipe_spectrum_array_hz(expected):
+    """Test the NMRPipeSpectrum array_hz method"""
+    # Load the spectrum
+    print(f"Loading spectrum '{expected['filepath']}")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+
+    # Set the freq range type to a default freq range with endpoint.
+    # [sw/2, -sw/2]
+    spectrum.time_range_type = RangeType.FREQ | RangeType.ENDPOINT
+
+    # Check that the frequency series respect the spectral width (within 2
+    # decimal places)
+    t1 = tuple(f_rng[0] - f_rng[-1] for f_rng in spectrum.array_hz)
+    t2 = spectrum.sw_hz
+    match_tuple_floats(t1, t2, abs_tol=0.01)
+
+
+@parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
+                        cases='...cases.nmrpipe')
+def test_nmrpipe_spectrum_array_ppm(expected):
+    """Test the NMRPipeSpectrum array_ppm method"""
+    # Load the spectrum
+    print(f"Loading spectrum '{expected['filepath']}")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+
+    # Set the freq range type to a default freq range with endpoint.
+    # [sw/2, -sw/2]
+    spectrum.time_range_type = RangeType.FREQ | RangeType.ENDPOINT
+
+    # Check that the frequency series respect the spectral width (within 4
+    # decimal places)
+    t1 = tuple(f_rng[0] - f_rng[-1] for f_rng in spectrum.array_ppm)
+    t2 = spectrum.sw_ppm
+    match_tuple_floats(t1, t2, abs_tol=0.0001)
+
+
+@parametrize_with_cases('expected', glob='*nmrpipe*', prefix='data_',
+                        cases='...cases.nmrpipe')
+def test_nmrpipe_spectrum_array_s(expected):
+    """Test the NMRPipeSpectrum array_s method"""
+    # Load the spectrum
+    print(f"Loading spectrum '{expected['filepath']}")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+
+    # Set the time range type to a default time range [0, tmax[
+    spectrum.time_range_type = RangeType.TIME
+
+    # Check that the time series respect the spectral widths
+    t1 = tuple((t_rng[1] - t_rng[0]) ** -1 for t_rng in spectrum.array_s)
+    t2 = spectrum.sw_hz
+
+    # Collect other values used for tests below on group delay
+    t0 = tuple(t_rng[0] for t_rng in spectrum.array_s)
+    tmax = tuple(t_rng[-1] for t_rng in spectrum.array_s)
+    dw = tuple(t_rng[1] - t_rng[0] for t_rng in spectrum.array_s)
+
+    # Check the starting point
+    assert all(a[0] == 0.0 for a in spectrum.array_s)
+
+    # Check the resolution to within 4 decimals--i.e. 12.34234 and 12.2323 are
+    # the same
+    match_tuple_floats(tuple((a[-1] - a[0])**-1 for a in spectrum.array_s),
+                       tuple(sw_hz / (npts - 1)
+                             for sw_hz, npts in zip(spectrum.sw_hz,
+                                                    spectrum.npts_data)),
+                       abs_tol=0.0001)
+
+    # Match the range values to within 2 decimals--i.e. 8392.123 and 8392.12
+    # match
+    match_tuple_floats(t1, t2, abs_tol=0.01)
+
+    # Set the time range type to a default time range with a group delay,
+    # This will only apply to the current (last) dimension
+    # [-group_delay, tmax - group_delay[
+    spectrum.time_range_type = RangeType.TIME | RangeType.GROUP_DELAY
+
+    # Get the group delay value in seconds
+    grp_delay = floor(spectrum.group_delay) * dw[-1]
+
+    # Check the first point of all dims except last (current) dimension
+    assert all(a[0] == 0.0
+               for a in spectrum.array_s[:-1])  # all dims except last
+
+    # Check the resolution to within 4 decimals--i.e. 12.34234 and 12.2323 are
+    # the same
+    match_tuple_floats(tuple((a[-1] - a[0])**-1 for a in spectrum.array_s),
+                       tuple(sw_hz / (npts - 1)
+                             for sw_hz, npts in zip(spectrum.sw_hz,
+                                                    spectrum.npts_data)),
+                       abs_tol=0.0001)
+
+    # Check the first point of the last (current) dimension
+    if spectrum.correct_digital_filter:
+        # Digital filter correction needed
+        assert spectrum.array_s[-1][0] == pytest.approx(t0[-1] - grp_delay)
+    else:
+        # No digital filter correction needed. Group delay not applied
+        assert spectrum.array_s[-1][0] == 0.0
+
+    # Check the last point of all dims except last (current) dimension
+    assert all(a[-1] == pytest.approx(tmax)
+               for a, tmax in zip(spectrum.array_s[:-1], tmax))
+
+    # Check the last point of the last (current) dimension
+    if spectrum.correct_digital_filter:
+        # Digital filter correction needed
+        assert spectrum.array_s[-1][-1] == pytest.approx(tmax[-1] - grp_delay)
+    else:
+        # No digital filter correction needed. Group delay not applied
+        assert spectrum.array_s[-1][-1] == pytest.approx(tmax[-1])
+
+    # Check that the time series respect the spectral widths
+    t1 = tuple((t_rng[1] - t_rng[0]) ** -1 for t_rng in spectrum.array_s)
+    t2 = spectrum.sw_hz
+
+    # Match the range values to within 1 decimals--i.e. 8392.13 and 8392.12
+    # match
+    match_tuple_floats(t1, t2, abs_tol=0.1)
 
 
 # I/O methods
 
-@pytest.mark.parametrize("in_filepath", spectrum2d_exs)
-def test_nmrpipe_spectrum_load_2d(in_filepath):
-    """Test the loading of a NMRPipeSpectrum (2D)"""
-    spectrum = NMRPipeSpectrum(in_filepath)
-
-    # Check that the spectrum was properly setup
-    assert isinstance(spectrum.meta, dict)
-    assert isinstance(spectrum.data, np.ndarray)
-
-    # Check the header
-    assert 'FDDIMCOUNT' in spectrum.meta
-    assert int(spectrum.meta['FDDIMCOUNT']) == 2
-
-    # Check the data
-    assert spectrum.data.shape == (1024, 368)
-
-
-@pytest.mark.parametrize("in_filepath", spectrum3d_exs)
-def test_nmrpipe_spectrum_load_3d(in_filepath):
-    """Test the loading of a NMRPipeSpectrum (3D)"""
-    spectrum = NMRPipeSpectrum(in_filepath)
-
-    # If it's spectrum with an iterator, it has to be iterator once to
-    # populate self.meta and self.dict
-    if spectrum.iterator is not None:
-        next(spectrum)
-
-    # Check that the spectrum was properly setup
-    assert isinstance(spectrum.meta, dict)
-    assert isinstance(spectrum.data, np.ndarray)
-    assert spectrum.iterator is not None
-
-    # Check the header
-    assert 'FDDIMCOUNT' in spectrum.meta
-    assert int(spectrum.meta['FDDIMCOUNT']) == 3
-
-    # Try iterating
-    spectrum2d = next(spectrum)
-    assert type(spectrum2d) == type(spectrum)
-    assert isinstance(spectrum2d.meta, dict)
-    assert isinstance(spectrum2d.data, np.ndarray)
-
-    # Check the header
-    assert 'FDDIMCOUNT' in spectrum2d.meta
-    assert int(spectrum2d.meta['FDDIMCOUNT']) == 3
-
-
-def test_nmrpipe_spectrum_load_missing_2d():
-    """Test the NMRPipeSpectrum load behavior for a missing file (2D)"""
-    # Setup a test filepath for the missing file
-    missing_filepath = Path("this_is_missing.ft2")
-    assert not missing_filepath.exists()
-
-    # Try loading this missing file
-    with pytest.raises(FileNotFoundError):
-        NMRPipeSpectrum(missing_filepath)
-
-
-@pytest.mark.parametrize("in_filepath", spectrum2d_exs)
-def test_nmrpipe_spectrum_reset_2d(in_filepath):
-    """Test the NMRPipeSpectrum reset() method (2D)"""
+# See cases_nmrpipe_spectrum.py for a listing of test cases
+@pytest.mark.parametrize('expected', parametrize_casesets(
+    ('*nmrpipe_complex_spectrum_1d', '*nmrpipe_complex_fid_2d',
+     '*nmrpipe_real_spectrum_singlefile_3d'), cases='...cases.nmrpipe',
+    prefix='data_'))
+def test_nmrpipe_spectrum_load_save(expected, tmpdir):
+    """Test the NMRPipeSpectrum load/save methods"""
     # Load the spectrum
-    spectrum = NMRPipeSpectrum(in_filepath)
+    print(f"Loading spectrum '{expected['filepath']}")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
 
-    # Check that stuff was loaded
-    assert str(spectrum.in_filepath) == str(in_filepath)
-    assert isinstance(spectrum.meta, dict)
-    assert len(spectrum.meta) > 0
-    assert isinstance(spectrum.data, np.ndarray)
+    # Save the spectrum
+    out_filepath = Path(tmpdir) / expected['filepath'].name
+    spectrum.save(out_filepath=out_filepath, overwrite=False)  # new spectrum
 
-    # Reset and check that stuff is put pack in place
-    spectrum.reset()
-    assert spectrum.in_filepath is None
-    assert isinstance(spectrum.meta, dict)
-    assert len(spectrum.meta) == 0
-    assert spectrum.data is None
+    # Saving without overwrite with raise an exceptions
+    with pytest.raises(FileExistsError):
+        spectrum.save(out_filepath=out_filepath, overwrite=False)
+
+    # Reload the spectrum
+    spectrum = NMRPipeSpectrum(out_filepath)
+
+    # Configure the range types to match NMRPipe's processing
+    spectrum.freq_range_type = RangeType.FREQ
+    spectrum.time_range_type = RangeType.TIME
+    spectrum.unit_range_type = RangeType.UNIT
+
+    # Check the attributes
+    match_attributes(spectrum, expected)
 
 
 # Mutators/Processing methods
+# See cases_nmrpipe_spectrum.py for a listing of test cases
+@pytest.mark.parametrize('expected, expected_em',
+                         parametrize_casesets('*nmrpipe_complex_fid_1d',
+                                              '*nmrpipe_complex_fid_em_1d',
+                                              cases='...cases.nmrpipe',
+                                              prefix='data_'))
+def test_nmrpipe_spectrum_apodization_exp(expected, expected_em):
+    """Test the NMRPipeSpectrum apodization_exp method"""
+    # Load the spectrum and its transpose
+    print(f"Loading spectra: '{expected['filepath']}' and "
+          f"'{expected_em['filepath']}'")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+    spectrum_em = NMRPipeSpectrum(expected_em['filepath'])
+
+    # Configure the range types to match NMRPipe's processing
+    spectrum.time_range_type = RangeType.TIME
+
+    # Get the apodization parameters
+    dim = spectrum_em.order[0]
+    code = spectrum_em.meta[f'FDF{dim}APODCODE']
+    lb = spectrum_em.meta[f'FDF{dim}APODQ1']
+
+    assert code == 2.0  # apodization code for EM
+
+    # Check that an apodization hasn't been applied yet
+    assert all(apod is ApodizationType.NONE for apod in spectrum.apodization)
+
+    # Apodization the original dataset
+    spectrum.apodization_exp(lb=lb)
+
+    # Check the header
+    match_metas(spectrum.meta, spectrum_em.meta)
+    assert spectrum.apodization[0] == ApodizationType.EXPONENTIAL
+
+    # Find the tolerance for float errors
+    tol = spectrum.data.real.max() * 0.0001
+
+    # Check the values
+    if spectrum.ndims == 1:
+        for row, (i, j) in enumerate(zip(spectrum.data, spectrum_em.data)):
+            print(f"Row #{row}: {i}, {j}")
+            assert isclose(i, j, abs_tol=tol)
+    else:
+        raise NotImplementedError
+
+
+# See cases_nmrpipe_spectrum.py for a listing of test cases
+@pytest.mark.parametrize('expected, expected_sp',
+                         parametrize_casesets('*nmrpipe_complex_fid_1d',
+                                              '*nmrpipe_complex_fid_sp_1d',
+                                              cases='...cases.nmrpipe',
+                                              prefix='data_'))
+def test_nmrpipe_spectrum_apodization_sine(expected, expected_sp):
+    """Test the NMRPipeSpectrum apodization_size method"""
+    # Load the spectrum and its transpose
+    print(f"Loading spectra: '{expected['filepath']}' and "
+          f"'{expected_sp['filepath']}'")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+    spectrum_sp = NMRPipeSpectrum(expected_sp['filepath'])
+
+    # Configure the range types to match NMRPipe's processing
+    spectrum.unit_range_type = RangeType.UNIT
+
+    # Get the apodization parameters
+    dim = spectrum_sp.order[0]
+    code = spectrum_sp.meta[f'FDF{dim}APODCODE']
+    off = spectrum_sp.meta[f'FDF{dim}APODQ1']
+    end = spectrum_sp.meta[f'FDF{dim}APODQ2']
+    power = spectrum_sp.meta[f'FDF{dim}APODQ3']
+
+    assert code == 1.0  # apodization code for SP
+
+    # Check that an apodization hasn't been applied yet
+    assert all(apod is ApodizationType.NONE for apod in spectrum.apodization)
+
+    # Apodization the original dataset
+    spectrum.apodization_sine(off=off, end=end, power=power)
+
+    # Check the header
+    match_metas(spectrum.meta, spectrum_sp.meta)
+    assert spectrum.apodization[0] == ApodizationType.SINEBELL
+
+    # Find the tolerance for float errors
+    tol = spectrum.data.real.max() * 0.0002
+
+    # Check the values
+    if spectrum.ndims == 1:
+        for row, (i, j) in enumerate(zip(spectrum.data, spectrum_sp.data)):
+            assert isclose(i, j, abs_tol=tol)
+    else:
+        raise NotImplementedError
+
+
+# See cases_nmrpipe_spectrum.py for a listing of test cases
+@pytest.mark.parametrize('expected, expected_ext',
+                         parametrize_casesets('*nmrpipe_complex_fid_ft_1d',
+                                              '*nmrpipe_complex_fid_ft_ext_1d',
+                                              cases='...cases.nmrpipe',
+                                              prefix='data_') +
+                         parametrize_casesets('*nmrpipe_complex_fid_1d',
+                                              '*nmrpipe_complex_fid_ext*_1d',
+                                              cases='...cases.nmrpipe',
+                                              prefix='data_'))
+def test_nmrpipe_spectrum_ext(expected, expected_ext):
+    """Test the NMRPipeSpectrum ft method"""
+    # Load the spectrum, if needed (cache for future tests)
+    print(f"Loading spectra: '{expected['filepath']}' and "
+          f"'{expected_ext['filepath']}'")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+    spectrum_ext = NMRPipeSpectrum(expected_ext['filepath'])
+
+    # Set the default NMRPipe range types
+    spectrum.freq_range_type = RangeType.FREQ
+
+    # Get the extract ranges for the last (current) dimension. The FDFnX1 and
+    # FDFnXN values are only populated with the last dimension's domain type
+    # is frequency
+    dim = spectrum.order[-1]
+    npts = spectrum.npts[-1]
+
+    if spectrum_ext.domain_type[-1] is DomainType.FREQ:
+        x1 = int(spectrum_ext.meta[f"FDF{dim}X1"])
+        xn = int(spectrum_ext.meta[f"FDF{dim}XN"])
+    else:
+        x1 = 0
+        xn = spectrum_ext.npts[-1]  # use extract spectrum's size
+
+    assert x1 >= 0 and 0 < xn < npts, (
+        "Dataset must have an extracted region to test in the last dimension")
+
+    # Discard imaginaries if the spectrum_ext is real data only
+    if spectrum.data.is_complex() and not spectrum_ext.data.is_complex():
+        dim = spectrum.order[-1]
+        spectrum.data = spectrum.data.real
+
+        # Update header values to reflect the change in data type
+        spectrum.meta[f"FDF{dim}QUADFLAG"] = 1.0  # Real dimension
+        spectrum.meta["FDQUADFLAG"] = 1.0  # Real dimension
+
+    # Conduct the extraction
+    spectrum.extract(start=x1, unit_start=UnitType.POINTS,
+                     end=xn, unit_end=UnitType.POINTS)
+
+    # Compare the shapes of data
+    assert spectrum.data.shape == spectrum_ext.data.shape
+
+    # Compare to the reference dataset
+    match_metas(spectrum.meta, spectrum_ext.meta)
+
+    # Find the tolerance for float errors
+    tol = (spectrum.data.real.max() * 0.0002 if spectrum.data.is_complex() else
+           spectrum.data.max() * 0.002)
+
+    # Check the values
+    if spectrum.ndims == 1:
+        for row, (i, j) in enumerate(zip(spectrum.data, spectrum_ext.data)):
+            assert isclose(i, j, abs_tol=tol)
+    else:
+        raise NotImplementedError
+
+
+# See cases_nmrpipe_spectrum.py for a listing of test cases
+@pytest.mark.parametrize('expected, expected_ft',
+                         parametrize_casesets('*nmrpipe_complex_fid_1d',
+                                              '*nmrpipe_complex_fid_ft_1d',
+                                              cases='...cases.nmrpipe',
+                                              prefix='data_'))
+def test_nmrpipe_spectrum_ft(expected, expected_ft):
+    """Test the NMRPipeSpectrum ft method"""
+    # Load the spectrum, if needed (cache for future tests)
+    print(f"Loading spectra: '{expected['filepath']}' and "
+          f"'{expected_ft['filepath']}'")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+    spectrum_ft = NMRPipeSpectrum(expected_ft['filepath'])
+
+    # Conduct the Fourier transform
+    spectrum.ft()
+
+    # Check the header. The FT spectrum does not exactly match the reference
+    # spectrum (spectrum_ft), so the following values are skipped. The
+    # intensities without phasing differences are compared by the power spectrum
+    # below
+    match_metas(spectrum.meta, spectrum_ft.meta,
+                skip=('FDMAX', 'FDMIN', 'FDDISPMAX', 'FDDISPMIN'))
+
+    # Compare the power spectra, which are phase insensitive
+    pow_spectrum = torch.sqrt(spectrum.data.real ** 2 +
+                              spectrum.data.imag ** 2)
+    pow_spectrum_ft = torch.sqrt(spectrum_ft.data.real ** 2 +
+                                 spectrum_ft.data.imag ** 2)
+
+    # Find a tolerance for matching numbers. The numbers do not exactly match
+    # the reference dataset due to rounding errors (presumably)
+    tol = max(abs(pow_spectrum_ft.max()), abs(pow_spectrum_ft.min())) * 0.00001
+
+    if spectrum.ndims == 1:
+        # Check the normalized values, row-by-row
+        for count, (i, j) in enumerate(zip(pow_spectrum, pow_spectrum_ft)):
+            print(f"Row#{count}: "
+                  f"{i}, {j}")
+            assert isclose(i, j, abs_tol=tol)
+    else:
+        raise NotImplementedError
+
+
+# See cases_nmrpipe_spectrum.py for a listing of test cases
+@pytest.mark.parametrize('expected, expected_ps',
+                         parametrize_casesets('*nmrpipe_complex_spectrum_1d',
+                                              '*nmrpipe_complex_spectrum_ps_1d',
+                                              cases='...cases.nmrpipe',
+                                              prefix='data_'))
+def test_nmrpipe_spectrum_phase(expected, expected_ps):
+    """Test the NMRPipeSpectrum phase method"""
+    # Load the spectrum and its transpose
+    print(f"Loading spectra: '{expected['filepath']}' and "
+          f"'{expected_ps['filepath']}'")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+    spectrum_ps = NMRPipeSpectrum(expected_ps['filepath'])
+
+    # Configure the range types to match NMRPipe's processing
+    spectrum.unit_range_type = RangeType.UNIT
+
+    # Get the phase to use
+    dim = spectrum_ps.order[-1]
+    p0 = spectrum_ps.meta[f'FDF{dim}P0']
+    p1 = spectrum_ps.meta[f'FDF{dim}P1']
+
+    # Phase the spectrum
+    spectrum.phase(p0=p0, p1=p1, discard_imaginaries=True)
+
+    # Check the header
+    match_metas(spectrum.meta, spectrum_ps.meta)
+
+    # Find a tolerance for matching numbers. The numbers do not exactly match
+    # the reference dataset due to rounding errors (presumably)
+    tol = max(abs(spectrum.data.max()), abs(spectrum.data.min())) * 0.0001
+
+    # Check the values, row-by-row
+    if spectrum.ndims == 1:
+        for count, (i, j) in enumerate(zip(spectrum.data, spectrum_ps.data)):
+            assert isclose(i, j, abs_tol=tol)
+    else:
+        for i, (row1, row2) in enumerate(zip(spectrum.data, spectrum_ps.data)):
+            print(f"Row #{i}")
+            assert all(isclose(i, j) for i, j in zip(row1, row2))
+
+
+# See cases_nmrpipe_spectrum.py for a listing of test cases
+@pytest.mark.parametrize('expected, expected_tp',
+                         parametrize_casesets('*nmrpipe_complex_fid_2d',
+                                              '*nmrpipe_complex_fid_tp_2d',
+                                              cases='...cases.nmrpipe',
+                                              prefix='data_'))
+def test_nmrpipe_spectrum_transpose(expected, expected_tp):
+    """Test the NMRPipeSpectrum transpose method"""
+    # Load the spectrum and its transpose
+    print(f"Loading spectra: '{expected['filepath']}' and "
+          f"'{expected_tp['filepath']}'")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+    spectrum_tp = NMRPipeSpectrum(expected_tp['filepath'])
+
+    # Try reversing the last 2 axes
+    dims = list(range(spectrum.ndims))
+    spectrum.transpose(dims[-1], dims[-2])
+
+    # Check the header
+    match_metas(spectrum.meta, spectrum_tp.meta)
+
+    # Check attributes to see if they were transposed correctly
+    for attr in ('domain_type', 'data_type', 'sw_hz', 'sw_ppm', 'car_hz',
+                 'car_ppm', 'obs_mhz', 'label'):
+        print(f"spectrum1 attr: '{getattr(spectrum, attr)}', "
+              f"spectrum1_tp attr: '{getattr(spectrum_tp, attr)}'")
+        assert getattr(spectrum, attr) == getattr(spectrum_tp, attr)
+
+    # Check the data shape
+    assert spectrum.data.size() == spectrum_tp.data.size()
+
+    # Check the values, row-by-row
+    if spectrum.ndims > 1:
+        for i, (row1, row2) in enumerate(zip(spectrum.data, spectrum_tp.data)):
+            print(f"Row #{i}")
+            assert tuple(row1) == tuple(row2)
+    else:
+        raise NotImplementedError
+
+
+# See cases_nmrpipe_spectrum.py for a listing of test cases
+@pytest.mark.parametrize('expected, expected_zf',
+                         parametrize_casesets('*nmrpipe_complex_fid_1d',
+                                              '*nmrpipe_complex_fid_zf_1d',
+                                              cases='...cases.nmrpipe',
+                                              prefix='data_') +
+                         parametrize_casesets('*nmrpipe_real_fid_1d',
+                                              '*nmrpipe_real_fid_zf_1d',
+                                              cases='...cases.nmrpipe',
+                                              prefix='data_') +
+                         parametrize_casesets('*nmrpipe_complex_fid_2d',
+                                              '*nmrpipe_complex_fid_zf_2d',
+                                              cases='...cases.nmrpipe',
+                                              prefix='data_'))
+def test_nmrpipe_spectrum_zerofill(expected, expected_zf):
+    """Test the NMRPipeSpectrum zerofill method"""
+    # Load the spectrum and its transpose
+    print(f"Loading spectra: '{expected['filepath']}' and "
+          f"'{expected_zf['filepath']}'")
+    spectrum = NMRPipeSpectrum(expected['filepath'])
+    spectrum_ps = NMRPipeSpectrum(expected_zf['filepath'])
+
+    # Get the phase to use
+    dim = spectrum_ps.order[-1]
+    new_size = -1 * int(spectrum_ps.meta[f'FDF{dim}ZF'])
+
+    # Phase the spectrum
+    spectrum.zerofill(size=new_size)
+
+    # Check the header
+    match_metas(spectrum.meta, spectrum_ps.meta)
+
+    # Find a tolerance for matching numbers. The numbers do not exactly match
+    # the reference dataset due to rounding errors (presumably)
+    if spectrum.data.is_complex():
+        tol = (max(abs(spectrum.data.real.max()),
+                   abs(spectrum.data.real.min())) * 0.0001)
+    else:
+        tol = max(abs(spectrum.data.max()), abs(spectrum.data.min())) * 0.0001
+
+    # Check the values, row-by-row
+    if spectrum.ndims == 1:
+        for count, (i, j) in enumerate(zip(spectrum.data, spectrum_ps.data)):
+            assert isclose(i, j, abs_tol=tol)
+    else:
+        for i, (row1, row2) in enumerate(zip(spectrum.data, spectrum_ps.data)):
+            print(f"Row #{i}")
+            assert all(isclose(i, j) for i, j in zip(row1, row2))
+

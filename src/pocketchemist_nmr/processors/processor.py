@@ -10,7 +10,9 @@ from pocketchemist.processors.fft import FFTProcessor
 
 from ..spectra import NMRSpectrum
 
-__all__ = ('NMRProcessor', 'NMRGroupProcessor', 'FTSpectra')
+__all__ = ('NMRProcessor', 'NMRGroupProcessor', 'ApodizationExpSpectra',
+           'ApodizationSinebellSpectra', 'ExtractSpectra', 'FTSpectra',
+           'PhaseSpectra', 'Transpose2D', 'ZeroFillSpectra')
 
 
 def set_logger(logger_):
@@ -22,14 +24,32 @@ def set_logger(logger_):
 class NMRProcessor(Processor):
     """A processing step for NMR spectra"""
 
+    method = None
+
+    def process(self, spectra: t.Iterable[NMRSpectrum], **kwargs):
+        for spectrum in spectra:
+            if self.method is None:
+                continue
+
+            # Get the method to run and run with the required_params/
+            # optional_params
+            meth = getattr(spectrum, self.method)
+            req_params = {k: getattr(self, k) for k in self.required_params}
+            opt_params = {k: getattr(self, k) for k in self.optional_params}
+            opt_params.update(req_params)
+            meth(**opt_params)
+
+        # Setup the arguments that are passed to future processors
+        kwargs['spectra'] = spectra
+        return kwargs
+
 
 class NMRGroupProcessor(GroupProcessor):
     """A group processor for NMR spectra"""
 
     def process(self, **kwargs):
         # Setup a spectra list
-        return self.process_pool()
-        #return self.process_sequence(**kwargs)
+        return self.process_sequence(**kwargs)
 
     def process_sequence(self, **kwargs):
         """Process subprocessors in sequence"""
@@ -57,6 +77,29 @@ class NMRGroupProcessor(GroupProcessor):
             [result.get() for result in results]
 
 
+class ApodizationExpSpectra(NMRProcessor):
+    """Apodization with exponential multiply (Lorentzian) in the last dimension
+    """
+    method = 'apodization_exp'
+    required_params = ('lb',)
+    optional_params = ('start', 'size')
+
+
+class ApodizationSinebellSpectra(NMRProcessor):
+    """Apodization with sinebell power (SP) in the last dimension
+    """
+    method = 'apodization_sine'
+    required_params = ('off', 'end', 'power')
+    optional_params = ('start', 'size')
+
+
+class ExtractSpectra(NMRProcessor):
+    """Extract region in the last dimension
+    """
+    method = 'extract'
+    required_params = ('start', 'unit_start', 'end', 'unit_end')
+    optional_params = ('update_meta',)
+
 
 class FTSpectra(FFTProcessor, NMRProcessor):
     """Fourier Transform spectra (one or more)"""
@@ -72,14 +115,39 @@ class FTSpectra(FFTProcessor, NMRProcessor):
                 mode: str = None,
                 **kwargs):
 
-        # Setup the fft/ifft functions
-        ft_func = self.get_module_callable(category='fft')
-        ft_opts = {'auto': self.mode == 'auto'}
-
         # Perform the Fourier transformation
         for spectrum in spectra:
-            spectrum.ft(ft_func=ft_func, ft_opts=ft_opts)
+            spectrum.ft()
 
         # Setup the arguments that are passed to future processors
         kwargs['spectra'] = spectra
         return kwargs
+
+
+class PhaseSpectra(NMRProcessor):
+    """Phase the last dimension of a dataset"""
+    method = 'phase'
+    optional_params = ('p0', 'p1', 'discard_imaginaries')
+
+
+class Transpose2D(NMRProcessor):
+    """Transpose the last 2 dimension (outer1-inner) of a dataset"""
+
+    def process(self, spectra: t.Iterable[NMRSpectrum], **kwargs):
+        for spectrum in spectra:
+            assert spectrum.ndims > 1, (
+                f"Spectrum has {spectrum.ndims} dimensions and at least 2 "
+                f"dimensions are required for a transpose."
+            )
+            # Switch the last 2 dimensions
+            order = list(range(spectrum.ndims))  # 0, 1, 2
+            spectrum.transpose(dim0=order[-2], dim1=order[-1])
+        # Setup the arguments that are passed to future processors
+        kwargs['spectra'] = spectra
+        return kwargs
+
+
+class ZeroFillSpectra(NMRProcessor):
+    """Zero-fill the last dimension of a dataset"""
+    method = 'zerofill'
+    optional_params = ('double', 'double_base2', 'size', 'pad')
