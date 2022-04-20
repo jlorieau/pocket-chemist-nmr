@@ -6,6 +6,14 @@ includes:
     dir: ./docs
 
 tasks:
+  install:
+    desc: "Install pocketchemist-nmr"
+    cmds:
+      - pip install .
+  develop:
+    desc: "Install pocketchemist-nmr in (editable) developer mode"
+    cmds:
+      - pip install --editable .
   build:
     desc: Build datasets needed for tests
     cmds:

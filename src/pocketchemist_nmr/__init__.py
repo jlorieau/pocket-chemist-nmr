@@ -1,7 +1,8 @@
-import importlib.metadata
+import sys
 
-from . import cli, processors, spectra
+if sys.version_info >= (3, 8):
+    from importlib import metadata
+else:
+    import importlib_metadata as metadata
 
-__all__ = ('cli', 'processors', 'spectra')
-
-__version__ = importlib.metadata.version("pocketchemist_nmr")
+__version__ = metadata.version('pocketchemist_nmr')
