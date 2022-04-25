@@ -3,17 +3,53 @@ The root window for the NMRDesk application
 """
 from pathlib import Path
 import typing as t
+from weakref import ReferenceType, ref
 
+import numpy as np
 from PyQt6.QtWidgets import (QMainWindow, QStackedWidget, QMenuBar, QStatusBar,
                              QToolBar, QComboBox, QFileDialog, QMessageBox)
 from PyQt6 import uic
-from pyqtgraph import PlotWidget
+from pyqtgraph import (PlotWidget, GraphicsLayoutWidget, IsocurveItem,
+                       ImageItem, ViewBox)
 
 from ..spectra import NMRSpectrum, NMRPipeSpectrum
 
 
-class NMRSpectrumPlotWidget(PlotWidget):
+class NMRSpectrumPlotWidget(GraphicsLayoutWidget):
     """A plot widget for an NMRSpectrum"""
+
+    #: Viewpox for rendering the plots
+    viewBox: ViewBox
+
+    #: The spectrum to plot
+    _spectrum: ReferenceType
+
+    def __init__(self, spectrum: NMRSpectrum, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.spectrum = spectrum
+        data = spectrum.data.numpy()
+
+        # Setup the widget
+        self.viewBox = self.addViewBox()
+        self.viewBox.setAspectLocked()
+        img = ImageItem(data)
+        self.viewBox.addItem(img)
+
+        c = IsocurveItem(data=data, level=data.max() * 0.25,
+                         pen='r')
+        print(c)
+        c.setParentItem(self.viewBox)
+        self.viewBox.addItem(c)
+        # c.setParentItem(img)
+        # c.setZValue(10)
+
+    @property
+    def spectrum(self) -> NMRSpectrum:
+        return self._spectrum()
+
+    @spectrum.setter
+    def spectrum(self, value: NMRSpectrum):
+        self._spectrum = ref(value)
 
 
 class NMRDeskWindow(QMainWindow):
@@ -88,10 +124,6 @@ class NMRDeskWindow(QMainWindow):
         self.spectra.append(spectrum)
 
         # Create a stack view for the plot
-        self.plotStack.addWidget(NMRSpectrumPlotWidget())
+        plot_widget = NMRSpectrumPlotWidget(spectrum=spectrum)
+        self.plotStack.addWidget(plot_widget)
 
-        # try:
-        #     spectrum = NMRPipeSpectrum(in_filepath[0])
-        # except:
-        #     if error_dialog:
-        #         self.fileNotFoundDialog(in_filepath)
