@@ -1,3 +1,5 @@
+"""Click interface for nmrpipe commands"""
+
 import io
 import typing as t
 import sys
