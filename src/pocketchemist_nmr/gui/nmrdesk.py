@@ -1,27 +1,97 @@
 """
 The root window for the NMRDesk application
 """
-from PyQt6.QtWidgets import (QWidget, QMainWindow, QPushButton, QGridLayout,
-                             QLineEdit,QListWidget)
+from pathlib import Path
+import typing as t
+
+from PyQt6.QtWidgets import (QMainWindow, QStackedWidget, QMenuBar, QStatusBar,
+                             QToolBar, QComboBox, QFileDialog, QMessageBox)
+from PyQt6 import uic
 from pyqtgraph import PlotWidget
+
+from ..spectra import NMRSpectrum, NMRPipeSpectrum
+
+
+class NMRSpectrumPlotWidget(PlotWidget):
+    """A plot widget for an NMRSpectrum"""
 
 
 class NMRDeskWindow(QMainWindow):
+
+    #: The menubar widget (top)
+    menubar: QMenuBar
+
+    #: The toolbar
+    toolBar: QToolBar
+
+    #: The statusbar widget (bottom)
+    statusbar: QStatusBar
+
+    #: A stack widget containing the different plots
+    plotStack: QStackedWidget
+
+    #: A list of opened NMR spectra
+    spectra: t.List[NMRSpectrum]
+
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("NMRDesk")
+        # Setup mutable containers
+        self.spectra = []
 
-        # Create layout
-        layout = QGridLayout()
+        # Load designer layout
+        uic.loadUi(Path(__file__).parent / 'nmrdesk.ui', self)
 
-        # Create widgets
-        plot = PlotWidget()
+        # Add a spectrum selector to the toolbar
+        self.toolBar.addWidget(QComboBox())
 
-        # Add widgets to the layout in their proper positions
-        layout.addWidget(plot, 0, 0)  # plot on right side spanning 3 rows
+        # Hide the status bar at the bottom of the window
+        self.statusbar.setVisible(False)
 
-        # Set the central widget of the Window.
-        main_widget = QWidget()
-        main_widget.setLayout(layout)
-        self.setCentralWidget(main_widget)
+        self.show()
+
+    def fileOpenDialog(self):
+        """Open a file selection dialog.
+
+        This slot is defined in the QT Designer.
+        """
+        # Get the filepath for the opened file
+        kwargs = {'parent': self,
+                  'caption': 'Open File',
+                  'directory': str(Path.home()),
+                  'filter': "NMRPipe Files (*.fid *.ft *.ft2 *.ft3)"}
+        in_filepath, selected_filter = QFileDialog.getOpenFileName(**kwargs)
+
+        if in_filepath:  # Must be a string with contents
+            self.addSpectrum(in_filepath)
+
+    def fileNotFoundDialog(self, filename):
+        """Show a file not found dialog"""
+        msg = QMessageBox()
+        msg.setText(f"Could not find file '{filename}'")
+        msg.setWindowTitle("File Not Found")
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.exec()
+
+    def addSpectrum(self, in_filepath, error_dialog=True):
+        """Add a spectrum to the app.
+
+        Parameters
+        ----------
+        in_filepath
+            The filename for the spectrum to add/open.
+        error_dialog
+            Display an error dialog if the spectrum could not be added
+        """
+        # Create the spectrum and add it to the list of spectra
+        spectrum = NMRPipeSpectrum(in_filepath)
+        self.spectra.append(spectrum)
+
+        # Create a stack view for the plot
+        self.plotStack.addWidget(NMRSpectrumPlotWidget())
+
+        # try:
+        #     spectrum = NMRPipeSpectrum(in_filepath[0])
+        # except:
+        #     if error_dialog:
+        #         self.fileNotFoundDialog(in_filepath)
