@@ -9,39 +9,47 @@ import numpy as np
 from PyQt6.QtWidgets import (QMainWindow, QStackedWidget, QMenuBar, QStatusBar,
                              QToolBar, QComboBox, QFileDialog, QMessageBox)
 from PyQt6 import uic
-from pyqtgraph import (PlotWidget, GraphicsLayoutWidget, IsocurveItem,
+from pyqtgraph import (PlotWidget, GraphicsLayout, PlotItem, IsocurveItem,
                        ImageItem, ViewBox)
 
 from ..spectra import NMRSpectrum, NMRPipeSpectrum
 
 
-class NMRSpectrumPlotWidget(GraphicsLayoutWidget):
+class NMRSpectrumContour2DWidget(PlotWidget):
     """A plot widget for an NMRSpectrum"""
-
-    #: Viewpox for rendering the plots
-    viewBox: ViewBox
 
     #: The spectrum to plot
     _spectrum: ReferenceType
 
+    #: The graphics layout for contours
+    _layout: GraphicsLayout
+
+    #: The plot item for contours
+    _plotItem: PlotItem
+
     def __init__(self, spectrum: NMRSpectrum, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        # Setup the containers and data
+        self._curves = []
         self.spectrum = spectrum
         data = spectrum.data.numpy()
 
-        # Setup the widget
-        self.viewBox = self.addViewBox()
-        self.viewBox.setAspectLocked()
-        img = ImageItem(data)
-        self.viewBox.addItem(img)
+        # Setup the graphics layout and plot item
+        self._layout = GraphicsLayout()
+        self.setCentralItem(self._layout)
+        self._plotItem = PlotItem()
+        self._layout.addItem(self._plotItem)
 
+        # Setup the axes for the plot item
+        # self._plotItem.setXRange(*spectrum.range_ppm[0])
+        # self._plotItem.setYRange(*spectrum.range_ppm[1])
+
+        # Add the contours to the plot item
         c = IsocurveItem(data=data, level=data.max() * 0.25,
                          pen='r')
-        print(c)
-        c.setParentItem(self.viewBox)
-        self.viewBox.addItem(c)
-        # c.setParentItem(img)
-        # c.setZValue(10)
+        self._plotItem.addItem(c)
+
 
     @property
     def spectrum(self) -> NMRSpectrum:
@@ -124,6 +132,6 @@ class NMRDeskWindow(QMainWindow):
         self.spectra.append(spectrum)
 
         # Create a stack view for the plot
-        plot_widget = NMRSpectrumPlotWidget(spectrum=spectrum)
+        plot_widget = NMRSpectrumContour2DWidget(spectrum=spectrum)
         self.plotStack.addWidget(plot_widget)
 
