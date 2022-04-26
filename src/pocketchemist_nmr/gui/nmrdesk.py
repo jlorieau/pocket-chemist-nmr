@@ -18,6 +18,12 @@ from ..spectra import NMRSpectrum, NMRPipeSpectrum
 class NMRSpectrumContour2DWidget(PlotWidget):
     """A plot widget for an NMRSpectrum"""
 
+    #: Lock aspect ratio for the plot
+    lock_aspect: bool = True
+
+    #: Aspect ratio for the plot
+    aspect: float = 0.1 * (3. / 2.)
+
     #: The spectrum to plot
     _spectrum: ReferenceType
 
@@ -35,21 +41,25 @@ class NMRSpectrumContour2DWidget(PlotWidget):
         self.spectrum = spectrum
         data = spectrum.data.numpy()
 
-        # Setup the graphics layout and plot item
+        # Setup the graphics layout
         self._layout = GraphicsLayout()
         self.setCentralItem(self._layout)
+
+        # Setup the plot item
         self._plotItem = PlotItem()
+        self._plotItem.vb.setAspectLocked(lock=self.lock_aspect,
+                                          ratio=self.aspect)
         self._layout.addItem(self._plotItem)
+        self._plotItem.setLabel(axis='bottom', text=self.xAxisTitle)
+        self._plotItem.setLabel(axis='left', text=self.yAxisTitle)
 
         # Setup the axes for the plot item
         # self._plotItem.setXRange(*spectrum.range_ppm[0])
         # self._plotItem.setYRange(*spectrum.range_ppm[1])
 
         # Add the contours to the plot item
-        c = IsocurveItem(data=data, level=data.max() * 0.25,
-                         pen='r')
+        c = IsocurveItem(data=data, level=data.max() * 0.25, pen='r')
         self._plotItem.addItem(c)
-
 
     @property
     def spectrum(self) -> NMRSpectrum:
@@ -59,6 +69,15 @@ class NMRSpectrumContour2DWidget(PlotWidget):
     def spectrum(self, value: NMRSpectrum):
         self._spectrum = ref(value)
 
+    @property
+    def xAxisTitle(self):
+        """The label for the x-axis"""
+        return self.spectrum.label[0]
+
+    @property
+    def yAxisTitle(self):
+        """The label for the x-axis"""
+        return self.spectrum.label[1]
 
 class NMRDeskWindow(QMainWindow):
 
