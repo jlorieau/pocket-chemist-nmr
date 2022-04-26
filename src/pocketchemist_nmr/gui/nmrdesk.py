@@ -9,6 +9,7 @@ import numpy as np
 from PyQt6.QtWidgets import (QMainWindow, QStackedWidget, QMenuBar, QStatusBar,
                              QToolBar, QComboBox, QFileDialog, QMessageBox)
 from PyQt6 import uic
+from PyQt6.QtGui import QTransform
 from pyqtgraph import (PlotWidget, GraphicsLayout, PlotItem, IsocurveItem,
                        ImageItem, ViewBox)
 
@@ -40,6 +41,7 @@ class NMRSpectrumContour2DWidget(PlotWidget):
         self._curves = []
         self.spectrum = spectrum
         data = spectrum.data.numpy()
+        data = np.flipud(np.fliplr(data))
 
         # Setup the graphics layout
         self._layout = GraphicsLayout()
@@ -48,18 +50,30 @@ class NMRSpectrumContour2DWidget(PlotWidget):
         # Setup the plot item
         self._plotItem = PlotItem()
         self._plotItem.vb.setAspectLocked(lock=self.lock_aspect,
-                                          ratio=self.aspect)
+                                          ratio=spectrum.sw_ppm[1] / spectrum.sw_ppm[0])
         self._layout.addItem(self._plotItem)
         self._plotItem.setLabel(axis='bottom', text=self.xAxisTitle)
         self._plotItem.setLabel(axis='left', text=self.yAxisTitle)
 
         # Setup the axes for the plot item
-        # self._plotItem.setXRange(*spectrum.range_ppm[0])
-        # self._plotItem.setYRange(*spectrum.range_ppm[1])
+        self._plotItem.setXRange(*spectrum.range_ppm[0])
+        self._plotItem.setYRange(*spectrum.range_ppm[1])
+        self._plotItem.invertX(True)
+        self._plotItem.invertY(True)
+
+        img = ImageItem()
+        tr = QTransform()
+        tr.scale(spectrum.sw_ppm[0] / data.shape[0],
+                 spectrum.sw_ppm[1] / data.shape[1])
+        tr.translate(spectrum.range_ppm[0][1] * data.shape[0] / spectrum.sw_ppm[0],
+                     spectrum.range_ppm[1][1] * data.shape[1] / spectrum.sw_ppm[1])
+        #tr.translate(-500, -500)
+        img.setTransform(tr)
+        self._plotItem.addItem(img)
 
         # Add the contours to the plot item
-        c = IsocurveItem(data=data, level=data.max() * 0.25, pen='r')
-        self._plotItem.addItem(c)
+        c = IsocurveItem(data=data, level=data.max() * 0.10, pen='r')
+        c.setParentItem(img)
 
     @property
     def spectrum(self) -> NMRSpectrum:
