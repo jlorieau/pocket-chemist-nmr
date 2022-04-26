@@ -5,11 +5,32 @@ import typing as t
 from weakref import ReferenceType, ref
 
 import numpy as np
-from PyQt6.QtGui import QTransform, QFont
+from PyQt6.QtGui import QTransform, QFont, QPainterPath
 from pyqtgraph import (PlotWidget, GraphicsLayout, PlotItem, IsocurveItem,
                        ImageItem, colormap)
 
+from .funcs import isocurve
 from ..spectra import NMRSpectrum
+
+
+class FasterIsocurveItem(IsocurveItem):
+    """An IsocurveItem with a faster marching square implementation"""
+    def generatePath(self):
+        if self.data is None:
+            self.path = None
+            return
+
+        if self.axisOrder == 'row-major':
+            data = self.data.T
+        else:
+            data = self.data
+
+        lines = isocurve(data, self.level, connected=True, extendToEdge=True)
+        self.path = QPainterPath()
+        for line in lines:
+            self.path.moveTo(*line[0])
+            for p in line[1:]:
+                self.path.lineTo(*p)
 
 
 class NMRSpectrumContour2DWidget(PlotWidget):
@@ -224,5 +245,7 @@ class NMRSpectrumContour2DWidget(PlotWidget):
             color_table = cm.getLookupTable(nPts=len(levels))
 
             for level, color in zip(levels, color_table):
-                c = IsocurveItem(data=data, level=level, pen=color)
+
+                c = FasterIsocurveItem(data=data, level=level, pen=color)
                 c.setParentItem(img)
+                c.generatePath()
