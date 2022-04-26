@@ -14,6 +14,9 @@ from ..spectra import NMRSpectrum, NMRPipeSpectrum
 
 class NMRDeskWindow(QMainWindow):
 
+    #: The width (in number of characters) of the plot selector combo box
+    plotSelectorWidth = 60
+
     #: The menubar widget (top)
     menubar: QMenuBar
 
@@ -30,7 +33,7 @@ class NMRDeskWindow(QMainWindow):
     spectra: t.List[NMRSpectrum]
 
     #: The selector for the plot displayed
-    _plotSelector: QComboBox
+    plotSelector: QComboBox
 
     def __init__(self):
         super().__init__()
@@ -47,32 +50,33 @@ class NMRDeskWindow(QMainWindow):
 
     def setupToolbar(self):
         """Setup the toolbar with extra widgets not added by designer"""
-        # Add a spectrum selector combobox to the toolbar
-        self._plotSelector = QComboBox()
-        self.toolBar.addWidget(self._plotSelector)
+        # Add a spectrum selector combobox to the toolbar and adjust its width
+        self.plotSelector = QComboBox()
+
+        metrics = self.plotSelector.fontMetrics()
+        width = metrics.boundingRect(' ' * self.plotSelectorWidth).width()
+        self.plotSelector.setMinimumWidth(width)
+
+        self.toolBar.addWidget(self.plotSelector)
 
         # Changes to the self.plotStack should be reflected in the combobox
         self.plotStack.currentChanged.connect(self._updatePlotSelector)
-        self._plotSelector.activated.connect(self._updatePlotStack)
+        self.plotSelector.activated.connect(self.plotStack.setCurrentIndex)
 
     def _updatePlotSelector(self, index):
         """Update the plot selector box"""
         # Repopulate the plot selector combobox with the stacks
-        self._plotSelector.clear()
+        self.plotSelector.clear()
         for i in range(self.plotStack.count()):
             widget = self.plotStack.widget(i)
             name = widget.__class__.__name__
 
-            self._plotSelector.addItem(name)
+            self.plotSelector.addItem(name)
 
         # Set the combobox's active item to the currently active widget from
         # the plot stack
         current_index = self.plotStack.currentIndex()
-        self._plotSelector.setCurrentIndex(current_index)
-
-    def _updatePlotStack(self, index):
-        """Update the currently active widget in the plotStack"""
-        self.plotStack.setCurrentIndex(index)
+        self.plotSelector.setCurrentIndex(current_index)
 
     def fileOpenDialog(self):
         """Open a file selection dialog.
