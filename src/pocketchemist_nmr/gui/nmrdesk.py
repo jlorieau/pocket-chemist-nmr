@@ -20,13 +20,13 @@ class NMRSpectrumContour2DWidget(PlotWidget):
     """A plot widget for an NMRSpectrum"""
 
     #: Lock aspect ratio for the plot
-    lock_aspect: bool = True
+    lockAspect: bool = True
 
     #: Aspect ratio for the plot
     aspect: float = 0.1 * (3. / 2.)
 
-    #: The spectrum to plot
-    _spectrum: ReferenceType
+    #: The spectra to plot
+    _spectra: t.List[ReferenceType]
 
     #: The graphics layout for contours
     _layout: GraphicsLayout
@@ -34,14 +34,15 @@ class NMRSpectrumContour2DWidget(PlotWidget):
     #: The plot item for contours
     _plotItem: PlotItem
 
-    def __init__(self, spectrum: NMRSpectrum, *args, **kwargs):
+    def __init__(self, spectra: t.List[NMRSpectrum], *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        # Wrap the spectra in a list if needed
+        spectra = [spectra] if type(spectra) not in (list, tuple) else spectra
 
         # Setup the containers and data
         self._curves = []
-        self.spectrum = spectrum
-        data = spectrum.data.numpy()
-        data = np.flipud(np.fliplr(data))
+        self.spectra = spectra
 
         # Setup the graphics layout
         self._layout = GraphicsLayout()
@@ -49,25 +50,79 @@ class NMRSpectrumContour2DWidget(PlotWidget):
 
         # Setup the plot item
         self._plotItem = PlotItem()
-        self._plotItem.vb.setAspectLocked(lock=self.lock_aspect,
-                                          ratio=spectrum.sw_ppm[1] / spectrum.sw_ppm[0])
         self._layout.addItem(self._plotItem)
+
+        # Load the contours
+        self.loadContours()
+
+    @property
+    def spectra(self) -> t.List[NMRSpectrum]:
+        spectra = [spectrum() for spectrum in self._spectra]
+        return [spectrum for spectrum in spectra if spectrum is not None]
+
+    @spectra.setter
+    def spectra(self, value: t.List[NMRSpectrum]):
+        # Initialize container, if needed
+        if getattr(self, '_spectra', None) is None:
+            self._spectra = []
+
+        self._spectra.clear()
+        self._spectra += [ref(spectrum) for spectrum in value]
+
+    @property
+    def xAxisTitle(self):
+        """The label for the x-axis"""
+        spectra = self.spectra
+        return spectra[0].label[0] if spectra is not None else ''
+
+    @property
+    def yAxisTitle(self):
+        """The label for the x-axis"""
+        spectra = self.spectra
+        return spectra[0].label[1] if spectra is not None else ''
+
+    def loadContours(self):
+        """Load the contour levels for the spectrum"""
+        # Retrieve the spectrum from the weakref
+        spectrum = self.spectra[0]
+        if spectrum is None:
+            return None
+
+        # Retrieve the data to plot contours. The axes need to be inverted
+        # for axes in ppm and Hz, so the data must be flipped too.
+        data = spectrum.data.numpy()
+        data = np.flipud(np.fliplr(data))  # Flip x- and y-axes
+
+        # Retrieve the x-axis and y-axis ranges
+        x_min, x_max, = spectrum.range_ppm[0]
+        y_min, y_max, = spectrum.range_ppm[1]
+        x_range = abs(x_min - x_max)  # spectral width
+        y_range = abs(y_min - y_max)  # spectral width
+
+        # Reset the plotItem
+        self._plotItem.clear()
+
+        # Setup the plot and axis displays
+        self._plotItem.vb.setAspectLocked(lock=self.lockAspect,
+                                          ratio=y_range / x_range)
         self._plotItem.setLabel(axis='bottom', text=self.xAxisTitle)
         self._plotItem.setLabel(axis='left', text=self.yAxisTitle)
 
         # Setup the axes for the plot item
-        self._plotItem.setXRange(*spectrum.range_ppm[0])
-        self._plotItem.setYRange(*spectrum.range_ppm[1])
+        self._plotItem.setXRange(x_min, x_max)
+        self._plotItem.setYRange(y_min, y_max)
+
+        # Flip the axes, needed for ppm and Hz data in NMR data
         self._plotItem.invertX(True)
         self._plotItem.invertY(True)
 
+        # Load the data as an image and scale/translate from the index units
+        # of the data to the units of the final spectrum (ppm or Hz)
         img = ImageItem()
         tr = QTransform()
-        tr.scale(spectrum.sw_ppm[0] / data.shape[0],
-                 spectrum.sw_ppm[1] / data.shape[1])
-        tr.translate(spectrum.range_ppm[0][1] * data.shape[0] / spectrum.sw_ppm[0],
-                     spectrum.range_ppm[1][1] * data.shape[1] / spectrum.sw_ppm[1])
-        #tr.translate(-500, -500)
+        tr.scale(x_range / data.shape[0], y_range / data.shape[1])
+        tr.translate(x_max * data.shape[0] / x_range,
+                     y_max * data.shape[1] / y_range)
         img.setTransform(tr)
         self._plotItem.addItem(img)
 
@@ -75,23 +130,6 @@ class NMRSpectrumContour2DWidget(PlotWidget):
         c = IsocurveItem(data=data, level=data.max() * 0.10, pen='r')
         c.setParentItem(img)
 
-    @property
-    def spectrum(self) -> NMRSpectrum:
-        return self._spectrum()
-
-    @spectrum.setter
-    def spectrum(self, value: NMRSpectrum):
-        self._spectrum = ref(value)
-
-    @property
-    def xAxisTitle(self):
-        """The label for the x-axis"""
-        return self.spectrum.label[0]
-
-    @property
-    def yAxisTitle(self):
-        """The label for the x-axis"""
-        return self.spectrum.label[1]
 
 class NMRDeskWindow(QMainWindow):
 
@@ -165,6 +203,6 @@ class NMRDeskWindow(QMainWindow):
         self.spectra.append(spectrum)
 
         # Create a stack view for the plot
-        plot_widget = NMRSpectrumContour2DWidget(spectrum=spectrum)
+        plot_widget = NMRSpectrumContour2DWidget(spectra=[spectrum])
         self.plotStack.addWidget(plot_widget)
 
