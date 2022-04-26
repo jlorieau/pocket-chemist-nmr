@@ -29,22 +29,50 @@ class NMRDeskWindow(QMainWindow):
     #: A list of opened NMR spectra
     spectra: t.List[NMRSpectrum]
 
+    #: The selector for the plot displayed
+    _plotSelector: QComboBox
+
     def __init__(self):
         super().__init__()
 
         # Setup mutable containers
         self.spectra = []
 
-        # Load designer layout
+        # Load designer layout and setup the window
         uic.loadUi(Path(__file__).parent / 'nmrdesk.ui', self)
-
-        # Add a spectrum selector to the toolbar
-        self.toolBar.addWidget(QComboBox())
-
-        # Hide the status bar at the bottom of the window
-        self.statusbar.setVisible(False)
+        self.setupToolbar()
+        self.statusbar.setVisible(False)  # Hide status bar
 
         self.show()
+
+    def setupToolbar(self):
+        """Setup the toolbar with extra widgets not added by designer"""
+        # Add a spectrum selector combobox to the toolbar
+        self._plotSelector = QComboBox()
+        self.toolBar.addWidget(self._plotSelector)
+
+        # Changes to the self.plotStack should be reflected in the combobox
+        self.plotStack.currentChanged.connect(self._updatePlotSelector)
+        self._plotSelector.activated.connect(self._updatePlotStack)
+
+    def _updatePlotSelector(self, index):
+        """Update the plot selector box"""
+        # Repopulate the plot selector combobox with the stacks
+        self._plotSelector.clear()
+        for i in range(self.plotStack.count()):
+            widget = self.plotStack.widget(i)
+            name = widget.__class__.__name__
+
+            self._plotSelector.addItem(name)
+
+        # Set the combobox's active item to the currently active widget from
+        # the plot stack
+        current_index = self.plotStack.currentIndex()
+        self._plotSelector.setCurrentIndex(current_index)
+
+    def _updatePlotStack(self, index):
+        """Update the currently active widget in the plotStack"""
+        self.plotStack.setCurrentIndex(index)
 
     def fileOpenDialog(self):
         """Open a file selection dialog.
