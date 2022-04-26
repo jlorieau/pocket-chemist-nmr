@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (QMainWindow, QStackedWidget, QMenuBar, QStatusBar,
 from PyQt6 import uic
 from PyQt6.QtGui import QTransform, QFont
 from pyqtgraph import (PlotWidget, GraphicsLayout, PlotItem, IsocurveItem,
-                       ImageItem, ViewBox)
+                       ImageItem, colormap)
 
 from ..spectra import NMRSpectrum, NMRPipeSpectrum
 
@@ -33,6 +33,34 @@ class NMRSpectrumContour2DWidget(PlotWidget):
 
     #: Axis size of label fonts (in pt)
     axisLabelFontSize = 14
+
+    #: The number of contour levels to draw
+    contourLevels = 10
+
+    #: The type of contours to draw
+    contourType = 'multiplicative'
+
+    #: The increase factor for multiplicative contours
+    contourFactor = 1.2
+
+    #: The level for the first contours (positive and negative
+    contourStartPositive = None
+    contourStartNegative = None
+
+    #: The scale of the maximum height in the data to use in populating
+    #: contourStartPositive/contourStartNegative, if these are specified
+    contourStartScale = 0.1
+
+    #: Color maps to use for the positive/negative contours of the first,
+    #: second, etc. spectra
+    colormaps = (
+        ('CET-R3', 'CET-L14'),  # blue->green>yellow->red,, black->green
+        ('CET-L4', 'CET-L14'),  # red->yellow, black->green
+        ('CET-L5', 'CET-L13'),  # green->white, black->red
+        ('CET-L19', 'CET-L14'),  # white->red,, black->green
+        ('CET-L8', 'CET-L14'),  # blue->yellow,, black->green
+        ('CET-L6', 'CET-L13'),  # blue->white, black->red
+    )
 
     #: The spectra to plot
     _spectra: t.List[ReferenceType]
@@ -89,6 +117,45 @@ class NMRSpectrumContour2DWidget(PlotWidget):
         """The label for the x-axis"""
         spectra = self.spectra
         return spectra[0].label[1] if spectra is not None else ''
+
+    def getContourLevels(self) -> t.Tuple[t.Tuple[float, ...],
+                                          t.Tuple[float, ...]]:
+        """Calculate the contour levels
+
+        Returns
+        -------
+        positive_contours, negative_contours
+            The tuples for the data heights/intensities of the positive value
+            and negative value contours.
+        """
+        positive_start = self.contourStartPositive
+        negative_start = self.contourStartNegative
+
+        # Calculate positive_start and negative_start values, if these aren't
+        # specified
+        if positive_start is None or negative_start is None:
+            # Determine the maximum data height (intensity)
+            max_height = 0.0
+            for spectrum in self.spectra:
+                data_max = float(max(abs(spectrum.data.max()),
+                                     abs(spectrum.data.min())))
+                max_height = data_max if data_max > max_height else max_height
+
+            positive_start = max_height * self.contourStartScale
+            negative_start = max_height * self.contourStartScale * -1.
+
+            self.contourStartPositive = positive_start
+            self.contourStartNegative = negative_start
+
+        # Calculate contours according to the specified method
+        if self.contourType == 'multiplicative':
+            positive_contours = tuple(positive_start * self.contourFactor ** i
+                                      for i in range(self.contourLevels))
+            negative_contours = tuple(negative_start * self.contourFactor ** i
+                                      for i in range(self.contourLevels))
+            return positive_contours, negative_contours
+        else:
+            return tuple(), tuple()
 
     def loadContours(self):
         """Load the contour levels for the spectrum"""
@@ -150,8 +217,19 @@ class NMRSpectrumContour2DWidget(PlotWidget):
         self._plotItem.addItem(img)
 
         # Add the contours to the plot item
-        c = IsocurveItem(data=data, level=data.max() * 0.10, pen='r')
-        c.setParentItem(img)
+        positive_contours, negative_contours = self.getContourLevels()
+        cm_positive = colormap.get(self.colormaps[0][0])
+        cm_negative = colormap.get(self.colormaps[0][1])
+
+        for levels, cm in zip((positive_contours, negative_contours),
+                              (cm_positive, cm_negative)):
+            if len(levels) == 0:
+                continue
+            color_table = cm.getLookupTable(nPts=len(levels))
+
+            for level, color in zip(levels, color_table):
+                c = IsocurveItem(data=data, level=level, pen=color)
+                c.setParentItem(img)
 
 
 class NMRDeskWindow(QMainWindow):
