@@ -9,7 +9,7 @@ import numpy as np
 from PyQt6.QtWidgets import (QMainWindow, QStackedWidget, QMenuBar, QStatusBar,
                              QToolBar, QComboBox, QFileDialog, QMessageBox)
 from PyQt6 import uic
-from PyQt6.QtGui import QTransform
+from PyQt6.QtGui import QTransform, QFont
 from pyqtgraph import (PlotWidget, GraphicsLayout, PlotItem, IsocurveItem,
                        ImageItem, ViewBox)
 
@@ -22,8 +22,17 @@ class NMRSpectrumContour2DWidget(PlotWidget):
     #: Lock aspect ratio for the plot
     lockAspect: bool = True
 
-    #: Aspect ratio for the plot
-    aspect: float = 0.1 * (3. / 2.)
+    #: Axis title font family
+    axisTitleFontFamily = "Helvetica"
+
+    #: Axis title font size (in pt)
+    axisTitleFontSize = 16
+
+    #: Axis label font
+    axisLabelFontFamily = "Helvetica"
+
+    #: Axis size of label fonts (in pt)
+    axisLabelFontSize = 14
 
     #: The spectra to plot
     _spectra: t.List[ReferenceType]
@@ -105,8 +114,22 @@ class NMRSpectrumContour2DWidget(PlotWidget):
         # Setup the plot and axis displays
         self._plotItem.vb.setAspectLocked(lock=self.lockAspect,
                                           ratio=y_range / x_range)
-        self._plotItem.setLabel(axis='bottom', text=self.xAxisTitle)
-        self._plotItem.setLabel(axis='left', text=self.yAxisTitle)
+
+        # Configure the axes
+        labelFont = QFont(self.axisLabelFontFamily,
+                          self.axisLabelFontSize)
+
+        bottom = self._plotItem.getAxis('bottom')
+        bottom.setLabel(self.xAxisTitle, 'ppm',
+                        **{'font-family': self.axisTitleFontFamily,
+                           'font-size': f'{self.axisLabelFontSize}pt'})
+        bottom.setStyle(tickFont=labelFont)
+
+        left = self._plotItem.getAxis('left')
+        left.setLabel(text=self.yAxisTitle, units='ppm',
+                      **{'font-family': self.axisTitleFontFamily,
+                         'font-size': f'{self.axisLabelFontSize}pt'})
+        left.setStyle(tickFont=labelFont)
 
         # Setup the axes for the plot item
         self._plotItem.setXRange(x_min, x_max)
