@@ -21,3 +21,8 @@ Nuclear Magnetic Resonance (NMR).
    the new process
 
 6. Increase the minor version
+
+
+# Credits
+
+- Icons by [Icons8](https://icons8.com/)
