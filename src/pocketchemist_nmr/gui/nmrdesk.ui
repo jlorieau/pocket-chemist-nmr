@@ -57,6 +57,9 @@
    <property name="layoutDirection">
     <enum>Qt::LeftToRight</enum>
    </property>
+   <property name="allowedAreas">
+    <set>Qt::BottomToolBarArea|Qt::TopToolBarArea</set>
+   </property>
    <property name="toolButtonStyle">
     <enum>Qt::ToolButtonIconOnly</enum>
    </property>
@@ -71,7 +74,8 @@
   </widget>
   <action name="actionOpen">
    <property name="icon">
-    <iconset theme="Fusion"/>
+    <iconset>
+     <normaloff>assets/icons8/icons8-opened-folder-48.png</normaloff>assets/icons8/icons8-opened-folder-48.png</iconset>
    </property>
    <property name="text">
     <string>&amp;Open</string>
