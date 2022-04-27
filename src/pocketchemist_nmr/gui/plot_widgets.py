@@ -7,9 +7,10 @@ from weakref import ReferenceType, ref
 import numpy as np
 from PyQt6.QtGui import QTransform, QFont, QPainterPath
 from pyqtgraph import (PlotWidget, GraphicsLayout, PlotItem, IsocurveItem,
-                       ImageItem, colormap)
+                       ImageItem, ViewBox, colormap)
 
 from .funcs import isocurve
+from .constants import MouseMode
 from ..spectra import NMRSpectrum
 
 
@@ -33,11 +34,19 @@ class FasterIsocurveItem(IsocurveItem):
                 self.path.lineTo(*p)
 
 
-class NMRSpectrumContour2DWidget(PlotWidget):
-    """A plot widget for an NMRSpectrum"""
+class FlexibleViewBox(ViewBox):
+    """A view box with greater flexibility in its mouse and menu functions."""
 
-    #: Lock aspect ratio for the plot
-    lockAspect: bool = True
+    def showAxRect(self, ax, **kwargs):
+        """The rectangle function called in 1-click mouse mode."""
+        return super().showAxRect(ax, **kwargs)
+
+
+class NMRSpectrumPlot(PlotWidget):
+    """A generic widget base class for plotting NMR spectra"""
+
+    #: The current mouse navigation or selection mode
+    mouseMode = MouseMode.NAVIGATION
 
     #: Axis title font family
     axisTitleFontFamily = "Helvetica"
@@ -50,6 +59,17 @@ class NMRSpectrumContour2DWidget(PlotWidget):
 
     #: Axis size of label fonts (in pt)
     axisLabelFontSize = 14
+
+    def setMouseMode(self, mode: MouseMode):
+        """Set the mouse mode"""
+        self.mouseMode = mode
+
+
+class NMRSpectrumContour2D(NMRSpectrumPlot):
+    """A plot widget for an NMRSpectrum"""
+
+    #: Lock aspect ratio for the plot
+    lockAspect: bool = True
 
     #: The number of contour levels to draw
     contourLevels = 10
@@ -85,6 +105,9 @@ class NMRSpectrumContour2DWidget(PlotWidget):
     #: The graphics layout for contours
     _layout: GraphicsLayout
 
+    #: The viewbox for the plot
+    _viewBox: ViewBox
+
     #: The plot item for contours
     _plotItem: PlotItem
 
@@ -103,7 +126,8 @@ class NMRSpectrumContour2DWidget(PlotWidget):
         self.setCentralItem(self._layout)
 
         # Setup the plot item
-        self._plotItem = PlotItem()
+        self._viewBox = FlexibleViewBox()
+        self._plotItem = PlotItem(viewBox=self._viewBox)
         self._layout.addItem(self._plotItem)
 
         # Load the contours

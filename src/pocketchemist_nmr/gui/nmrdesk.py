@@ -47,6 +47,9 @@ class NMRDeskWindow(QMainWindow):
     #: A dict with icons
     _icons: t.Dict[str, QIcon]
 
+    #: The action group to specify the current mouse mose
+    _mouseMode: QActionGroup
+
     def __init__(self):
         super().__init__()
 
@@ -113,20 +116,21 @@ class NMRDeskWindow(QMainWindow):
                            MouseMode.ADDPEAKS.value, self)
         actions = (navigate, addpeaks)
 
-        # Connect signals
-        navigate.triggered.connect(lambda checked:
-                                   self.setMouseMode(mode=MouseMode.NAVIGATION))
-        addpeaks.triggered.connect(lambda checked:
-                                   self.setMouseMode(mode=MouseMode.ADDPEAKS))
-
         # Set the actions to be checkable
+        navigate.setChecked(True)
         for action in actions:
             action.setCheckable(True)
 
-        # Group these
-        mouseMode = QActionGroup(self)
+        # Group these into an ActionGroup
+        self._mouseMode = QActionGroup(self)
         for action in actions:
-            mouseMode.addAction(action)
+            self._mouseMode.addAction(action)
+
+        # Connect the signal. The signal sends a QAction, which needs to be
+        # converted to a MouseMode
+        enums = {enum.value: enum for enum in MouseMode}
+        self._mouseMode.triggered.connect(lambda a:
+                                          self.setMouseMode(enums[a.text()]))
 
         # Add the group to the toolbar
         self.toolBar.addActions(actions)
@@ -197,3 +201,7 @@ class NMRDeskWindow(QMainWindow):
         plot_widget = NMRSpectrumContour2D(spectra=[spectrum])
         self.plotStack.addWidget(plot_widget)
 
+        # Connect the plot's signals
+        enums = {enum.value: enum for enum in MouseMode}
+        slot = lambda a: plot_widget.setMouseMode(enums[a.text()])
+        self._mouseMode.triggered.connect(slot)
