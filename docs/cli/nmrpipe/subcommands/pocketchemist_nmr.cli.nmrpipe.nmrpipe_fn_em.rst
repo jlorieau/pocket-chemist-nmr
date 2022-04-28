@@ -1,4 +1,4 @@
-﻿.. currentmodule:: pocketchemist_nmr.cli.cli
+﻿.. currentmodule:: pocketchemist_nmr.cli.nmrpipe
 
 ..
     The autodata (autodata) block is needed to properly link the
@@ -8,10 +8,10 @@
 
 .. rst-class:: visually-hidden
 
-    .. autodata:: nmrpipe_fn_ft
+    .. autodata:: nmrpipe_fn_em
 
 
 
-.. click:: pocketchemist_nmr.cli.cli:nmrpipe_fn_ft
-    :prog: pc nmrpipe -fn FT
+.. click:: pocketchemist_nmr.cli.nmrpipe:nmrpipe_fn_em
+    :prog: pc nmrpipe -fn EM
     :nested: short

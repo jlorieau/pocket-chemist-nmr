@@ -13,7 +13,7 @@ tasks:
   develop:
     desc: "Install pocketchemist-nmr in (editable) developer mode"
     cmds:
-      - pip install --editable .
+      - pip install --editable .'[tests,docs]'
   build:
     desc: Build datasets needed for tests
     cmds:

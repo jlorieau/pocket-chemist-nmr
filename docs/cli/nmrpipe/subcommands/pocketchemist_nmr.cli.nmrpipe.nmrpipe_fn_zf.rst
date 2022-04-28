@@ -1,4 +1,4 @@
-﻿.. currentmodule:: pocketchemist_nmr.cli.cli
+﻿.. currentmodule:: pocketchemist_nmr.cli.nmrpipe
 
 ..
     The autodata (autodata) block is needed to properly link the
@@ -12,6 +12,6 @@
 
 
 
-.. click:: pocketchemist_nmr.cli.cli:nmrpipe_fn_zf
+.. click:: pocketchemist_nmr.cli.nmrpipe:nmrpipe_fn_zf
     :prog: pc nmrpipe -fn ZF
     :nested: short

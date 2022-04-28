@@ -1,4 +1,4 @@
-.. currentmodule:: pocketchemist_nmr.cli.cli
+.. currentmodule:: pocketchemist_nmr.cli.nmrpipe
 
 nmrpipe
 =======
