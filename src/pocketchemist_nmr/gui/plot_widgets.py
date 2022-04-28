@@ -37,16 +37,24 @@ class FasterIsocurveItem(IsocurveItem):
 class FlexibleViewBox(ViewBox):
     """A view box with greater flexibility in its mouse and menu functions."""
 
+    #: The current mouse navigation or selection mode
+    mouseMode = MouseMode.NAVIGATION
+
     def showAxRect(self, ax, **kwargs):
-        """The rectangle function called in 1-click mouse mode."""
-        return super().showAxRect(ax, **kwargs)
+        """The rectangle function called in 1-button mouse mode.
+
+        This method highjacks the pyqtgraph's 1-button mouse mode so
+        that it can be used for functionality like adding peaks.
+        """
+        if self.mouseMode.ADDPEAKS:
+            pass
+        else:
+            # Conduct the zoom-in, as usual
+            return super().showAxRect(ax, **kwargs)
 
 
 class NMRSpectrumPlot(PlotWidget):
     """A generic widget base class for plotting NMR spectra"""
-
-    #: The current mouse navigation or selection mode
-    mouseMode = MouseMode.NAVIGATION
 
     #: Axis title font family
     axisTitleFontFamily = "Helvetica"
@@ -60,9 +68,46 @@ class NMRSpectrumPlot(PlotWidget):
     #: Axis size of label fonts (in pt)
     axisLabelFontSize = 14
 
+    #: The viewbox for the plot
+    _viewBox: FlexibleViewBox
+
+    #: The spectra to plot
+    _spectra: t.List[ReferenceType[NMRSpectrum]]
+
+    def __init__(self, spectra: t.List[NMRSpectrum], *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Wrap the spectra in a list if needed
+        spectra = [spectra] if type(spectra) not in (list, tuple) else spectra
+
+        # Setup the containers and data
+        self.spectra = spectra
+
+        # Setup an instance of the subclassed view box
+        self._viewBox = FlexibleViewBox()
+
+    @property
+    def spectra(self) -> t.List[NMRSpectrum]:
+        spectra = [spectrum() for spectrum in self._spectra]
+        return [spectrum for spectrum in spectra if spectrum is not None]
+
+    @spectra.setter
+    def spectra(self, value: t.List[NMRSpectrum]):
+        # Initialize container, if needed
+        if getattr(self, '_spectra', None) is None:
+            self._spectra = []
+
+        self._spectra.clear()
+        self._spectra += [ref(spectrum) for spectrum in value]
+
     def setMouseMode(self, mode: MouseMode):
         """Set the mouse mode"""
-        self.mouseMode = mode
+        self._viewBox.mouseMode = mode
+
+        # Set the mouse mode for the view box
+        if mode is MouseMode.ADDPEAKS:
+            self._viewBox.setMouseMode(ViewBox.RectMode)
+        else:
+            self._viewBox.setMouseMode(ViewBox.PanMode)
 
 
 class NMRSpectrumContour2D(NMRSpectrumPlot):
@@ -99,53 +144,24 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
         ('CET-L6', 'CET-L13'),  # blue->white, black->red
     )
 
-    #: The spectra to plot
-    _spectra: t.List[ReferenceType]
-
     #: The graphics layout for contours
     _layout: GraphicsLayout
-
-    #: The viewbox for the plot
-    _viewBox: ViewBox
 
     #: The plot item for contours
     _plotItem: PlotItem
 
-    def __init__(self, spectra: t.List[NMRSpectrum], *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        # Wrap the spectra in a list if needed
-        spectra = [spectra] if type(spectra) not in (list, tuple) else spectra
-
-        # Setup the containers and data
-        self._curves = []
-        self.spectra = spectra
-
         # Setup the graphics layout
         self._layout = GraphicsLayout()
         self.setCentralItem(self._layout)
 
         # Setup the plot item
-        self._viewBox = FlexibleViewBox()
         self._plotItem = PlotItem(viewBox=self._viewBox)
         self._layout.addItem(self._plotItem)
 
         # Load the contours
         self.loadContours()
-
-    @property
-    def spectra(self) -> t.List[NMRSpectrum]:
-        spectra = [spectrum() for spectrum in self._spectra]
-        return [spectrum for spectrum in spectra if spectrum is not None]
-
-    @spectra.setter
-    def spectra(self, value: t.List[NMRSpectrum]):
-        # Initialize container, if needed
-        if getattr(self, '_spectra', None) is None:
-            self._spectra = []
-
-        self._spectra.clear()
-        self._spectra += [ref(spectrum) for spectrum in value]
 
     @property
     def xAxisTitle(self):
