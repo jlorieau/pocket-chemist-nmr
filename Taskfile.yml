@@ -10,10 +10,19 @@ tasks:
     desc: "Install pocketchemist-nmr"
     cmds:
       - pip install .
+
   develop:
     desc: "Install pocketchemist-nmr in (editable) developer mode"
     cmds:
       - pip install --editable .'[tests,docs]'
+
+  updload:
+    desc: "Upload package to pypi"
+    cmds:
+      - python3 -m build --sdist --wheel
+      - twine check dist/*
+      - twine upload dist/*
+
   build:
     desc: Build datasets needed for tests
     cmds:
