@@ -26,7 +26,8 @@ class FasterIsocurveItem(IsocurveItem):
         else:
             data = self.data
 
-        lines = isocurve(data, self.level, connected=True, extendToEdge=True)
+        lines = isocurve(data.real, self.level, connected=True,
+                         extendToEdge=True)
         self.path = QPainterPath()
         for line in lines:
             self.path.moveTo(*line[0])
@@ -194,8 +195,8 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
             # Determine the maximum data height (intensity)
             max_height = 0.0
             for spectrum in self.spectra:
-                data_max = float(max(abs(spectrum.data.max()),
-                                     abs(spectrum.data.min())))
+                data_max = float(max(abs(spectrum.data.real.max()),
+                                     abs(spectrum.data.real.min())))
                 max_height = data_max if data_max > max_height else max_height
 
             positive_start = max_height * self.contourStartScale
@@ -217,27 +218,39 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
     def loadContours(self):
         """Load the contour levels for the spectrum"""
         # Retrieve the spectrum from the weakref
-        spectrum = self.spectra[0]
-        if spectrum is None:
+        spectra = self.spectra
+        if len(spectra) == 0:
             return None
-
-        # Retrieve the data to plot contours. The axes need to be inverted
-        # for axes in ppm and Hz, so the data must be flipped too.
-        data = spectrum.data.numpy()
-        data = np.flipud(np.fliplr(data))  # Flip x- and y-axes
-
-        # Retrieve the x-axis and y-axis ranges
-        x_min, x_max, = spectrum.range_ppm[0]
-        y_min, y_max, = spectrum.range_ppm[1]
-        x_range = abs(x_min - x_max)  # spectral width
-        y_range = abs(y_min - y_max)  # spectral width
 
         # Reset the plotItem
         self._plotItem.clear()
 
-        # Setup the plot and axis displays
+        # Setup the ranges for the plots. The x_ranges and y_ranges contain
+        # 3-ples with (min, max, width) values
+        x_ranges, y_ranges = [], []
+        for spectrum in spectra:
+            x_min, x_max = spectrum.range_ppm[0]
+            y_min, y_max = spectrum.range_ppm[1]
+            x_ranges.append((x_min, x_max, abs(x_min - x_max)))
+            y_ranges.append((y_min, y_max, abs(y_min - y_max)))
+
+        # Find the smallest and largest x_min/x_max/y_min/y_max to encompass
+        # the range for all spectra
+        x_min = min(x[0] for x in x_ranges)
+        x_max = max(x[1] for x in x_ranges)
+        y_min = min(y[0] for y in y_ranges)
+        y_max = max(y[1] for y in y_ranges)
+
+        # Setup the axes for the plot item
+        self._plotItem.setXRange(x_min, x_max)
+        self._plotItem.setYRange(y_min, y_max)
+
+        # Set the aspect ratio for the plot view based on the largest
+        # x_range and y_range
+        max_x_width = max(x[2] for x in x_ranges)
+        max_y_width = max(y[2] for y in y_ranges)
         self._plotItem.vb.setAspectLocked(lock=self.lockAspect,
-                                          ratio=y_range / x_range)
+                                          ratio=max_y_width / max_x_width)
 
         # Configure the axes
         labelFont = QFont(self.axisLabelFontFamily,
@@ -255,37 +268,47 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
                          'font-size': f'{self.axisLabelFontSize}pt'})
         left.setStyle(tickFont=labelFont)
 
-        # Setup the axes for the plot item
-        self._plotItem.setXRange(x_min, x_max)
-        self._plotItem.setYRange(y_min, y_max)
-
         # Flip the axes, needed for ppm and Hz data in NMR data
         self._plotItem.invertX(True)
         self._plotItem.invertY(True)
 
-        # Load the data as an image and scale/translate from the index units
-        # of the data to the units of the final spectrum (ppm or Hz)
-        img = ImageItem()
-        tr = QTransform()
-        tr.scale(x_range / data.shape[0], y_range / data.shape[1])
-        tr.translate(x_max * data.shape[0] / x_range,
-                     y_max * data.shape[1] / y_range)
-        img.setTransform(tr)
-        self._plotItem.addItem(img)
+        # Create the contours for each spectrum
+        for i, (spectrum, x_range, y_range), in enumerate(zip(spectra, x_ranges,
+                                                              y_ranges)):
+            data = spectrum.data.numpy()  # view as numpy data
+            data = np.flipud(np.fliplr(data))  # Flip x- and y-axes
 
-        # Add the contours to the plot item
-        positive_contours, negative_contours = self.getContourLevels()
-        cm_positive = colormap.get(self.colormaps[0][0])
-        cm_negative = colormap.get(self.colormaps[0][1])
+            # Get the widths of the axes
+            x_min, y_min = x_range[0], y_range[0]
+            x_max, y_max = x_range[1], y_range[1]
+            x_width, y_width = x_range[2], y_range[2]
 
-        for levels, cm in zip((positive_contours, negative_contours),
-                              (cm_positive, cm_negative)):
-            if len(levels) == 0:
-                continue
-            color_table = cm.getLookupTable(nPts=len(levels))
+            # Load the data as an image and scale/translate from the index units
+            # of the data to the units of the final spectrum (ppm or Hz)
+            img = ImageItem()
+            tr = QTransform()
+            tr.scale(x_width / data.shape[0], y_width / data.shape[1])
+            tr.translate(x_max * data.shape[0] / x_width,
+                         y_max * data.shape[1] / y_width)
+            img.setTransform(tr)
+            self._plotItem.addItem(img)
 
-            for level, color in zip(levels, color_table):
+            # Retrieve the next contour map, or return a default
+            cm = (self.colormaps[i] if i < len(self.colormaps) else
+                  self.colormaps[-1])
+            positive_contours, negative_contours = self.getContourLevels()
+            cm_positive = colormap.get(cm[0])
+            cm_negative = colormap.get(cm[1])
 
-                c = FasterIsocurveItem(data=data, level=level, pen=color)
-                c.setParentItem(img)
-                c.generatePath()
+            # Add the contours to the plot item
+            for levels, cm in zip((positive_contours, negative_contours),
+                                  (cm_positive, cm_negative)):
+                if len(levels) == 0:
+                    continue
+                color_table = cm.getLookupTable(nPts=len(levels))
+
+                for level, color in zip(levels, color_table):
+
+                    c = FasterIsocurveItem(data=data, level=level, pen=color)
+                    c.setParentItem(img)
+                    c.generatePath()

@@ -143,14 +143,6 @@ class NMRDeskWindow(QMainWindow):
 
     def _updatePlotSelector(self, index):
         """Update the plot selector box"""
-        # Repopulate the plot selector combobox with the stacks
-        self.plotSelector.clear()
-        for i in range(self.plotStack.count()):
-            widget = self.plotStack.widget(i)
-            name = widget.__class__.__name__
-
-            self.plotSelector.addItem(name)
-
         # Set the combobox's active item to the currently active widget from
         # the plot stack
         current_index = self.plotStack.currentIndex()
@@ -200,6 +192,11 @@ class NMRDeskWindow(QMainWindow):
         # Create a stack view for the plot
         plot_widget = NMRSpectrumContour2D(spectra=[spectrum])
         self.plotStack.addWidget(plot_widget)
+
+        # Add the item to the plot selector combobox
+        # Repopulate the plot selector combobox with the stacks
+        name = plot_widget.__class__.__name__
+        self.plotSelector.addItem(name)
 
         # Connect the plot's signals
         enums = {enum.value: enum for enum in MouseMode}
