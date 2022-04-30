@@ -212,43 +212,46 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
         """Set the mouse mode"""
         super().setMouseInteraction(mode)
 
-        # Add htrace and vtrace modes
-        if mode is MouseInteraction.HTRACE:
-            self._selectorLine = InfiniteLine(movable=False)
-            self._plotItem.addItem(self._selectorLine)
-        elif mode is MouseInteraction.VTRACE:
-            self._selectorLine = InfiniteLine(movable=False, angle=90)
-            self._plotItem.addItem(self._selectorLine)
-        else:
-            # Remove the selector line if not in HTRACE/VTRACE mode
-            line = getattr(self, '_selectorLine', None)
-            if line is not None:
-                self._plotItem.removeItem(line)
+        # Reset vtrace/htrace modes
+        selectorLine = getattr(self, '_selectorLine', None)
+        if selectorLine is not None:
+            self._plotItem.removeItem(selectorLine)
             self._selectorLine = None
 
-    # def mousePressEvent(self, ev):
-    #     """Changes for mouse clicks"""
-    #     pos = QPointF(ev.pos())
-    #
-    #     # Do nothing if it's not within the bounding box
-    #     if not self._plotItem.sceneBoundingRect().contains(pos):
-    #         return super().mousePressEvent(ev)
-    #
-    #     # Convert from pixels to the plot's coordinates
-    #     mousePoint = self.viewBox.mapSceneToView(pos)
-    #
-    #     # Update the HTRACE/VTRACE selector line, if available
-    #     selectorLine = getattr(self, '_selectorLine', None)
-    #     currentMouseInteraction = self.getMouseInteraction()
-    #     if (currentMouseInteraction is MouseInteraction.VTRACE and
-    #        selectorLine is not None):
-    #         selectorLine.setPos(mousePoint.x())
-    #     elif (currentMouseInteraction is MouseInteraction.HTRACE and
-    #          selectorLine is not None):
-    #         selectorLine.setPos(mousePoint.y())
-    #
-    #     # Continue as normal
-    #     return super().mouseMoveEvent(ev)
+        if mode is MouseInteraction.HTRACE:
+            # Add a horizontal line for HTRACE mode
+            self._selectorLine = InfiniteLine(angle=0, movable=False)
+            self._plotItem.addItem(self._selectorLine)
+        elif mode is MouseInteraction.VTRACE:
+            # Add a vertical line for VTRACE mode
+            self._selectorLine = InfiniteLine(angle=90, movable=False)
+            self._plotItem.addItem(self._selectorLine)
+
+    def mousePressEvent(self, ev):
+        """Changes for mouse clicks"""
+        pos = QPointF(ev.pos())
+
+        # Do nothing if it's not within the bounding box
+        if not self._plotItem.sceneBoundingRect().contains(pos):
+            return super().mousePressEvent(ev)
+
+        # Convert from pixels to the plot's coordinates
+        mousePoint = self.viewBox.mapSceneToView(pos)
+
+        # Update the HTRACE/VTRACE selector line, if available
+        selectorLine = getattr(self, '_selectorLine', None)
+        currentMouseInteraction = self.getMouseInteraction()
+
+        if (currentMouseInteraction is MouseInteraction.HTRACE and
+           selectorLine is not None):
+            selectorLine.setPos(mousePoint.y())
+
+        elif (currentMouseInteraction is MouseInteraction.VTRACE and
+              selectorLine is not None):
+            selectorLine.setPos(mousePoint.x())
+
+        # Continue as normal
+        return super().mousePressEvent(ev)
 
     def mouseMoveEvent(self, ev):
         """Changes for mouse moves"""
@@ -301,10 +304,10 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
 
         if crosshair is None:
             # Setup the crosshair
-            vLine = InfiniteLine(angle=90, movable=False)
             hLine = InfiniteLine(angle=0, movable=False)
-            self._plotItem.addItem(vLine)
+            vLine = InfiniteLine(angle=90, movable=False)
             self._plotItem.addItem(hLine)
+            self._plotItem.addItem(vLine)
             self._crosshair = [hLine, vLine]
 
     def _removeCrosshair(self):
