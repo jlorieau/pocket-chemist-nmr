@@ -5,9 +5,10 @@ import typing as t
 from weakref import ReferenceType, ref
 
 import numpy as np
+from PyQt6.QtCore import QPointF
 from PyQt6.QtGui import QTransform, QFont, QPainterPath
-from pyqtgraph import (PlotWidget, GraphicsLayout, PlotItem, IsocurveItem,
-                       ImageItem, ViewBox, colormap)
+from pyqtgraph import (PlotWidget, LabelItem, GraphicsLayout, PlotItem,
+                       IsocurveItem, ImageItem, InfiniteLine, ViewBox, colormap)
 
 from .funcs import isocurve
 from .constants import MouseMode
@@ -151,6 +152,9 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
     #: The plot item for contours
     _plotItem: PlotItem
 
+    #: The crosshair items
+    _crosshair: t.Optional[t.List[InfiniteLine]]
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Setup the graphics layout
@@ -162,7 +166,10 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
         self._layout.addItem(self._plotItem)
 
         # Load the contours
-        self.loadContours()
+        self._loadContours()
+
+        # Add the crosshair
+        self._add_crosshair()
 
     @property
     def xAxisTitle(self):
@@ -176,7 +183,48 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
         spectra = self.spectra
         return spectra[0].label[1] if spectra is not None else ''
 
-    def getContourLevels(self) -> t.Tuple[t.Tuple[float, ...],
+    def mouseMoveEvent(self, ev):
+        """Changes for mouse moves"""
+        pos = QPointF(ev.pos())
+
+        # Do nothing if it's not within the bounding box
+        if not self._plotItem.sceneBoundingRect().contains(pos):
+            return super().mouseMoveEvent(ev)
+
+        mousePoint = self._viewBox.mapSceneToView(pos)
+        crosshair = getattr(self, '_crosshair', None)
+
+        # Adjust the crosshair position
+        if crosshair is not None:
+            # Switch to the coordinates of the view box
+            crosshair[0].setPos(mousePoint.y())  # hLine
+            crosshair[1].setPos(mousePoint.x())  # vLine
+
+        return super().mouseMoveEvent(ev)
+
+    def _add_crosshair(self):
+        """Add the crosshair to the plot"""
+        crosshair = getattr(self, '_crosshair', None)
+
+        if crosshair is None:
+            # Setup the crosshair
+            vLine = InfiniteLine(angle=90, movable=False)
+            hLine = InfiniteLine(angle=0, movable=False)
+            self._plotItem.addItem(vLine)
+            self._plotItem.addItem(hLine)
+            self._crosshair = [hLine, vLine]
+
+    def _remove_crosshair(self):
+        """Remove the crosshair from the plot"""
+        crosshair = getattr(self, '_crosshair', None)
+
+        if crosshair is not None:
+            hLine, vLine = crosshair
+            self._plotItem.removeItem(hLine)
+            self._plotItem.removeItem(vLine)
+            self._crosshair = None
+
+    def _getContourLevels(self) -> t.Tuple[t.Tuple[float, ...],
                                           t.Tuple[float, ...]]:
         """Calculate the contour levels
 
@@ -215,7 +263,7 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
         else:
             return tuple(), tuple()
 
-    def loadContours(self):
+    def _loadContours(self):
         """Load the contour levels for the spectrum"""
         # Retrieve the spectrum from the weakref
         spectra = self.spectra
@@ -296,7 +344,7 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
             # Retrieve the next contour map, or return a default
             cm = (self.colormaps[i] if i < len(self.colormaps) else
                   self.colormaps[-1])
-            positive_contours, negative_contours = self.getContourLevels()
+            positive_contours, negative_contours = self._getContourLevels()
             cm_positive = colormap.get(cm[0])
             cm_negative = colormap.get(cm[1])
 
