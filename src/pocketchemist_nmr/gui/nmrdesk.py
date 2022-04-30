@@ -62,7 +62,6 @@ class NMRDeskWindow(QMainWindow):
         self._loadIcons()
 
         self._setupToolbar()
-        self.statusbar.setVisible(False)  # Hide status bar
 
         self.show()
 
@@ -202,3 +201,5 @@ class NMRDeskWindow(QMainWindow):
         enums = {enum.value: enum for enum in MouseMode}
         slot = lambda a: plot_widget.setMouseMode(enums[a.text()])
         self._mouseMode.triggered.connect(slot)
+
+        plot_widget.statusbar.textChanged.connect(self.statusbar.showMessage)

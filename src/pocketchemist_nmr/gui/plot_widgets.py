@@ -7,7 +7,8 @@ from weakref import ReferenceType, ref
 import numpy as np
 from PyQt6.QtCore import QPointF
 from PyQt6.QtGui import QTransform, QFont, QPainterPath
-from pyqtgraph import (PlotWidget, LabelItem, GraphicsLayout, PlotItem,
+from PyQt6.QtWidgets import QLineEdit
+from pyqtgraph import (PlotWidget, GraphicsLayout, PlotItem,
                        IsocurveItem, ImageItem, InfiniteLine, ViewBox, colormap)
 
 from .funcs import isocurve
@@ -70,8 +71,11 @@ class NMRSpectrumPlot(PlotWidget):
     #: Axis size of label fonts (in pt)
     axisLabelFontSize = 14
 
+    #: The statusbar lineedit widget
+    statusbar: QLineEdit
+
     #: The viewbox for the plot
-    _viewBox: FlexibleViewBox
+    viewBox: FlexibleViewBox
 
     #: The spectra to plot
     _spectra: t.List[ReferenceType[NMRSpectrum]]
@@ -85,7 +89,10 @@ class NMRSpectrumPlot(PlotWidget):
         self.spectra = spectra
 
         # Setup an instance of the subclassed view box
-        self._viewBox = FlexibleViewBox()
+        self.viewBox = FlexibleViewBox()
+
+        # Setup the statusbar line edit widget
+        self.statusbar = QLineEdit()
 
     @property
     def spectra(self) -> t.List[NMRSpectrum]:
@@ -103,13 +110,13 @@ class NMRSpectrumPlot(PlotWidget):
 
     def setMouseMode(self, mode: MouseMode):
         """Set the mouse mode"""
-        self._viewBox.mouseMode = mode
+        self.viewBox.mouseMode = mode
 
         # Set the mouse mode for the view box
         if mode is MouseMode.ADDPEAKS:
-            self._viewBox.setMouseMode(ViewBox.RectMode)
+            self.viewBox.setMouseMode(ViewBox.RectMode)
         else:
-            self._viewBox.setMouseMode(ViewBox.PanMode)
+            self.viewBox.setMouseMode(ViewBox.PanMode)
 
 
 class NMRSpectrumContour2D(NMRSpectrumPlot):
@@ -162,7 +169,7 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
         self.setCentralItem(self._layout)
 
         # Setup the plot item
-        self._plotItem = PlotItem(viewBox=self._viewBox)
+        self._plotItem = PlotItem(viewBox=self.viewBox)
         self._layout.addItem(self._plotItem)
 
         # Configure the axes
@@ -194,7 +201,7 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
         if not self._plotItem.sceneBoundingRect().contains(pos):
             return super().mouseMoveEvent(ev)
 
-        mousePoint = self._viewBox.mapSceneToView(pos)
+        mousePoint = self.viewBox.mapSceneToView(pos)
         crosshair = getattr(self, '_crosshair', None)
 
         # Adjust the crosshair position
@@ -202,6 +209,10 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
             # Switch to the coordinates of the view box
             crosshair[0].setPos(mousePoint.y())  # hLine
             crosshair[1].setPos(mousePoint.x())  # vLine
+
+        # Update the statusbar
+        self.statusbar.setText(f"({mousePoint.x():.3f}, "
+                               f"{mousePoint.y():.3f})")
 
         return super().mouseMoveEvent(ev)
 
