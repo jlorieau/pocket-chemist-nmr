@@ -166,7 +166,7 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
         self._layout.addItem(self._plotItem)
 
         # Configure the axes
-        self.setAxes()
+        self._setupAxes()
 
         # Load the contours
         self._loadContours()
@@ -205,7 +205,7 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
 
         return super().mouseMoveEvent(ev)
 
-    def setAxes(self):
+    def _setupAxes(self):
         """Configure the axes"""
         # Configure the axes
         labelFont = QFont(self.axisLabelFontFamily,
