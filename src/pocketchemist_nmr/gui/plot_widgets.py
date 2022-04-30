@@ -12,7 +12,7 @@ from pyqtgraph import (PlotWidget, GraphicsLayout, PlotItem,
                        IsocurveItem, ImageItem, InfiniteLine, ViewBox, colormap)
 
 from .funcs import isocurve
-from .constants import MouseMode
+from .constants import MouseInteraction
 from ..spectra import NMRSpectrum
 
 
@@ -40,8 +40,9 @@ class FasterIsocurveItem(IsocurveItem):
 class FlexibleViewBox(ViewBox):
     """A view box with greater flexibility in its mouse and menu functions."""
 
-    #: The current mouse navigation or selection mode
-    mouseMode = MouseMode.NAVIGATION
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.state['mouseInteraction'] = MouseInteraction.NAVIGATION
 
     def showAxRect(self, ax, **kwargs):
         """The rectangle function called in 1-button mouse mode.
@@ -49,11 +50,18 @@ class FlexibleViewBox(ViewBox):
         This method highjacks the pyqtgraph's 1-button mouse mode so
         that it can be used for functionality like adding peaks.
         """
-        if self.mouseMode.ADDPEAKS:
+        if self.getMouseInteraction() is MouseInteraction.ADDPEAKS:
             pass
         else:
             # Conduct the zoom-in, as usual
             return super().showAxRect(ax, **kwargs)
+
+    def setMouseInteraction(self, mode):
+        self.state['mouseInteraction'] = mode
+
+    def getMouseInteraction(self):
+        """Get the current mouse mode"""
+        return self.state.get('mouseInteraction', MouseInteraction.NAVIGATION)
 
 
 class NMRSpectrumPlot(PlotWidget):
@@ -108,15 +116,19 @@ class NMRSpectrumPlot(PlotWidget):
         self._spectra.clear()
         self._spectra += [ref(spectrum) for spectrum in value]
 
-    def setMouseMode(self, mode: MouseMode):
-        """Set the mouse mode"""
-        self.viewBox.mouseMode = mode
+    def setMouseInteraction(self, mode: MouseInteraction):
+        """Set the mouse interaction mode"""
+        self.viewBox.setMouseInteraction(mode)
 
         # Set the mouse mode for the view box
-        if mode is MouseMode.ADDPEAKS:
+        if mode is MouseInteraction.ADDPEAKS:
             self.viewBox.setMouseMode(ViewBox.RectMode)
         else:
             self.viewBox.setMouseMode(ViewBox.PanMode)
+
+    def getMouseInteraction(self):
+        """Get the current mouse interaction mode"""
+        return self.viewBox.getMouseInteraction()
 
 
 class NMRSpectrumContour2D(NMRSpectrumPlot):
@@ -162,6 +174,9 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
     #: The crosshair items
     _crosshair: t.Optional[t.List[InfiniteLine]]
 
+    #: The htrace/vtrace selector line
+    _selectorLine = t.Optional[InfiniteLine]
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Setup the graphics layout
@@ -192,6 +207,48 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
         """The label for the x-axis"""
         spectra = self.spectra
         return spectra[0].label[1] if spectra is not None else ''
+
+    def setMouseInteraction(self, mode: MouseInteraction):
+        """Set the mouse mode"""
+        super().setMouseInteraction(mode)
+
+        # Add htrace and vtrace modes
+        if mode is MouseInteraction.HTRACE:
+            self._selectorLine = InfiniteLine(movable=False)
+            self._plotItem.addItem(self._selectorLine)
+        elif mode is MouseInteraction.VTRACE:
+            self._selectorLine = InfiniteLine(movable=False, angle=90)
+            self._plotItem.addItem(self._selectorLine)
+        else:
+            # Remove the selector line if not in HTRACE/VTRACE mode
+            line = getattr(self, '_selectorLine', None)
+            if line is not None:
+                self._plotItem.removeItem(line)
+            self._selectorLine = None
+
+    # def mousePressEvent(self, ev):
+    #     """Changes for mouse clicks"""
+    #     pos = QPointF(ev.pos())
+    #
+    #     # Do nothing if it's not within the bounding box
+    #     if not self._plotItem.sceneBoundingRect().contains(pos):
+    #         return super().mousePressEvent(ev)
+    #
+    #     # Convert from pixels to the plot's coordinates
+    #     mousePoint = self.viewBox.mapSceneToView(pos)
+    #
+    #     # Update the HTRACE/VTRACE selector line, if available
+    #     selectorLine = getattr(self, '_selectorLine', None)
+    #     currentMouseInteraction = self.getMouseInteraction()
+    #     if (currentMouseInteraction is MouseInteraction.VTRACE and
+    #        selectorLine is not None):
+    #         selectorLine.setPos(mousePoint.x())
+    #     elif (currentMouseInteraction is MouseInteraction.HTRACE and
+    #          selectorLine is not None):
+    #         selectorLine.setPos(mousePoint.y())
+    #
+    #     # Continue as normal
+    #     return super().mouseMoveEvent(ev)
 
     def mouseMoveEvent(self, ev):
         """Changes for mouse moves"""
