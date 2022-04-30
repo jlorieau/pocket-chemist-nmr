@@ -165,11 +165,14 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
         self._plotItem = PlotItem(viewBox=self._viewBox)
         self._layout.addItem(self._plotItem)
 
+        # Configure the axes
+        self.setAxes()
+
         # Load the contours
         self._loadContours()
 
         # Add the crosshair
-        self._add_crosshair()
+        self._addCrosshair()
 
     @property
     def xAxisTitle(self):
@@ -202,7 +205,29 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
 
         return super().mouseMoveEvent(ev)
 
-    def _add_crosshair(self):
+    def setAxes(self):
+        """Configure the axes"""
+        # Configure the axes
+        labelFont = QFont(self.axisLabelFontFamily,
+                          self.axisLabelFontSize)
+
+        bottom = self._plotItem.getAxis('bottom')
+        bottom.setLabel(self.xAxisTitle, 'ppm',
+                        **{'font-family': self.axisTitleFontFamily,
+                           'font-size': f'{self.axisLabelFontSize}pt'})
+        bottom.setStyle(tickFont=labelFont)
+
+        left = self._plotItem.getAxis('left')
+        left.setLabel(text=self.yAxisTitle, units='ppm',
+                      **{'font-family': self.axisTitleFontFamily,
+                         'font-size': f'{self.axisLabelFontSize}pt'})
+        left.setStyle(tickFont=labelFont)
+
+        # Flip the axes, needed for ppm and Hz data in NMR data
+        self._plotItem.invertX(True)
+        self._plotItem.invertY(True)
+
+    def _addCrosshair(self):
         """Add the crosshair to the plot"""
         crosshair = getattr(self, '_crosshair', None)
 
@@ -214,7 +239,7 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
             self._plotItem.addItem(hLine)
             self._crosshair = [hLine, vLine]
 
-    def _remove_crosshair(self):
+    def _removeCrosshair(self):
         """Remove the crosshair from the plot"""
         crosshair = getattr(self, '_crosshair', None)
 
@@ -225,7 +250,7 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
             self._crosshair = None
 
     def _getContourLevels(self) -> t.Tuple[t.Tuple[float, ...],
-                                          t.Tuple[float, ...]]:
+                                           t.Tuple[float, ...]]:
         """Calculate the contour levels
 
         Returns
@@ -299,26 +324,6 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
         max_y_width = max(y[2] for y in y_ranges)
         self._plotItem.vb.setAspectLocked(lock=self.lockAspect,
                                           ratio=max_y_width / max_x_width)
-
-        # Configure the axes
-        labelFont = QFont(self.axisLabelFontFamily,
-                          self.axisLabelFontSize)
-
-        bottom = self._plotItem.getAxis('bottom')
-        bottom.setLabel(self.xAxisTitle, 'ppm',
-                        **{'font-family': self.axisTitleFontFamily,
-                           'font-size': f'{self.axisLabelFontSize}pt'})
-        bottom.setStyle(tickFont=labelFont)
-
-        left = self._plotItem.getAxis('left')
-        left.setLabel(text=self.yAxisTitle, units='ppm',
-                      **{'font-family': self.axisTitleFontFamily,
-                         'font-size': f'{self.axisLabelFontSize}pt'})
-        left.setStyle(tickFont=labelFont)
-
-        # Flip the axes, needed for ppm and Hz data in NMR data
-        self._plotItem.invertX(True)
-        self._plotItem.invertY(True)
 
         # Create the contours for each spectrum
         for i, (spectrum, x_range, y_range), in enumerate(zip(spectra, x_ranges,
