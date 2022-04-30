@@ -6,9 +6,9 @@ from weakref import ReferenceType, ref
 
 import numpy as np
 from PyQt6.QtCore import QPointF
-from PyQt6.QtGui import QTransform, QFont, QPainterPath
+from PyQt6.QtGui import QTransform, QFont, QPainterPath, QPen
 from PyQt6.QtWidgets import QLineEdit
-from pyqtgraph import (PlotWidget, GraphicsLayout, PlotItem,
+from pyqtgraph import (PlotWidget, GraphicsLayout, PlotItem, mkPen,
                        IsocurveItem, ImageItem, InfiniteLine, ViewBox, colormap)
 
 from .funcs import isocurve
@@ -165,6 +165,12 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
         ('CET-L6', 'CET-L13'),  # blue->white, black->red
     )
 
+    #: The pen for drawing the crosshair
+    crosshairPen: QPen = mkPen(color="#666666")
+
+    #: The pen for drawing htrace and vtrace lines
+    tracePen: QPen = mkPen(color="aaaaaa")
+
     #: The graphics layout for contours
     _layout: GraphicsLayout
 
@@ -179,6 +185,10 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Make copies of mutables
+        self.crosshairPen = QPen(self.crosshairPen)
+        self.tracePen = QPen(self.tracePen)
+
         # Setup the graphics layout
         self._layout = GraphicsLayout()
         self.setCentralItem(self._layout)
@@ -220,11 +230,13 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
 
         if mode is MouseInteraction.HTRACE:
             # Add a horizontal line for HTRACE mode
-            self._selectorLine = InfiniteLine(angle=0, movable=False)
+            self._selectorLine = InfiniteLine(angle=0, movable=False,
+                                              pen=self.tracePen)
             self._plotItem.addItem(self._selectorLine)
         elif mode is MouseInteraction.VTRACE:
             # Add a vertical line for VTRACE mode
-            self._selectorLine = InfiniteLine(angle=90, movable=False)
+            self._selectorLine = InfiniteLine(angle=90, movable=False,
+                                              pen=self.tracePen)
             self._plotItem.addItem(self._selectorLine)
 
     def mousePressEvent(self, ev):
@@ -304,8 +316,8 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
 
         if crosshair is None:
             # Setup the crosshair
-            hLine = InfiniteLine(angle=0, movable=False)
-            vLine = InfiniteLine(angle=90, movable=False)
+            hLine = InfiniteLine(angle=0, movable=False, pen=self.crosshairPen)
+            vLine = InfiniteLine(angle=90, movable=False, pen=self.crosshairPen)
             self._plotItem.addItem(hLine)
             self._plotItem.addItem(vLine)
             self._crosshair = [hLine, vLine]
