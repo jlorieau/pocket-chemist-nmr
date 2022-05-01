@@ -11,7 +11,7 @@ from PyQt6.QtGui import QAction, QActionGroup, QIcon
 from PyQt6 import uic
 
 from .plot_widgets import NMRSpectrumPlot, NMRSpectrumContour2D
-from .constants import MouseInteraction
+from .constants import Tool
 from ..spectra import NMRSpectrum, NMRPipeSpectrum
 
 
@@ -38,8 +38,8 @@ class NMRDeskWindow(QMainWindow):
     #: The width (in number of characters) of the plot selector combo box
     plotSelectorWidth = 50
 
-    #: The current mouse mouse mode
-    currentMouseInteraction: MouseInteraction = MouseInteraction.NAVIGATION
+    #: The current tool selection
+    currentTool: Tool = Tool.NAVIGATION
 
     #: Paths for icons
     icon_paths = (Path(__file__).parent / 'assets' / 'icons8',)
@@ -48,7 +48,7 @@ class NMRDeskWindow(QMainWindow):
     _icons: t.Dict[str, QIcon]
 
     #: The action group to specify the current mouse mose
-    _mouseMode: QActionGroup
+    _toolActions: QActionGroup
 
     def __init__(self):
         super().__init__()
@@ -80,7 +80,7 @@ class NMRDeskWindow(QMainWindow):
     def _setupToolbar(self):
         """Setup the toolbar with extra widgets not added by designer"""
         # Set the mouse mode actions
-        self._setupMouseInteractionActionGroup()
+        self._setupToolsActionGroup()
 
         # Add a horizontal spacer
         spacer = QWidget()
@@ -106,17 +106,17 @@ class NMRDeskWindow(QMainWindow):
         self.plotStack.currentChanged.connect(self._updatePlotSelector)
         self.plotSelector.activated.connect(self.plotStack.setCurrentIndex)
 
-    def _setupMouseInteractionActionGroup(self):
-        """Setup the mouse mode action group"""
+    def _setupToolsActionGroup(self):
+        """Setup the tools action group"""
         # Create actions for the mouse interaction modes
         navigate = QAction(self._icons['navigate-40'],
-                           MouseInteraction.NAVIGATION.value, self)
+                           Tool.NAVIGATION.value, self)
         horizontal = QAction(self._icons['horizontal-line-64'],
-                             MouseInteraction.HTRACE.value, self)
+                             Tool.HTRACE.value, self)
         vertical = QAction(self._icons['vertical-line-64'],
-                           MouseInteraction.VTRACE.value, self)
+                           Tool.VTRACE.value, self)
         addpeaks = QAction(self._icons['add-40'],
-                           MouseInteraction.ADDPEAKS.value, self)
+                           Tool.ADDPEAKS.value, self)
         actions = (navigate, horizontal, vertical, addpeaks)
 
         # Set the actions to be checkable
@@ -125,24 +125,24 @@ class NMRDeskWindow(QMainWindow):
             action.setCheckable(True)
 
         # Group these into an ActionGroup
-        self._mouseMode = QActionGroup(self)
+        self._toolActions = QActionGroup(self)
         for action in actions:
-            self._mouseMode.addAction(action)
+            self._toolActions.addAction(action)
 
         # Connect the signal. The signal sends a QAction, which needs to be
-        # converted to a MouseInteraction
-        enums = {enum.value: enum for enum in MouseInteraction}
-        setMouse = lambda t: self.setMouseInteraction(enums[t.text()])
-        self._mouseMode.triggered.connect(setMouse)
+        # converted to a Tool
+        enums = {enum.value: enum for enum in Tool}
+        setTool = lambda t: self.setTool(enums[t.text()])
+        self._toolActions.triggered.connect(setTool)
 
         # Add the group to the toolbar
         self.toolBar.addActions(actions)
 
         # Add the group to the edit menu
         edit = self.menubar.findChild(QMenu, "menuEdit")
-        mouseMode = QMenu("Mouse Mode")
-        mouseMode.addActions(actions)
-        edit.addMenu(mouseMode)
+        tools = QMenu("Tools")
+        tools.addActions(actions)
+        edit.addMenu(tools)
 
     def _updatePlotSelector(self, index):
         """Update the plot selector box"""
@@ -151,9 +151,9 @@ class NMRDeskWindow(QMainWindow):
         current_index = self.plotStack.currentIndex()
         self.plotSelector.setCurrentIndex(current_index)
 
-    def setMouseInteraction(self, mode: MouseInteraction):
-        """Set the current mouse mode"""
-        self.currentMouseInteraction = mode
+    def setTool(self, tool: Tool):
+        """Set the current tool"""
+        self.currentTool = tool
 
     def fileOpenDialog(self):
         """Open a file selection dialog.
@@ -202,8 +202,8 @@ class NMRDeskWindow(QMainWindow):
         self.plotSelector.addItem(name)
 
         # Connect the plot's signals
-        enums = {enum.value: enum for enum in MouseInteraction}
-        slot = lambda a: plot_widget.setMouseInteraction(enums[a.text()])
-        self._mouseMode.triggered.connect(slot)
+        enums = {enum.value: enum for enum in Tool}
+        slot = lambda a: plot_widget.setTool(enums[a.text()])
+        self._toolActions.triggered.connect(slot)
 
         plot_widget.statusbar.textChanged.connect(self.statusbar.showMessage)

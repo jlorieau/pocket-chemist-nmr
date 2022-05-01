@@ -8,11 +8,11 @@ import numpy as np
 from PyQt6.QtCore import QPointF
 from PyQt6.QtGui import QTransform, QFont, QPainterPath, QPen
 from PyQt6.QtWidgets import QLineEdit
-from pyqtgraph import (PlotWidget, GraphicsLayout, PlotItem, mkPen,
+from pyqtgraph import (GraphicsLayoutWidget, PlotItem, mkPen,
                        IsocurveItem, ImageItem, InfiniteLine, ViewBox, colormap)
 
 from .funcs import isocurve
-from .constants import MouseInteraction
+from .constants import Tool
 from ..spectra import NMRSpectrum
 
 
@@ -42,7 +42,7 @@ class FlexibleViewBox(ViewBox):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.state['mouseInteraction'] = MouseInteraction.NAVIGATION
+        self.state['tool'] = Tool.NAVIGATION
 
     def showAxRect(self, ax, **kwargs):
         """The rectangle function called in 1-button mouse mode.
@@ -50,21 +50,22 @@ class FlexibleViewBox(ViewBox):
         This method highjacks the pyqtgraph's 1-button mouse mode so
         that it can be used for functionality like adding peaks.
         """
-        if self.getMouseInteraction() is MouseInteraction.ADDPEAKS:
+        if self.getTool() is Tool.ADDPEAKS:
             pass
         else:
             # Conduct the zoom-in, as usual
             return super().showAxRect(ax, **kwargs)
 
-    def setMouseInteraction(self, mode):
-        self.state['mouseInteraction'] = mode
+    def setTool(self, mode):
+        """Set the current tool"""
+        self.state['tool'] = mode
 
-    def getMouseInteraction(self):
-        """Get the current mouse mode"""
-        return self.state.get('mouseInteraction', MouseInteraction.NAVIGATION)
+    def getTool(self):
+        """Get the current tool"""
+        return self.state.get('tool', Tool.NAVIGATION)
 
 
-class NMRSpectrumPlot(PlotWidget):
+class NMRSpectrumPlot(GraphicsLayoutWidget):
     """A generic widget base class for plotting NMR spectra"""
 
     #: Axis title font family
@@ -116,19 +117,24 @@ class NMRSpectrumPlot(PlotWidget):
         self._spectra.clear()
         self._spectra += [ref(spectrum) for spectrum in value]
 
-    def setMouseInteraction(self, mode: MouseInteraction):
-        """Set the mouse interaction mode"""
-        self.viewBox.setMouseInteraction(mode)
+    @property
+    def availableTools(self):
+        """A listing of available tools for this plot"""
+        return tuple()
+
+    def setTool(self, tool: Tool):
+        """Set the current tool"""
+        self.viewBox.setTool(tool)
 
         # Set the mouse mode for the view box
-        if mode is MouseInteraction.ADDPEAKS:
+        if tool is Tool.ADDPEAKS:
             self.viewBox.setMouseMode(ViewBox.RectMode)
         else:
             self.viewBox.setMouseMode(ViewBox.PanMode)
 
-    def getMouseInteraction(self):
-        """Get the current mouse interaction mode"""
-        return self.viewBox.getMouseInteraction()
+    def getTool(self):
+        """Get the current tool"""
+        return self.viewBox.getTool()
 
 
 class NMRSpectrumContour2D(NMRSpectrumPlot):
@@ -171,9 +177,6 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
     #: The pen for drawing htrace and vtrace lines
     tracePen: QPen = mkPen(color="aaaaaa")
 
-    #: The graphics layout for contours
-    _layout: GraphicsLayout
-
     #: The plot item for contours
     _plotItem: PlotItem
 
@@ -185,17 +188,14 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
         # Make copies of mutables
         self.crosshairPen = QPen(self.crosshairPen)
         self.tracePen = QPen(self.tracePen)
 
-        # Setup the graphics layout
-        self._layout = GraphicsLayout()
-        self.setCentralItem(self._layout)
-
         # Setup the plot item
         self._plotItem = PlotItem(viewBox=self.viewBox)
-        self._layout.addItem(self._plotItem)
+        self.addItem(self._plotItem)
 
         # Configure the axes
         self._setupAxes()
@@ -218,9 +218,9 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
         spectra = self.spectra
         return spectra[0].label[1] if spectra is not None else ''
 
-    def setMouseInteraction(self, mode: MouseInteraction):
-        """Set the mouse mode"""
-        super().setMouseInteraction(mode)
+    def setTool(self, tool: Tool):
+        """Set the current tool"""
+        super().setTool(tool)
 
         # Reset vtrace/htrace modes
         selectorLine = getattr(self, '_selectorLine', None)
@@ -228,12 +228,12 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
             self._plotItem.removeItem(selectorLine)
             self._selectorLine = None
 
-        if mode is MouseInteraction.HTRACE:
+        if tool is Tool.HTRACE:
             # Add a horizontal line for HTRACE mode
             self._selectorLine = InfiniteLine(angle=0, movable=False,
                                               pen=self.tracePen)
             self._plotItem.addItem(self._selectorLine)
-        elif mode is MouseInteraction.VTRACE:
+        elif tool is Tool.VTRACE:
             # Add a vertical line for VTRACE mode
             self._selectorLine = InfiniteLine(angle=90, movable=False,
                                               pen=self.tracePen)
@@ -252,14 +252,12 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
 
         # Update the HTRACE/VTRACE selector line, if available
         selectorLine = getattr(self, '_selectorLine', None)
-        currentMouseInteraction = self.getMouseInteraction()
+        tool = self.getTool()
 
-        if (currentMouseInteraction is MouseInteraction.HTRACE and
-           selectorLine is not None):
+        if tool is Tool.HTRACE and selectorLine is not None:
             selectorLine.setPos(mousePoint.y())
 
-        elif (currentMouseInteraction is MouseInteraction.VTRACE and
-              selectorLine is not None):
+        elif tool is Tool.VTRACE and selectorLine is not None:
             selectorLine.setPos(mousePoint.x())
 
         # Continue as normal

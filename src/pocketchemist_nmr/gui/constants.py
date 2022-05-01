@@ -1,8 +1,8 @@
 from enum import Enum
 
 
-class MouseInteraction(Enum):
-    """The mouse interaction states for navigation and selection"""
+class Tool(Enum):
+    """The tools available for working with spectral plots"""
 
     #: The default mode to pan and zoom
     NAVIGATION = 'Navigation'
