@@ -86,6 +86,10 @@ class NMRSpectrumPlot(GraphicsLayoutWidget):
     #: The viewbox for the plot
     viewBox: FlexibleViewBox
 
+    #: Invert the x-, y-axes or both
+    _invertX: bool = True
+    _invertY: bool = False
+
     #: The spectra to plot
     _spectra: t.List[ReferenceType[NMRSpectrum]]
 
@@ -102,6 +106,34 @@ class NMRSpectrumPlot(GraphicsLayoutWidget):
 
         # Setup the statusbar line edit widget
         self.statusbar = QLineEdit()
+
+    @property
+    def invertX(self) -> bool:
+        return self._invertX
+
+    @invertX.setter
+    def invertX(self, value: bool):
+        self._invertX = value
+
+    @property
+    def invertY(self) -> bool:
+        return self._invertY
+
+    @invertY.setter
+    def invertY(self, value: bool):
+        self._invertY = True
+
+    @property
+    def xAxisTitle(self):
+        """The label for the x-axis"""
+        spectra = self.spectra
+        return spectra[0].label[0] if spectra is not None else ''
+
+    @property
+    def yAxisTitle(self):
+        """The label for the x-axis"""
+        spectra = self.spectra
+        return spectra[0].label[1] if spectra is not None else ''
 
     @property
     def spectra(self) -> t.List[NMRSpectrum]:
@@ -135,6 +167,28 @@ class NMRSpectrumPlot(GraphicsLayoutWidget):
     def getTool(self):
         """Get the current tool"""
         return self.viewBox.getTool()
+
+    def _setupAxes(self):
+        """Configure the axes"""
+        # Configure the axes
+        labelFont = QFont(self.axisLabelFontFamily,
+                          self.axisLabelFontSize)
+
+        bottom = self._plotItem.getAxis('bottom')
+        bottom.setLabel(self.xAxisTitle, 'ppm',
+                        **{'font-family': self.axisTitleFontFamily,
+                           'font-size': f'{self.axisLabelFontSize}pt'})
+        bottom.setStyle(tickFont=labelFont)
+
+        left = self._plotItem.getAxis('left')
+        left.setLabel(text=self.yAxisTitle, units='ppm',
+                      **{'font-family': self.axisTitleFontFamily,
+                         'font-size': f'{self.axisLabelFontSize}pt'})
+        left.setStyle(tickFont=labelFont)
+
+        # Flip the axes, needed for ppm and Hz data in NMR data
+        self._plotItem.invertX(self.invertX)
+        self._plotItem.invertY(self.invertY)
 
 
 class NMRSpectrumContour2D(NMRSpectrumPlot):
@@ -175,7 +229,7 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
     crosshairPen: QPen = mkPen(color="#666666")
 
     #: The pen for drawing htrace and vtrace lines
-    tracePen: QPen = mkPen(color="aaaaaa")
+    tracePen: QPen = mkPen(color="#aaaaaa")
 
     #: The plot item for contours
     _plotItem: PlotItem
@@ -188,7 +242,7 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
         # Make copies of mutables
         self.crosshairPen = QPen(self.crosshairPen)
         self.tracePen = QPen(self.tracePen)
@@ -198,6 +252,8 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
         self.addItem(self._plotItem)
 
         # Configure the axes
+        self.invertX = True
+        self.invertY = True
         self._setupAxes()
 
         # Load the contours
@@ -205,18 +261,6 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
 
         # Add the crosshair
         self._addCrosshair()
-
-    @property
-    def xAxisTitle(self):
-        """The label for the x-axis"""
-        spectra = self.spectra
-        return spectra[0].label[0] if spectra is not None else ''
-
-    @property
-    def yAxisTitle(self):
-        """The label for the x-axis"""
-        spectra = self.spectra
-        return spectra[0].label[1] if spectra is not None else ''
 
     def setTool(self, tool: Tool):
         """Set the current tool"""
@@ -285,28 +329,6 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
                                f"{mousePoint.y():.3f})")
 
         return super().mouseMoveEvent(ev)
-
-    def _setupAxes(self):
-        """Configure the axes"""
-        # Configure the axes
-        labelFont = QFont(self.axisLabelFontFamily,
-                          self.axisLabelFontSize)
-
-        bottom = self._plotItem.getAxis('bottom')
-        bottom.setLabel(self.xAxisTitle, 'ppm',
-                        **{'font-family': self.axisTitleFontFamily,
-                           'font-size': f'{self.axisLabelFontSize}pt'})
-        bottom.setStyle(tickFont=labelFont)
-
-        left = self._plotItem.getAxis('left')
-        left.setLabel(text=self.yAxisTitle, units='ppm',
-                      **{'font-family': self.axisTitleFontFamily,
-                         'font-size': f'{self.axisLabelFontSize}pt'})
-        left.setStyle(tickFont=labelFont)
-
-        # Flip the axes, needed for ppm and Hz data in NMR data
-        self._plotItem.invertX(True)
-        self._plotItem.invertY(True)
 
     def _addCrosshair(self):
         """Add the crosshair to the plot"""
@@ -446,3 +468,6 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
                     c = FasterIsocurveItem(data=data, level=level, pen=color)
                     c.setParentItem(img)
                     c.generatePath()
+
+    def _load_trace(self, pos):
+        """Load 1D traces of data"""
