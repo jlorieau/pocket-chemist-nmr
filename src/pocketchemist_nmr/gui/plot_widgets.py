@@ -216,7 +216,7 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
     _crosshair: t.Optional[t.List[InfiniteLine]]
 
     #: The htrace/vtrace selector line
-    _selectorLine = t.Optional[InfiniteLine]
+    _selectorLine: t.Optional[InfiniteLine]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -468,6 +468,3 @@ class NMRSpectrumContour2D(NMRSpectrumPlot):
                     c = FasterIsocurveItem(data=data, level=level, pen=color)
                     c.setParentItem(img)
                     c.generatePath()
-
-    def _load_trace(self, pos):
-        """Load 1D traces of data"""
