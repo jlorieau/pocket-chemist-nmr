@@ -1,11 +1,16 @@
 Release Notes
 =============
 
+0.2.2
+-----
+- Implemented ``nmrdesk`` GUI tools
+- Implemented crosshairs and statusbar updates
 
-Pre-Verion 1
-------------
+0.2.1
+-----
 
-.. toctree::
-    :maxdepth: 1
-
-    0.2.1
+- Initial implementation of the ``nmrdesk`` GUI
+    - Contour plots of 2Ds
+- Added the PyQT6 dependency
+- Added the pyqtgraph dependency
+- Added the scikit-image dependency
