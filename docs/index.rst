@@ -12,6 +12,7 @@ Welcome to pocketchemist-nmr's documentation!
 
    cli/index
    python_interface/index
+   releases/index
 
 
 

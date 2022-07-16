@@ -1,3 +1,3 @@
-from .cli import nmrpipe
+from . import hookimpls
 
-__all__ = ('nmrpipe',)
+__all__ = ('hookimpls',)

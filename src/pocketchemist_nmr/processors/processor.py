@@ -6,7 +6,6 @@ from multiprocessing import Pool
 
 from loguru import logger
 from pocketchemist.processors import Processor, GroupProcessor
-from pocketchemist.processors.fft import FFTProcessor
 
 from ..spectra import NMRSpectrum
 
@@ -101,7 +100,7 @@ class ExtractSpectra(NMRProcessor):
     optional_params = ('update_meta',)
 
 
-class FTSpectra(FFTProcessor, NMRProcessor):
+class FTSpectra(NMRProcessor):
     """Fourier Transform spectra (one or more)"""
 
     #: Fourier Transform mode

@@ -1,0 +1,18 @@
+##TITLE= Audit trail, TOPSPIN		Version 3.2
+##JCAMPDX= 5.01
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= lorieau
+$$ /opt/topspin3.2/data/alec/nmr/AM20220505_av500hd_N-Ubq_NUS/102/audita.txt
+##AUDIT TRAIL=  $$ (NUMBER, WHEN, WHO, WHERE, PROCESS, VERSION, WHAT)
+(   1,<2022-05-05 15:34:05.853 -0500>,<lorieau>,<av500hd>,<go>,<TOPSPIN 3.2>,
+      <created by zg
+	started at 2022-05-05 15:02:14.454 -0500,
+	POWCHK enabled, PULCHK disabled,
+       configuration hash MD5:
+       55 C4 16 E3 93 05 43 C1 24 97 87 2A 6E 30 FD 3E
+       data hash MD5: 798 * 72
+       06 1D 1B 2F CD 9B 5A 70 FB 0C A4 49 BC 11 DB 44>)
+##END=
+
+$$ hash MD5
+$$ 7A B2 49 35 89 54 FD 00 95 83 1D 5C 07 E1 0A B4
